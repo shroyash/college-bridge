@@ -4,7 +4,6 @@ import com.college.bridge.auth.entity.Teacher;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-
 import java.time.LocalDateTime;
 
 @Entity
