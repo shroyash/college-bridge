@@ -1,94 +1,118 @@
 package com.college.bridge.auth.exception;
 
+import com.college.bridge.common.exception.BusinessRuleException;
+import com.college.bridge.common.exception.DuplicateResourceException;
+import com.college.bridge.common.exception.ResourceNotFoundException;
+import com.college.bridge.common.response.ApiResponse;
+import com.college.bridge.common.response.FieldError;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    // -------------------------------------------------------------------------
+    // 400 Bad Request — validation
+    // -------------------------------------------------------------------------
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
+    public ResponseEntity<ApiResponse<Void>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        List<FieldError> fieldErrors = ex.getBindingResult().getFieldErrors().stream()
+                .map(e -> new FieldError(e.getField(), e.getDefaultMessage()))
+                .toList();
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", LocalDateTime.now().toString());
-        body.put("status", HttpStatus.BAD_REQUEST.value());
-        body.put("error", "Bad Request");
-        body.put("message", "Validation constraints violated");
-        body.put("errors", errors);
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Validation failed. Please check the highlighted fields.", fieldErrors));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleIllegalArgumentException(IllegalArgumentException ex) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", LocalDateTime.now().toString());
-        body.put("status", HttpStatus.BAD_REQUEST.value());
-        body.put("error", "Bad Request");
-        body.put("message", ex.getMessage());
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
     }
+
+    // -------------------------------------------------------------------------
+    // 401 Unauthorized
+    // -------------------------------------------------------------------------
 
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<Map<String, Object>> handleBadCredentialsException(BadCredentialsException ex) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", LocalDateTime.now().toString());
-        body.put("status", HttpStatus.UNAUTHORIZED.value());
-        body.put("error", "Unauthorized");
-        body.put("message", "Invalid email or password");
-
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+    public ResponseEntity<ApiResponse<Void>> handleBadCredentialsException(BadCredentialsException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error("Invalid email or password."));
     }
 
-    @ExceptionHandler(SecurityException.class)
-    public ResponseEntity<Map<String, Object>> handleSecurityException(SecurityException ex) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", LocalDateTime.now().toString());
-        body.put("status", HttpStatus.FORBIDDEN.value());
-        body.put("error", "Forbidden");
-        body.put("message", ex.getMessage());
+    // -------------------------------------------------------------------------
+    // 403 Forbidden
+    // -------------------------------------------------------------------------
 
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSecurityException(SecurityException ex) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Map<String, Object>> handleAccessDeniedException(AccessDeniedException ex) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", LocalDateTime.now().toString());
-        body.put("status", HttpStatus.FORBIDDEN.value());
-        body.put("error", "Forbidden");
-        body.put("message", "You do not have permission to access this resource");
-
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+    public ResponseEntity<ApiResponse<Void>> handleAccessDeniedException(AccessDeniedException ex) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("You do not have permission to access this resource."));
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGeneralException(Exception ex) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", LocalDateTime.now().toString());
-        body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
-        body.put("error", "Internal Server Error");
-        body.put("message", ex.getMessage() != null && !ex.getMessage().trim().isEmpty() 
-                ? ex.getMessage() 
-                : "An unexpected error occurred");
+    // -------------------------------------------------------------------------
+    // 404 Not Found
+    // -------------------------------------------------------------------------
 
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleResourceNotFoundException(ResourceNotFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    // -------------------------------------------------------------------------
+    // 409 Conflict
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDuplicateResourceException(DuplicateResourceException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    // -------------------------------------------------------------------------
+    // 422 Unprocessable Entity — business rule violations
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(BusinessRuleException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusinessRuleException(BusinessRuleException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    // -------------------------------------------------------------------------
+    // 500 Internal Server Error — catch-all
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleGeneralException(Exception ex) {
+        String message = (ex.getMessage() != null && !ex.getMessage().isBlank())
+                ? ex.getMessage()
+                : "An unexpected error occurred. Please try again later.";
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(message));
     }
 }

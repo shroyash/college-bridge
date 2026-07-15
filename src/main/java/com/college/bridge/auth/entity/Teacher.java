@@ -3,6 +3,13 @@ package com.college.bridge.auth.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+/**
+ * Teacher profile linked to a {@link User}.
+ * <p>
+ * Teachers do NOT belong to a single department or subject.
+ * They are assigned to individual classes by the admin after
+ * their Teacher Verification Request is approved.
+ */
 @Entity
 @Table(name = "teachers")
 @Data
@@ -19,10 +26,4 @@ public class Teacher {
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
-
-    @Column(name = "department", length = 100)
-    private String department;
-
-    @Column(name = "subject", length = 100)
-    private String subject;
 }

@@ -1,7 +1,7 @@
 package com.college.bridge.auth.exception;
 
+import com.college.bridge.common.response.ApiResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
@@ -10,9 +10,6 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
 
 @Component
 public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
@@ -24,21 +21,14 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
     }
 
     @Override
-    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException)
-            throws IOException, ServletException {
-        
+    public void commence(HttpServletRequest request, HttpServletResponse response,
+                         AuthenticationException authException) throws IOException {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-
-        final Map<String, Object> body = new HashMap<>();
-        body.put("status", HttpServletResponse.SC_UNAUTHORIZED);
-        body.put("error", "Unauthorized");
-        body.put("message", authException.getMessage() != null && !authException.getMessage().trim().isEmpty() 
-                ? authException.getMessage() 
-                : "Full authentication is required to access this resource");
-        body.put("path", request.getServletPath());
-        body.put("timestamp", LocalDateTime.now().toString());
-
-        objectMapper.writeValue(response.getOutputStream(), body);
+        objectMapper.writeValue(
+                response.getOutputStream(),
+                ApiResponse.error("Full authentication is required to access this resource.")
+        );
     }
 }
+

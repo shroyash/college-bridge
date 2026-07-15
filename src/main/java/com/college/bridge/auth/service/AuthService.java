@@ -1,11 +1,19 @@
 package com.college.bridge.auth.service;
 
+import com.college.bridge.academic.entity.AcademicClass;
+import com.college.bridge.academic.entity.Subject;
+import com.college.bridge.academic.entity.SubjectEnrollment;
+import com.college.bridge.academic.repository.AcademicClassRepository;
+import com.college.bridge.academic.repository.SubjectEnrollmentRepository;
+import com.college.bridge.academic.repository.SubjectRepository;
 import com.college.bridge.auth.dto.*;
 import com.college.bridge.auth.entity.*;
 import com.college.bridge.auth.repository.*;
 import com.college.bridge.auth.security.CustomUserDetails;
 import com.college.bridge.auth.security.JwtProperties;
 import com.college.bridge.auth.security.JwtService;
+import com.college.bridge.common.exception.DuplicateResourceException;
+import com.college.bridge.common.exception.ResourceNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -15,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @Slf4j
@@ -23,9 +32,10 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final StudentRepository studentRepository;
-    private final TeacherRepository teacherRepository;
-    private final AdminRepository adminRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final AcademicClassRepository academicClassRepository;
+    private final SubjectRepository subjectRepository;
+    private final SubjectEnrollmentRepository subjectEnrollmentRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
@@ -34,9 +44,10 @@ public class AuthService {
     public AuthService(
             UserRepository userRepository,
             StudentRepository studentRepository,
-            TeacherRepository teacherRepository,
-            AdminRepository adminRepository,
             RefreshTokenRepository refreshTokenRepository,
+            AcademicClassRepository academicClassRepository,
+            SubjectRepository subjectRepository,
+            SubjectEnrollmentRepository subjectEnrollmentRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             JwtProperties jwtProperties,
@@ -44,9 +55,10 @@ public class AuthService {
     ) {
         this.userRepository = userRepository;
         this.studentRepository = studentRepository;
-        this.teacherRepository = teacherRepository;
-        this.adminRepository = adminRepository;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.academicClassRepository = academicClassRepository;
+        this.subjectRepository = subjectRepository;
+        this.subjectEnrollmentRepository = subjectEnrollmentRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.jwtProperties = jwtProperties;
@@ -54,54 +66,61 @@ public class AuthService {
     }
 
     /**
-     * Registers a new user based on their specific role and profile attributes.
+     * Registers a new user as ROLE_STUDENT.
+     * <p>
+     * The backend exclusively assigns the student role — the frontend never
+     * sends a role field. After registration the student is automatically:
+     * <ul>
+     *   <li>Linked to the correct {@link AcademicClass} for their faculty+semester</li>
+     *   <li>Enrolled in every {@link Subject} belonging to that class</li>
+     * </ul>
      */
     public AuthResponse register(RegisterRequest request) {
+        // Duplicate email guard
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email is already in use: " + request.getEmail());
+            throw new DuplicateResourceException("Email is already registered: " + request.getEmail());
         }
 
-        // Create base user record
+        // Resolve the academic class — must exist (seeded by AcademicDataInitializer)
+        AcademicClass academicClass = academicClassRepository
+                .findByFacultyAndSemester(request.getFaculty(), request.getSemester())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No academic class found for faculty " + request.getFaculty()
+                        + " semester " + request.getSemester()
+                ));
+
+        // Create base User — role is ALWAYS STUDENT here
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole())
+                .role(UserRole.STUDENT)
                 .build();
-        
         User savedUser = userRepository.save(user);
 
-        // Assign role-specific profile details
-        switch (request.getRole()) {
-            case STUDENT -> {
-                Student student = Student.builder()
-                        .user(savedUser)
-                        .rollNumber(request.getRollNumber())
-                        .semester(request.getSemester())
-                        .department(request.getDepartment())
-                        .build();
-                studentRepository.save(student);
-            }
-            case TEACHER -> {
-                Teacher teacher = Teacher.builder()
-                        .user(savedUser)
-                        .department(request.getDepartment())
-                        .subject(request.getSubject())
-                        .build();
-                teacherRepository.save(teacher);
-            }
-            case ADMIN -> {
-                Admin admin = Admin.builder()
-                        .user(savedUser)
-                        .department(request.getDepartment())
-                        .build();
-                adminRepository.save(admin);
-            }
-            default -> throw new IllegalArgumentException("Unknown user role: " + request.getRole());
-        }
+        // Create Student profile linked to the resolved academic class
+        Student student = Student.builder()
+                .user(savedUser)
+                .academicClass(academicClass)
+                .build();
+        Student savedStudent = studentRepository.save(student);
 
-        log.info("Successfully registered user {} with role {}", savedUser.getEmail(), savedUser.getRole());
+        // Auto-enroll in all subjects for this faculty + semester
+        List<Subject> subjects = subjectRepository.findByFacultyAndSemester(
+                request.getFaculty(), request.getSemester());
 
+        List<SubjectEnrollment> enrollments = subjects.stream()
+                .map(subject -> SubjectEnrollment.builder()
+                        .student(savedStudent)
+                        .subject(subject)
+                        .build())
+                .toList();
+        subjectEnrollmentRepository.saveAll(enrollments);
+
+        log.info("Registered student {} in {} Semester {} with {} subject enrollments.",
+                savedUser.getEmail(), request.getFaculty(), request.getSemester(), enrollments.size());
+
+        // Issue tokens
         CustomUserDetails userDetails = new CustomUserDetails(savedUser);
         String accessToken = jwtService.generateAccessToken(userDetails);
         RefreshToken refreshToken = createRefreshToken(savedUser);
@@ -116,11 +135,11 @@ public class AuthService {
     }
 
     /**
-     * Authenicates user credentials, producing standard token payloads.
+     * Authenticates user credentials, producing standard token payloads.
      */
     public AuthResponse login(LoginRequest request) {
         log.info("Processing login request for user: {}", request.getEmail());
-        
+
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
@@ -199,7 +218,7 @@ public class AuthService {
         if (refreshTokenStr == null || refreshTokenStr.trim().isEmpty()) {
             return;
         }
-        
+
         refreshTokenRepository.findByToken(refreshTokenStr).ifPresent(token -> {
             token.setRevoked(true);
             refreshTokenRepository.save(token);
@@ -208,19 +227,19 @@ public class AuthService {
     }
 
     /**
-     * Create a database-backed refresh token.
+     * Creates a database-backed refresh token.
      */
     private RefreshToken createRefreshToken(User user) {
-        // Expiration configured from JwtProperties
         LocalDateTime expiry = LocalDateTime.now().plusNanos(jwtProperties.getRefreshTokenExpiration() * 1_000_000L);
-        
+
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(user)
                 .token(jwtService.generateRefreshTokenString())
                 .expiryDate(expiry)
                 .revoked(false)
                 .build();
-        
+
         return refreshTokenRepository.save(refreshToken);
     }
 }
+

@@ -1,9 +1,11 @@
 package com.college.bridge.auth.security;
 
-import com.college.bridge.auth.exception.CustomAccessDeniedHandler;
-import com.college.bridge.auth.exception.CustomAuthenticationEntryPoint;
+import java.util.Arrays;
+import java.util.Collections;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -20,9 +22,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
-import java.util.Collections;
-
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -30,14 +29,14 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService userDetailsService;
-    private final CustomAuthenticationEntryPoint authenticationEntryPoint;
-    private final CustomAccessDeniedHandler accessDeniedHandler;
+    private final JwtAuthenticationEntryPoint authenticationEntryPoint;
+    private final JwtAccessDeniedHandler accessDeniedHandler;
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
             CustomUserDetailsService userDetailsService,
-            CustomAuthenticationEntryPoint authenticationEntryPoint,
-            CustomAccessDeniedHandler accessDeniedHandler
+            JwtAuthenticationEntryPoint authenticationEntryPoint,
+            JwtAccessDeniedHandler accessDeniedHandler
     ) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.userDetailsService = userDetailsService;
@@ -52,7 +51,20 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        // Public auth endpoints
+                        .requestMatchers("/api/auth/**").permitAll()
+
+                        // Admin-only endpoints
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // Teacher verification — submit & view own request (authenticated users)
+                        .requestMatchers(HttpMethod.POST, "/api/verification/submit").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/verification/my-request").authenticated()
+
+                        // Class endpoints — teachers and students can view their own
+                        .requestMatchers(HttpMethod.GET, "/api/classes/my-classes").authenticated()
+
+                        // Everything else requires authentication
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions
@@ -67,8 +79,7 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService);
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
     }
@@ -95,3 +106,4 @@ public class SecurityConfig {
         return source;
     }
 }
+

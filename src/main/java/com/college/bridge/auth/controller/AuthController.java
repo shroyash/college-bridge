@@ -2,16 +2,14 @@ package com.college.bridge.auth.controller;
 
 import com.college.bridge.auth.dto.*;
 import com.college.bridge.auth.service.AuthService;
+import com.college.bridge.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
@@ -21,25 +19,29 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
+    public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
+        AuthResponse authResponse = authService.register(request);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Student registered successfully.", authResponse));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
+        AuthResponse authResponse = authService.login(request);
+        return ResponseEntity.ok(ApiResponse.success("Login successful.", authResponse));
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody TokenRefreshRequest request) {
-        return ResponseEntity.ok(authService.refreshToken(request));
+    public ResponseEntity<ApiResponse<AuthResponse>> refresh(@Valid @RequestBody TokenRefreshRequest request) {
+        AuthResponse authResponse = authService.refreshToken(request);
+        return ResponseEntity.ok(ApiResponse.success("Token refreshed successfully.", authResponse));
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Map<String, String>> logout(@Valid @RequestBody TokenRefreshRequest request) {
+    public ResponseEntity<ApiResponse<Void>> logout(@Valid @RequestBody TokenRefreshRequest request) {
         authService.logout(request.getRefreshToken());
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Successfully logged out. Refresh token revoked.");
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success("Successfully logged out. Refresh token revoked."));
     }
 }
+

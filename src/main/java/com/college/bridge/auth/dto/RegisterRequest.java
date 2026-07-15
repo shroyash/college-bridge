@@ -1,15 +1,16 @@
 package com.college.bridge.auth.dto;
 
-import com.college.bridge.auth.entity.UserRole;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.college.bridge.academic.entity.Faculty;
+import jakarta.validation.constraints.*;
+import lombok.*;
 
+/**
+ * Registration payload accepted from the frontend.
+ * <p>
+ * The {@code role} field is intentionally absent — the backend exclusively
+ * assigns {@code ROLE_STUDENT} on registration. Teacher promotion goes through
+ * the Teacher Verification workflow.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -29,16 +30,12 @@ public class RegisterRequest {
     @Size(min = 6, max = 100, message = "Password must be at least 6 characters")
     private String password;
 
-    @NotNull(message = "Role is required")
-    private UserRole role;
+    @NotNull(message = "Faculty is required")
+    private Faculty faculty;
 
-    // Student specific fields
-    private String rollNumber;
+    @NotNull(message = "Semester is required")
+    @Min(value = 1, message = "Semester must be at least 1")
+    @Max(value = 8, message = "Semester must not exceed 8")
     private Integer semester;
-
-    // Common profile field for Student, Teacher, and Admin
-    private String department;
-
-    // Teacher specific fields
-    private String subject;
 }
+
