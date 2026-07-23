@@ -67,4 +67,12 @@ public class TeacherVerificationRequest {
     @Column(name = "submitted_at", nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime submittedAt = LocalDateTime.now();
+
+    @org.hibernate.annotations.UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Version
+    @Column(name = "version")
+    private Long version;
 }

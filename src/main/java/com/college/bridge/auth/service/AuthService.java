@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -40,6 +41,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
     private final AuthenticationManager authenticationManager;
+    private final OtpService otpService;
 
     public AuthService(
             UserRepository userRepository,
@@ -51,7 +53,8 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             JwtProperties jwtProperties,
-            AuthenticationManager authenticationManager
+            AuthenticationManager authenticationManager,
+            OtpService otpService
     ) {
         this.userRepository = userRepository;
         this.studentRepository = studentRepository;
@@ -63,6 +66,7 @@ public class AuthService {
         this.jwtService = jwtService;
         this.jwtProperties = jwtProperties;
         this.authenticationManager = authenticationManager;
+        this.otpService = otpService;
     }
 
     /**
@@ -240,6 +244,60 @@ public class AuthService {
                 .build();
 
         return refreshTokenRepository.save(refreshToken);
+    }
+
+    public void forgotPassword(ForgotPasswordRequest request) {
+        // Safe check to prevent user enumeration
+        Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
+        if (userOpt.isPresent()) {
+            otpService.sendOtp(request.getEmail(), OtpType.PASSWORD_RESET);
+            log.info("Password reset OTP requested and sent for: {}", request.getEmail());
+        } else {
+            log.warn("Password reset requested for non-existent email: {}", request.getEmail());
+        }
+    }
+
+    public OtpVerificationResponse verifyOtp(VerifyOtpRequest request) {
+        String token = otpService.verifyOtp(request.getEmail(), request.getCode(), request.getType());
+        return OtpVerificationResponse.builder()
+                .verified(true)
+                .verificationToken(token)
+                .build();
+    }
+
+    public void resendOtp(ForgotPasswordRequest request) {
+        // Enforce same safety constraints as forgotPassword
+        Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
+        if (userOpt.isPresent()) {
+            otpService.sendOtp(request.getEmail(), OtpType.PASSWORD_RESET);
+            log.info("Verification OTP resent to: {}", request.getEmail());
+        } else {
+            log.warn("Resend OTP requested for non-existent email: {}", request.getEmail());
+        }
+    }
+
+    public void resetPassword(ResetPasswordRequest request) {
+        // Check verification token validity
+        boolean isValidToken = otpService.validateVerificationToken(
+                request.getEmail(), 
+                request.getVerificationToken(), 
+                OtpType.PASSWORD_RESET
+        );
+
+        if (!isValidToken) {
+            throw new org.springframework.security.authentication.BadCredentialsException("Invalid or expired password reset token.");
+        }
+
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
+
+        // Encode and update password
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        // Security: Revoke tokens on password change
+        refreshTokenRepository.revokeAllByUser(user);
+        log.info("Password reset successful and all sessions revoked for user: {}", request.getEmail());
     }
 }
 

@@ -38,3 +38,8 @@ build/
 
 # RSA Keys
 keys/
+
+uploads/
+*.log
+
+src/main/resources/application.properties
