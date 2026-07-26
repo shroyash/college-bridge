@@ -43,5 +43,29 @@ public class AuthController {
         authService.logout(request.getRefreshToken());
         return ResponseEntity.ok(ApiResponse.success("Successfully logged out. Refresh token revoked."));
     }
-}
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        // Always return success to prevent user enumeration
+        return ResponseEntity.ok(ApiResponse.success("If this email is registered, you will receive an OTP shortly."));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<ApiResponse<OtpVerificationResponse>> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        OtpVerificationResponse response = authService.verifyOtp(request);
+        return ResponseEntity.ok(ApiResponse.success("OTP verified successfully.", response));
+    }
+
+    @PostMapping("/resend-otp")
+    public ResponseEntity<ApiResponse<Void>> resendOtp(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.resendOtp(request);
+        return ResponseEntity.ok(ApiResponse.success("If this email is registered, a new OTP has been sent."));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(ApiResponse.success("Password has been reset successfully. Please login again."));
+    }
+}

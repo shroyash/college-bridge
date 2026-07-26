@@ -51,11 +51,17 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Public auth endpoints
+                        // Public auth endpoints (register, login, refresh, OTP flows)
                         .requestMatchers("/api/auth/**").permitAll()
+
+                        // OTP standalone controller — also public
+                        .requestMatchers("/api/otp/**").permitAll()
 
                         // Admin-only endpoints
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // Account endpoints — any authenticated user
+                        .requestMatchers("/api/account/**").authenticated()
 
                         // Teacher verification — submit & view own request (authenticated users)
                         .requestMatchers(HttpMethod.POST, "/api/verification/submit").authenticated()

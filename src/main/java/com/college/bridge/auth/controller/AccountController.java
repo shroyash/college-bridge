@@ -3,12 +3,12 @@ package com.college.bridge.auth.controller;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,46 +33,64 @@ public class AccountController {
     private final AccountService accountService;
 
     @GetMapping("/profile")
-    public ResponseEntity<ApiResponse<UserProfileResponse>> getProfile(@RequestHeader("X-User-Email") String email) {
+    public ResponseEntity<ApiResponse<UserProfileResponse>> getProfile(Authentication authentication) {
+        String email = authentication.getName();
         UserProfileResponse profile = accountService.getProfile(email);
         return ResponseEntity.ok(ApiResponse.success("Profile fetched.", profile));
     }
 
     @PutMapping("/profile")
-    public ResponseEntity<ApiResponse<UserProfileResponse>> updateProfile(@RequestHeader("X-User-Email") String email, @Valid @RequestBody UpdateProfileRequest request) {
+    public ResponseEntity<ApiResponse<UserProfileResponse>> updateProfile(
+            Authentication authentication,
+            @Valid @RequestBody UpdateProfileRequest request) {
+        String email = authentication.getName();
         UserProfileResponse updated = accountService.updateProfile(email, request);
         return ResponseEntity.ok(ApiResponse.success("Profile updated.", updated));
     }
 
     @PostMapping("/password/change")
-    public ResponseEntity<ApiResponse<Void>> changePassword(@RequestHeader("X-User-Email") String email, @Valid @RequestBody ChangePasswordRequest request) {
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            Authentication authentication,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        String email = authentication.getName();
         accountService.changePassword(email, request);
         return ResponseEntity.ok(ApiResponse.success("Password changed."));
     }
 
     @PostMapping("/email/initiate")
-    public ResponseEntity<ApiResponse<Void>> initiateEmailChange(@RequestHeader("X-User-Email") String email, @Valid @RequestBody InitiateEmailChangeRequest request) {
+    public ResponseEntity<ApiResponse<Void>> initiateEmailChange(
+            Authentication authentication,
+            @Valid @RequestBody InitiateEmailChangeRequest request) {
+        String email = authentication.getName();
         accountService.initiateEmailChange(email, request);
-        return ResponseEntity.ok(ApiResponse.success("Email change initiated."));
+        return ResponseEntity.ok(ApiResponse.success("Email change initiated. An OTP has been sent to your new email."));
     }
 
     @PostMapping("/email/confirm")
-    public ResponseEntity<ApiResponse<Void>> confirmEmailChange(@RequestHeader("X-User-Email") String email, @Valid @RequestBody ConfirmEmailChangeRequest request) {
+    public ResponseEntity<ApiResponse<Void>> confirmEmailChange(
+            Authentication authentication,
+            @Valid @RequestBody ConfirmEmailChangeRequest request) {
+        String email = authentication.getName();
         accountService.confirmEmailChange(email, request);
-        return ResponseEntity.ok(ApiResponse.success("Email changed."));
+        return ResponseEntity.ok(ApiResponse.success("Email changed successfully. Please login again."));
     }
 
     @PostMapping("/profile/image")
-    public ResponseEntity<ApiResponse<String>> uploadProfileImage(@RequestHeader("X-User-Email") String email, @RequestParam("file") MultipartFile file) {
+    public ResponseEntity<ApiResponse<String>> uploadProfileImage(
+            Authentication authentication,
+            @RequestParam("file") MultipartFile file) {
+        String email = authentication.getName();
         String url = accountService.uploadProfileImage(email, file);
-        return ResponseEntity.ok(ApiResponse.success("Image uploaded.", url));
+        return ResponseEntity.ok(ApiResponse.success("Profile image uploaded.", url));
     }
 
     @DeleteMapping
-    public ResponseEntity<ApiResponse<Void>> deleteOwnAccount(@RequestHeader("X-User-Email") String email, @RequestBody Map<String, String> body) {
+    public ResponseEntity<ApiResponse<Void>> deleteOwnAccount(
+            Authentication authentication,
+            @RequestBody Map<String, String> body) {
+        String email = authentication.getName();
         String password = body.get("password");
         accountService.deleteOwnAccount(email, password);
         return ResponseEntity.ok(ApiResponse.success("Account deleted."));
     }
 }
-
