@@ -1,9 +1,10 @@
 package com.college.bridge.auth.controller;
 
+import java.security.Principal;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,64 +33,74 @@ public class AccountController {
 
     private final AccountService accountService;
 
+    private String extractEmail(Principal principal) {
+        if (principal != null) {
+            return principal.getName();
+        }
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            return SecurityContextHolder.getContext().getAuthentication().getName();
+        }
+        return null;
+    }
+
     @GetMapping("/profile")
-    public ResponseEntity<ApiResponse<UserProfileResponse>> getProfile(Authentication authentication) {
-        String email = authentication.getName();
+    public ResponseEntity<ApiResponse<UserProfileResponse>> getProfile(Principal principal) {
+        String email = extractEmail(principal);
         UserProfileResponse profile = accountService.getProfile(email);
         return ResponseEntity.ok(ApiResponse.success("Profile fetched.", profile));
     }
 
     @PutMapping("/profile")
     public ResponseEntity<ApiResponse<UserProfileResponse>> updateProfile(
-            Authentication authentication,
+            Principal principal,
             @Valid @RequestBody UpdateProfileRequest request) {
-        String email = authentication.getName();
+        String email = extractEmail(principal);
         UserProfileResponse updated = accountService.updateProfile(email, request);
         return ResponseEntity.ok(ApiResponse.success("Profile updated.", updated));
     }
 
     @PostMapping("/password/change")
     public ResponseEntity<ApiResponse<Void>> changePassword(
-            Authentication authentication,
+            Principal principal,
             @Valid @RequestBody ChangePasswordRequest request) {
-        String email = authentication.getName();
+        String email = extractEmail(principal);
         accountService.changePassword(email, request);
         return ResponseEntity.ok(ApiResponse.success("Password changed."));
     }
 
     @PostMapping("/email/initiate")
     public ResponseEntity<ApiResponse<Void>> initiateEmailChange(
-            Authentication authentication,
+            Principal principal,
             @Valid @RequestBody InitiateEmailChangeRequest request) {
-        String email = authentication.getName();
+        String email = extractEmail(principal);
         accountService.initiateEmailChange(email, request);
         return ResponseEntity.ok(ApiResponse.success("Email change initiated. An OTP has been sent to your new email."));
     }
 
     @PostMapping("/email/confirm")
     public ResponseEntity<ApiResponse<Void>> confirmEmailChange(
-            Authentication authentication,
+            Principal principal,
             @Valid @RequestBody ConfirmEmailChangeRequest request) {
-        String email = authentication.getName();
+        String email = extractEmail(principal);
         accountService.confirmEmailChange(email, request);
         return ResponseEntity.ok(ApiResponse.success("Email changed successfully. Please login again."));
     }
 
     @PostMapping("/profile/image")
     public ResponseEntity<ApiResponse<String>> uploadProfileImage(
-            Authentication authentication,
+            Principal principal,
             @RequestParam("file") MultipartFile file) {
-        String email = authentication.getName();
+        String email = extractEmail(principal);
         String url = accountService.uploadProfileImage(email, file);
         return ResponseEntity.ok(ApiResponse.success("Profile image uploaded.", url));
     }
 
     @DeleteMapping
     public ResponseEntity<ApiResponse<Void>> deleteOwnAccount(
-            Authentication authentication,
-            @RequestBody Map<String, String> body) {
-        String email = authentication.getName();
-        String password = body.get("password");
+            Principal principal,
+            @RequestBody(required = false) Map<String, String> body) {
+        String email = extractEmail(principal);
+        String password = (body != null) ? body.get("password") : null;
         accountService.deleteOwnAccount(email, password);
         return ResponseEntity.ok(ApiResponse.success("Account deleted."));
     }

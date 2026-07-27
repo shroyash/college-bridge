@@ -1,9 +1,11 @@
 package com.college.bridge.auth.controller;
 
+import java.security.Principal;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,6 +33,16 @@ public class AdminUserController {
 
     private final AdminUserService adminUserService;
 
+    private String extractEmail(Principal principal) {
+        if (principal != null) {
+            return principal.getName();
+        }
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            return SecurityContextHolder.getContext().getAuthentication().getName();
+        }
+        return null;
+    }
+
     @GetMapping("/users")
     public ResponseEntity<ApiResponse<Page<UserProfileResponse>>> getAllUsers(Pageable pageable) {
         Page<UserProfileResponse> page = adminUserService.getAllUsers(pageable);
@@ -56,8 +68,8 @@ public class AdminUserController {
     @PostMapping("/teacher/{id}/verify")
     public ResponseEntity<ApiResponse<Void>> verifyTeacher(
             @PathVariable Long id,
-            Authentication authentication) {
-        adminUserService.verifyTeacher(id, authentication.getName());
+            Principal principal) {
+        adminUserService.verifyTeacher(id, extractEmail(principal));
         return ResponseEntity.ok(ApiResponse.success("Teacher verified."));
     }
 
@@ -65,8 +77,8 @@ public class AdminUserController {
     public ResponseEntity<ApiResponse<Void>> rejectTeacher(
             @PathVariable Long id,
             @RequestBody RejectTeacherRequest request,
-            Authentication authentication) {
-        adminUserService.rejectTeacher(id, request, authentication.getName());
+            Principal principal) {
+        adminUserService.rejectTeacher(id, request, extractEmail(principal));
         return ResponseEntity.ok(ApiResponse.success("Teacher rejected."));
     }
 
@@ -86,8 +98,8 @@ public class AdminUserController {
     public ResponseEntity<ApiResponse<Void>> changeRole(
             @PathVariable Long id,
             @RequestBody ChangeRoleRequest request,
-            Authentication authentication) {
-        adminUserService.changeRole(id, request, authentication.getName());
+            Principal principal) {
+        adminUserService.changeRole(id, request, extractEmail(principal));
         return ResponseEntity.ok(ApiResponse.success("Role changed."));
     }
 

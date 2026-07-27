@@ -133,6 +133,25 @@ public class ClassService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<ClassResponse> getAllClasses() {
+        return classRepository.findAll().stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ClassResponse> getClassesForUser(Long userId, UserRole role) {
+        if (role == UserRole.TEACHER) {
+            return getClassesForTeacher(userId);
+        } else if (role == UserRole.STUDENT) {
+            return getClassesForStudent(userId);
+        } else if (role == UserRole.ADMIN) {
+            return getAllClasses();
+        }
+        return List.of();
+    }
+
     // -------------------------------------------------------------------------
     // Mapper
     // -------------------------------------------------------------------------

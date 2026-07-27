@@ -85,9 +85,10 @@ public class AdminUserService {
                 });
     }
 
-    public void verifyTeacher(Long requestId, String adminEmail) {
-        TeacherVerificationRequest request = verificationRepository.findById(requestId)
-                .orElseThrow(() -> new UserNotFoundException("Teacher verification request not found with ID: " + requestId));
+    public void verifyTeacher(Long id, String adminEmail) {
+        TeacherVerificationRequest request = verificationRepository.findById(id)
+                .or(() -> userRepository.findById(id).flatMap(verificationRepository::findByUser))
+                .orElseThrow(() -> new UserNotFoundException("Teacher verification request not found for ID: " + id));
 
         if (request.getStatus() != VerificationStatus.PENDING) {
             throw new TeacherAlreadyVerifiedException("Teacher verification request is already processed.");
@@ -115,12 +116,13 @@ public class AdminUserService {
         }
 
         refreshTokenRepository.revokeAllByUser(applicant);
-        log.info("Teacher request ID: {} verified and upgraded successfully by admin: {}", requestId, adminEmail);
+        log.info("Teacher request ID: {} verified and upgraded successfully by admin: {}", id, adminEmail);
     }
 
-    public void rejectTeacher(Long requestId, RejectTeacherRequest request, String adminEmail) {
-        TeacherVerificationRequest verificationRequest = verificationRepository.findById(requestId)
-                .orElseThrow(() -> new UserNotFoundException("Teacher verification request not found with ID: " + requestId));
+    public void rejectTeacher(Long id, RejectTeacherRequest request, String adminEmail) {
+        TeacherVerificationRequest verificationRequest = verificationRepository.findById(id)
+                .or(() -> userRepository.findById(id).flatMap(verificationRepository::findByUser))
+                .orElseThrow(() -> new UserNotFoundException("Teacher verification request not found for ID: " + id));
 
         if (verificationRequest.getStatus() != VerificationStatus.PENDING) {
             throw new TeacherAlreadyVerifiedException("Teacher verification request is already processed.");
@@ -130,12 +132,12 @@ public class AdminUserService {
                 .orElseThrow(() -> new UserNotFoundException("Admin not found with email: " + adminEmail));
 
         verificationRequest.setStatus(VerificationStatus.REJECTED);
-        verificationRequest.setRejectionReason(request.getRejectionReason());
+        verificationRequest.setRejectionReason(request != null ? request.getRejectionReason() : null);
         verificationRequest.setReviewedBy(admin);
         verificationRequest.setReviewedAt(LocalDateTime.now());
         verificationRepository.save(verificationRequest);
 
-        log.info("Teacher request ID: {} rejected with reason: {} by admin: {}", requestId, request.getRejectionReason(), adminEmail);
+        log.info("Teacher request ID: {} rejected with reason: {} by admin: {}", id, request != null ? request.getRejectionReason() : null, adminEmail);
     }
 
     public void suspendUser(Long userId) {
