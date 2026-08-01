@@ -18,7 +18,7 @@ public class RefreshToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 700)
     private String token;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -32,7 +32,7 @@ public class RefreshToken {
     @Builder.Default
     private boolean revoked = false;
 
-    @Column(name = "replaced_by_token")
+    @Column(name = "replaced_by_token", length = 700)
     private String replacedByToken;
 
     @CreationTimestamp

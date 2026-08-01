@@ -48,7 +48,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return user != null && com.college.bridge.auth.entity.UserStatus.ACTIVE.equals(user.getStatus()) && !user.isDeleted();
     }
 
     public User getUser() {

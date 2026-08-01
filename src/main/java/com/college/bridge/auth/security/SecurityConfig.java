@@ -59,6 +59,7 @@ public class SecurityConfig {
 
                         // Admin-only endpoints
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/files/**").hasRole("ADMIN")
 
                         // Account endpoints — any authenticated user
                         .requestMatchers("/api/account/**").authenticated()

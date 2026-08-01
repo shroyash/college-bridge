@@ -128,9 +128,22 @@ public class ClassService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No student profile found for user id: " + userId));
 
-        return classEnrollmentRepository.findByStudent(student).stream()
+        List<ClassResponse> enrolled = classEnrollmentRepository.findByStudent(student).stream()
                 .map(e -> toResponse(e.getClassEntity()))
                 .toList();
+
+        if (!enrolled.isEmpty()) {
+            return enrolled;
+        }
+
+        if (student.getAcademicClass() != null) {
+            return classRepository.findByFacultyAndSemester(
+                    student.getAcademicClass().getFaculty(),
+                    student.getAcademicClass().getSemester()
+            ).stream().map(this::toResponse).toList();
+        }
+
+        return List.of();
     }
 
     @Transactional(readOnly = true)

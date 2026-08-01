@@ -69,23 +69,13 @@ public class AuthService {
         this.otpService = otpService;
     }
 
-    /**
-     * Registers a new user as ROLE_STUDENT.
-     * <p>
-     * The backend exclusively assigns the student role — the frontend never
-     * sends a role field. After registration the student is automatically:
-     * <ul>
-     *   <li>Linked to the correct {@link AcademicClass} for their faculty+semester</li>
-     *   <li>Enrolled in every {@link Subject} belonging to that class</li>
-     * </ul>
-     */
+
     public AuthResponse register(RegisterRequest request) {
-        // Duplicate email guard
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new DuplicateResourceException("Email is already registered: " + request.getEmail());
         }
 
-        // Resolve the academic class — must exist (seeded by AcademicDataInitializer)
         AcademicClass academicClass = academicClassRepository
                 .findByFacultyAndSemester(request.getFaculty(), request.getSemester())
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -93,7 +83,7 @@ public class AuthService {
                         + " semester " + request.getSemester()
                 ));
 
-        // Create base User — role is ALWAYS STUDENT here
+
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
@@ -121,8 +111,6 @@ public class AuthService {
                 .toList();
         subjectEnrollmentRepository.saveAll(enrollments);
 
-        log.info("Registered student {} in {} Semester {} with {} subject enrollments.",
-                savedUser.getEmail(), request.getFaculty(), request.getSemester(), enrollments.size());
 
         // Issue tokens
         CustomUserDetails userDetails = new CustomUserDetails(savedUser);
@@ -138,11 +126,8 @@ public class AuthService {
                 .build();
     }
 
-    /**
-     * Authenticates user credentials, producing standard token payloads.
-     */
+
     public AuthResponse login(LoginRequest request) {
-        log.info("Processing login request for user: {}", request.getEmail());
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())

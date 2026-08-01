@@ -3,6 +3,7 @@ package com.college.bridge.verification.service;
 import com.college.bridge.auth.entity.Teacher;
 import com.college.bridge.auth.entity.User;
 import com.college.bridge.auth.entity.UserRole;
+import com.college.bridge.auth.repository.RefreshTokenRepository;
 import com.college.bridge.auth.repository.TeacherRepository;
 import com.college.bridge.auth.repository.UserRepository;
 import com.college.bridge.common.exception.BusinessRuleException;
@@ -34,6 +35,7 @@ public class TeacherVerificationService {
     private final TeacherVerificationRepository verificationRepository;
     private final UserRepository userRepository;
     private final TeacherRepository teacherRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     // -------------------------------------------------------------------------
     // Student — submit request
@@ -146,6 +148,9 @@ public class TeacherVerificationService {
         User applicant = verRequest.getUser();
         applicant.setRole(UserRole.TEACHER);
         userRepository.save(applicant);
+
+        // Revoke active sessions to enforce fresh login with TEACHER role
+        refreshTokenRepository.revokeAllByUser(applicant);
 
         // Create Teacher profile if not already present
         if (!teacherRepository.existsByUser(applicant)) {

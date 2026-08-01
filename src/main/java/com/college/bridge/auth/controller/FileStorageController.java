@@ -20,6 +20,7 @@ public class FileStorageController {
     private final FileStorageService fileStorageService;
 
     @PostMapping("/upload")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<String>> upload(@RequestParam("file") MultipartFile file) {
         String url = fileStorageService.storeFile(file);
         return ResponseEntity.ok(ApiResponse.success("File uploaded.", url));

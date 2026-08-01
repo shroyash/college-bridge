@@ -11,4 +11,6 @@ public interface ClassRepository extends JpaRepository<ClassEntity, Long> {
     List<ClassEntity> findByTeacher(Teacher teacher);
 
     List<ClassEntity> findByTeacherIsNull();
+
+    List<ClassEntity> findByFacultyAndSemester(com.college.bridge.academic.entity.Faculty faculty, Integer semester);
 }
