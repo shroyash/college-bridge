@@ -47,7 +47,6 @@ public class AuthController {
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request);
-        // Always return success to prevent user enumeration
         return ResponseEntity.ok(ApiResponse.success("If this email is registered, you will receive an OTP shortly."));
     }
 

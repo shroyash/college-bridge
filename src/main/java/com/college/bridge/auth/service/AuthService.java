@@ -148,10 +148,7 @@ public class AuthService {
                 .build();
     }
 
-    /**
-     * Decouples token rotation logic. Verifies refresh token state.
-     * Prevents replay attacks (refresh token stealing) via RTR.
-     */
+
     public AuthResponse refreshToken(TokenRefreshRequest request) {
         String tokenStr = request.getRefreshToken();
         RefreshToken refreshToken = refreshTokenRepository.findByToken(tokenStr)
@@ -159,10 +156,8 @@ public class AuthService {
 
         User user = refreshToken.getUser();
 
-        // RTR Detection: Token was previously revoked/rotated. Treat as a security breach!
         if (refreshToken.isRevoked()) {
             refreshTokenRepository.revokeAllByUser(user);
-            log.warn("Potential Token Replay Attack Detected: User {} used a revoked refresh token. All active sessions closed.", user.getEmail());
             throw new SecurityException("This refresh token has already been used and is revoked. All active sessions for this account are terminated for safety.");
         }
 
@@ -200,9 +195,7 @@ public class AuthService {
                 .build();
     }
 
-    /**
-     * Revokes the active refresh token upon logging out.
-     */
+
     public void logout(String refreshTokenStr) {
         if (refreshTokenStr == null || refreshTokenStr.trim().isEmpty()) {
             return;
