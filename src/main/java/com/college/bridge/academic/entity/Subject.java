@@ -3,18 +3,19 @@ package com.college.bridge.academic.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-/**
- * Represents a subject taught in a specific faculty and semester.
- * <p>
- * Example: BCA Semester 1 — "Mathematics", "Digital Logic", etc.
- * Subjects are seeded by {@code AcademicDataInitializer} and are not user-managed.
- */
+import java.util.HashSet;
+import java.util.Set;
+
+
 @Entity
 @Table(
-    name = "subjects",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"faculty", "semester", "name"})
+        name = "subjects",
+        uniqueConstraints = @UniqueConstraint(
+                columnNames = {"faculty", "semester", "name"}
+        )
 )
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -37,4 +38,8 @@ public class Subject {
 
     @Column(name = "credit_hours")
     private Integer creditHours;
+
+    @OneToMany(mappedBy = "subject")
+    @Builder.Default
+    private Set<TeacherAssignment> assignments = new HashSet<>();
 }

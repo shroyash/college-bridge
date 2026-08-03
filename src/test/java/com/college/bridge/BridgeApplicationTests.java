@@ -1,5 +1,6 @@
 package com.college.bridge;
 
+import com.college.bridge.common.config.EnvLoader;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -7,7 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 class BridgeApplicationTests {
 
 	static {
-		BridgeApplication.loadEnv();
+		EnvLoader.loadEnv();
 	}
 
 	@Test

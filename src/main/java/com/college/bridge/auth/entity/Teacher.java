@@ -1,18 +1,20 @@
 package com.college.bridge.auth.entity;
 
+import com.college.bridge.academic.entity.TeacherAssignment;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
-/**
- * Teacher profile linked to a {@link User}.
- * <p>
- * Teachers do NOT belong to a single department or subject.
- * They are assigned to individual classes by the admin after
- * their Teacher Verification Request is approved.
- */
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
+
+
 @Entity
 @Table(name = "teachers")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -24,17 +26,25 @@ public class Teacher {
     private Long teacherId;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    @org.hibernate.annotations.CreationTimestamp
+    @OneToMany(
+            mappedBy = "teacher",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @Builder.Default
+    private Set<TeacherAssignment> assignments = new HashSet<>();
+
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
-    private java.time.LocalDateTime createdAt = java.time.LocalDateTime.now();
+    private LocalDateTime createdAt = LocalDateTime.now();
 
-    @org.hibernate.annotations.UpdateTimestamp
+    @UpdateTimestamp
     @Column(name = "updated_at")
-    private java.time.LocalDateTime updatedAt;
+    private LocalDateTime updatedAt;
 
     @Version
     @Column(name = "version")
