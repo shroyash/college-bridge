@@ -7,12 +7,7 @@ import lombok.Getter;
 import java.time.Instant;
 import java.util.List;
 
-/**
- * Global API response envelope used by every REST controller.
- * <p>
- * Success:  { success: true, message: "...", data: {...}, timestamp: "..." }
- * Error:    { success: false, message: "...", errors: [...], timestamp: "..." }
- */
+
 @Getter
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -26,9 +21,7 @@ public class ApiResponse<T> {
     @Builder.Default
     private final String timestamp = Instant.now().toString();
 
-    // -------------------------------------------------------------------------
-    // Static factory helpers
-    // -------------------------------------------------------------------------
+
 
     public static <T> ApiResponse<T> success(String message, T data) {
         return ApiResponse.<T>builder()

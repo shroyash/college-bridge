@@ -1,9 +1,6 @@
 package com.college.bridge.common.exception;
 
-/**
- * Thrown when a requested resource cannot be found in the database.
- * Maps to HTTP 404 Not Found in the {@code GlobalExceptionHandler}.
- */
+
 public class ResourceNotFoundException extends RuntimeException {
 
     public ResourceNotFoundException(String message) {

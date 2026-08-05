@@ -16,11 +16,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.List;
 
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class AuthExceptionHandler {
 
-    // -------------------------------------------------------------------------
-    // 400 Bad Request — validation
-    // -------------------------------------------------------------------------
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidationExceptions(MethodArgumentNotValidException ex) {
@@ -40,9 +37,6 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-    // -------------------------------------------------------------------------
-    // 401 Unauthorized
-    // -------------------------------------------------------------------------
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Void>> handleBadCredentialsException(BadCredentialsException ex) {
@@ -50,10 +44,6 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.UNAUTHORIZED)
                 .body(ApiResponse.error("Invalid email or password."));
     }
-
-    // -------------------------------------------------------------------------
-    // 403 Forbidden
-    // -------------------------------------------------------------------------
 
     @ExceptionHandler(SecurityException.class)
     public ResponseEntity<ApiResponse<Void>> handleSecurityException(SecurityException ex) {
@@ -69,9 +59,6 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("You do not have permission to access this resource."));
     }
 
-    // -------------------------------------------------------------------------
-    // 404 Not Found
-    // -------------------------------------------------------------------------
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleResourceNotFoundException(ResourceNotFoundException ex) {
@@ -80,9 +67,7 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-    // -------------------------------------------------------------------------
-    // 409 Conflict
-    // -------------------------------------------------------------------------
+
 
     @ExceptionHandler(DuplicateResourceException.class)
     public ResponseEntity<ApiResponse<Void>> handleDuplicateResourceException(DuplicateResourceException ex) {
@@ -91,9 +76,6 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-    // -------------------------------------------------------------------------
-    // 422 Unprocessable Entity — business rule violations
-    // -------------------------------------------------------------------------
 
     @ExceptionHandler(BusinessRuleException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessRuleException(BusinessRuleException ex) {
@@ -102,9 +84,6 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-    // -------------------------------------------------------------------------
-    // 500 Internal Server Error — catch-all
-    // -------------------------------------------------------------------------
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneralException(Exception ex) {
