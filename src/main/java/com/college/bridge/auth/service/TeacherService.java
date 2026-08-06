@@ -38,14 +38,13 @@ public class TeacherService {
         User user = teacherMapper.toUser(request);
 
         user.setRole(UserRole.TEACHER);
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
 
-        user.setPasswordHash(
-                passwordEncoder.encode(request.getPassword())
-        );
+        user = userRepository.save(user);
 
         Teacher teacher = teacherMapper.toTeacher(user);
 
-        teacherRepository.save(teacher);
+        teacher = teacherRepository.save(teacher);
 
         return teacherMapper.toResponse(teacher);
     }

@@ -28,6 +28,20 @@ public class SubjectService {
                 .toList();
     }
 
+    public List<SubjectResponse> getAllSubjects() {
+        return subjectRepository.findAll()
+                .stream()
+                .map(SubjectResponse::from)
+                .toList();
+    }
+
+    public List<SubjectResponse> searchSubjects(String name) {
+        return subjectRepository.findByNameContainingIgnoreCase(name)
+                .stream()
+                .map(SubjectResponse::from)
+                .toList();
+    }
+
     public List<SubjectResponse> getSubjectsForStudent(Long studentId) {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new EntityNotFoundException("Student not found: " + studentId));

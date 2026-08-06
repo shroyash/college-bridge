@@ -28,6 +28,17 @@ public class SubjectController {
         return ResponseEntity.ok(subjectService.getSubjects(faculty, semester));
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<List<SubjectResponse>> getAllSubjects() {
+        return ResponseEntity.ok(subjectService.getAllSubjects());
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<SubjectResponse>> searchSubjects(
+            @RequestParam String name) {
+        return ResponseEntity.ok(subjectService.searchSubjects(name));
+    }
+
 
     @GetMapping("/my-subjects")
     public ResponseEntity<List<SubjectResponse>> getMySubjects(

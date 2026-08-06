@@ -27,17 +27,17 @@ public class TeacherAdminController {
         return ApiResponse.success("Teacher created successfully.", response);
     }
 
-    @GetMapping("/{teacherId}")
-    public ApiResponse<TeacherResponse> getTeacher(@PathVariable Long teacherId) {
-        TeacherResponse response = teacherService.getTeacher(teacherId);
-        return ApiResponse.success("Teacher retrieved successfully.", response);
-    }
+//    @GetMapping("/{teacherId}")
+//    public ApiResponse<TeacherResponse> getTeacher(@PathVariable Long teacherId) {
+//        TeacherResponse response = teacherService.getTeacher(teacherId);
+//        return ApiResponse.success("Teacher retrieved successfully.", response);
+//    }
 
-    @GetMapping
-    public ApiResponse<Page<TeacherResponse>> getTeachers(Pageable pageable) {
-        Page<TeacherResponse> response = teacherService.getTeachers(pageable);
-        return ApiResponse.success("Teachers retrieved successfully.", response);
-    }
+//    @GetMapping
+//    public ApiResponse<Page<TeacherResponse>> getTeachers(Pageable pageable) {
+//        Page<TeacherResponse> response = teacherService.getTeachers(pageable);
+//        return ApiResponse.success("Teachers retrieved successfully.", response);
+//    }
 
     @PutMapping("/{teacherId}")
     public ApiResponse<TeacherResponse> updateTeacher(@PathVariable Long teacherId, @Valid @RequestBody UpdateTeacherRequest request) {

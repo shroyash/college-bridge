@@ -11,4 +11,6 @@ public interface SubjectRepository extends JpaRepository<Subject, Long> {
     List<Subject> findByFacultyAndSemester(Faculty faculty, Integer semester);
 
     boolean existsByNameAndFacultyAndSemester(String name, Faculty faculty, Integer semester);
+
+    List<Subject> findByNameContainingIgnoreCase(String name);
 }

@@ -1,6 +1,11 @@
 package com.college.bridge.auth.service;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -73,18 +78,35 @@ public class AdminUserService {
 
     @Transactional(readOnly = true)
     public Page<UserProfileResponse> filterUsers(UserRole role, UserStatus status, Pageable pageable) {
-        Specification<User> spec = Specification.where(UserSpecification.hasRole(role))
+        Specification<User> spec = UserSpecification.hasRole(role)
                 .and(UserSpecification.hasStatus(status));
-        return userRepository.findAll(spec, pageable)
-                .map(user -> {
-                    Student student = null;
-                    if (UserRole.STUDENT.equals(user.getRole())) {
-                        student = studentRepository.findByUser(user).orElse(null);
-                    }
-                    return userMapper.toProfileResponse(user, student);
-                });
-    }
 
+        Page<User> userPage = userRepository.findAll(spec, pageable);
+
+        List<Long> userIds = userPage.getContent().stream()
+                .map(User::getUserId)
+                .toList();
+
+        Map<Long, Student> studentByUserId = Collections.emptyMap();
+        Map<Long, Teacher> teacherByUserId = Collections.emptyMap();
+
+        if (UserRole.STUDENT.equals(role) && !userIds.isEmpty()) {
+            studentByUserId = studentRepository.findByUser_UserIdIn(userIds).stream()
+                    .collect(Collectors.toMap(s -> s.getUser().getUserId(), Function.identity()));
+        } else if (UserRole.TEACHER.equals(role) && !userIds.isEmpty()) {
+            teacherByUserId = teacherRepository.findByUser_UserIdIn(userIds).stream()
+                    .collect(Collectors.toMap(t -> t.getUser().getUserId(), Function.identity()));
+        }
+
+        Map<Long, Student> students = studentByUserId;
+        Map<Long, Teacher> teachers = teacherByUserId;
+
+        return userPage.map(user -> userMapper.toProfileResponse(
+                user,
+                students.get(user.getUserId()),
+                teachers.get(user.getUserId())
+        ));
+    }
     public void verifyTeacher(Long id, String adminEmail) {
         TeacherVerificationRequest request = verificationRepository.findById(id)
                 .or(() -> userRepository.findById(id).flatMap(verificationRepository::findByUser))

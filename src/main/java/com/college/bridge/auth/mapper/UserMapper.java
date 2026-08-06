@@ -2,9 +2,9 @@ package com.college.bridge.auth.mapper;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-
 import com.college.bridge.auth.dto.UserProfileResponse;
 import com.college.bridge.auth.entity.Student;
+import com.college.bridge.auth.entity.Teacher;
 import com.college.bridge.auth.entity.User;
 
 @Mapper(componentModel = "spring")
@@ -13,7 +13,8 @@ public interface UserMapper {
     @Mapping(target = "role", expression = "java(user.getRole() != null ? user.getRole().name() : null)")
     @Mapping(target = "status", expression = "java(user.getStatus() != null ? user.getStatus().name() : null)")
     @Mapping(target = "studentDetails", source = "student")
-    UserProfileResponse toProfileResponse(User user, Student student);
+    @Mapping(target = "teacherId", source = "teacher.teacherId")
+    UserProfileResponse toProfileResponse(User user, Student student, Teacher teacher);
 
     @Mapping(target = "academicClassId", source = "academicClass.classId")
     @Mapping(target = "faculty", source = "academicClass.faculty")
@@ -21,6 +22,10 @@ public interface UserMapper {
     UserProfileResponse.StudentProfileDetails mapStudentToDetails(Student student);
 
     default UserProfileResponse toProfileResponse(User user) {
-        return toProfileResponse(user, null);
+        return toProfileResponse(user, null, null);
+    }
+
+    default UserProfileResponse toProfileResponse(User user, Student student) {
+        return toProfileResponse(user, student, null);
     }
 }
