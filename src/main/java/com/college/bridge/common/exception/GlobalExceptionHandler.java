@@ -15,6 +15,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -60,8 +61,17 @@ public class GlobalExceptionHandler {
     /**
      * Handles missing entities or resources.
      */
-    @ExceptionHandler(EntityNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleEntityNotFound(EntityNotFoundException ex) {
+    @ExceptionHandler({EntityNotFoundException.class, ResourceNotFoundException.class})
+    public ResponseEntity<ApiResponse<Void>> handleEntityNotFound(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    /**
+     * Handles cross-tenant access attempts or tenant mismatch errors (mapped to 404 Not Found).
+     */
+    @ExceptionHandler(TenantMismatchException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTenantMismatch(TenantMismatchException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.error(ex.getMessage()));
     }
@@ -95,8 +105,8 @@ public class GlobalExceptionHandler {
     /**
      * Handles invalid business logic parameters.
      */
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
+    @ExceptionHandler({IllegalArgumentException.class, BusinessRuleException.class, DuplicateResourceException.class})
+    public ResponseEntity<ApiResponse<Void>> handleBusinessRuleExceptions(RuntimeException ex) {
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error(ex.getMessage()));
     }
@@ -117,6 +127,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ApiResponse.error("You do not have permission to perform this action."));
+    }
+
+    /**
+     * Handles Spring's ResponseStatusException (including TenantMismatchException).
+     * Relays the HTTP status embedded in the exception.
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiResponse<Void>> handleResponseStatus(ResponseStatusException ex) {
+        return ResponseEntity.status(ex.getStatusCode())
+                .body(ApiResponse.error(ex.getReason() != null ? ex.getReason() : ex.getMessage()));
     }
 
     /**

@@ -1,6 +1,6 @@
 package com.college.bridge.clazz.controller;
 
-import com.college.bridge.auth.security.CustomUserDetails;
+import com.college.bridge.auth.security.UserPrincipal;
 import com.college.bridge.clazz.dto.AssignTeacherRequest;
 import com.college.bridge.clazz.dto.ClassResponse;
 import com.college.bridge.clazz.dto.CreateClassRequest;
@@ -21,6 +21,12 @@ import java.util.List;
 public class ClassController {
 
     private final ClassService classService;
+
+    @GetMapping("/api/classes/{classId}")
+    public ResponseEntity<ApiResponse<ClassResponse>> getClassById(@PathVariable Long classId) {
+        ClassResponse response = classService.getClassById(classId);
+        return ResponseEntity.ok(ApiResponse.success("Class retrieved.", response));
+    }
 
     @PostMapping("/api/admin/classes")
     @PreAuthorize("hasRole('ADMIN')")
@@ -52,7 +58,7 @@ public class ClassController {
 
     @GetMapping("/api/classes/my-classes")
     public ResponseEntity<ApiResponse<List<ClassResponse>>> getMyClasses(
-            @AuthenticationPrincipal CustomUserDetails userDetails
+            @AuthenticationPrincipal UserPrincipal userDetails
     ) {
         List<ClassResponse> classes = classService.getClassesForUser(
                 userDetails.getUser().getUserId(),

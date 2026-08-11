@@ -1,5 +1,10 @@
 package com.college.bridge.auth.security;
 
+import com.college.bridge.auth.service.UserTokenRevocationService;
+import com.college.bridge.common.tenant.TenantContext;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,12 +14,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.util.Date;
 
 @Component
 @Slf4j
@@ -22,10 +28,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
+    private final UserTokenRevocationService userTokenRevocationService;
 
-    public JwtAuthenticationFilter(JwtService jwtService, CustomUserDetailsService userDetailsService) {
+    public JwtAuthenticationFilter(
+            JwtService jwtService,
+            CustomUserDetailsService userDetailsService,
+            UserTokenRevocationService userTokenRevocationService
+    ) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+        this.userTokenRevocationService = userTokenRevocationService;
     }
 
     @Override
@@ -34,37 +46,103 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-        
-        final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String userEmail;
+
+        String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
+            try {
+                filterChain.doFilter(request, response);
+            } finally {
+                TenantContext.clear();
+            }
             return;
         }
 
-        jwt = authHeader.substring(7);
-        try {
-            userEmail = jwtService.extractUsername(jwt);
-            
-            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-                
-                if (jwtService.isTokenValid(jwt, userDetails)) {
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities()
-                    );
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-                }
-            }
-        } catch (Exception e) {
-            log.error("Could not parse JWT token or establish security context: {}", e.getMessage());
-        }
+        String jwt = authHeader.substring(7);
 
-        filterChain.doFilter(request, response);
+        try {
+            Claims claims = jwtService.parseClaims(jwt);
+            String userEmail = claims.getSubject();
+            Long userId = claims.get("userId", Long.class);
+            Long institutionId = claims.get("institutionId", Long.class);
+            Instant issuedAt = claims.getIssuedAt().toInstant();
+            Date expiration = claims.getExpiration();
+
+            if (userEmail == null
+                    || userId == null
+                    || issuedAt == null
+                    || expiration == null) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            if (expiration.before(new Date())) {
+                log.debug("JWT token has expired");
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // Populate request-scoped TenantContext after token validation
+            if (institutionId != null) {
+                TenantContext.set(institutionId);
+            }
+
+            if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails;
+                if (institutionId != null) {
+                    userDetails = userDetailsService.loadUserByInstitutionIdAndEmail(institutionId, userEmail);
+                } else {
+                    userDetails = userDetailsService.loadUserByUsername(userEmail);
+                }
+
+                boolean tokenRevoked = userTokenRevocationService.isTokenRevoked(
+                        userId,
+                        issuedAt
+                );
+
+                if (tokenRevoked) {
+                    log.warn("Rejected revoked token for user ID: {}", userId);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                if (!userEmail.equals(userDetails.getUsername())) {
+                    log.warn("JWT username does not match user details");
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
+
+                authToken.setDetails(
+                        new WebAuthenticationDetailsSource()
+                                .buildDetails(request)
+                );
+
+                SecurityContextHolder
+                        .getContext()
+                        .setAuthentication(authToken);
+            }
+
+            filterChain.doFilter(request, response);
+
+        } catch (ExpiredJwtException e) {
+            log.debug("JWT token has expired");
+            filterChain.doFilter(request, response);
+        } catch (JwtException | IllegalArgumentException e) {
+            log.debug("Invalid JWT token: {}", e.getMessage());
+            filterChain.doFilter(request, response);
+        } catch (Exception e) {
+            log.error("Could not establish security context: {}", e.getMessage());
+            filterChain.doFilter(request, response);
+        } finally {
+            // Always clear ThreadLocal TenantContext in a finally block
+            TenantContext.clear();
+        }
     }
 }

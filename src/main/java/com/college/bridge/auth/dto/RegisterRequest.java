@@ -6,16 +6,15 @@ import lombok.*;
 
 /**
  * Registration payload accepted from the frontend.
- * <p>
- * The {@code role} field is intentionally absent — the backend exclusively
- * assigns {@code ROLE_STUDENT} on registration. Teacher promotion goes through
- * the Teacher Verification workflow.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class RegisterRequest {
+
+    @NotBlank(message = "Institution code is required")
+    private String institutionCode;
 
     @NotBlank(message = "Name is required")
     @Size(max = 100, message = "Name must not exceed 100 characters")
@@ -38,4 +37,3 @@ public class RegisterRequest {
     @Max(value = 8, message = "Semester must not exceed 8")
     private Integer semester;
 }
-

@@ -1,0 +1,261 @@
+// ============================================================
+//  College Bridge — Database Schema (DBML for dbdiagram.io)
+//  Generated from Spring Boot JPA entities
+// ============================================================
+
+// ─────────────────────────────────────────────
+// AUTH MODULE
+// ─────────────────────────────────────────────
+
+Table users {
+  user_id       bigint       [pk, increment, note: "PK"]
+  name          varchar(100) [not null]
+  email         varchar(150) [not null, unique]
+  password_hash varchar(255) [not null]
+  role          varchar(20)  [not null, note: "STUDENT | TEACHER | ADMIN"]
+  status        varchar(20)  [not null, default: "ACTIVE", note: "ACTIVE | SUSPENDED | INACTIVE"]
+  image_url     varchar(255)
+  fcm_token     varchar(255)
+  deleted       boolean      [not null, default: false]
+  deleted_at    timestamp
+  created_at    timestamp    [not null]
+  updated_at    timestamp
+  version       bigint       [note: "Optimistic lock"]
+}
+
+Table students {
+  student_id        bigint  [pk, increment]
+  user_id           bigint  [not null, ref: - users.user_id]
+  academic_class_id bigint  [not null, ref: > academic_classes.class_id]
+  created_at        timestamp [not null]
+  updated_at        timestamp
+  version           bigint
+}
+
+Table teachers {
+  teacher_id bigint    [pk, increment]
+  user_id    bigint    [not null, unique, ref: - users.user_id]
+  created_at timestamp [not null]
+  updated_at timestamp
+  version    bigint
+}
+
+Table admins {
+  admin_id   bigint       [pk, increment]
+  user_id    bigint       [not null, ref: - users.user_id]
+  department varchar(100)
+}
+
+Table refresh_tokens {
+  id               bigint       [pk, increment]
+  token            varchar(700) [not null, unique]
+  user_id          bigint       [not null, ref: > users.user_id]
+  expiry_date      timestamp    [not null]
+  revoked          boolean      [not null, default: false]
+  replaced_by_token varchar(700)
+  created_at       timestamp    [not null]
+}
+
+Table one_time_passwords {
+  otp_id             bigint      [pk, increment]
+  email              varchar(150) [not null]
+  code               varchar(10)  [not null]
+  type               varchar(20)  [not null, note: "REGISTER | FORGOT_PASSWORD | ..."]
+  expiry_date        timestamp    [not null]
+  attempts           int          [not null, default: 0]
+  verified           boolean      [not null, default: false]
+  verification_token varchar(100)
+  created_at         timestamp    [not null]
+
+  indexes {
+    (email, type, verified) [name: "idx_otp_email_type_verified"]
+    expiry_date             [name: "idx_otp_expiry"]
+  }
+}
+
+// ─────────────────────────────────────────────
+// ACADEMIC MODULE
+// ─────────────────────────────────────────────
+
+Table academic_classes {
+  class_id     bigint      [pk, increment]
+  faculty      varchar(20) [not null, note: "BCA | BSC_CSIT | BIT | ..."]
+  semester     int         [not null]
+  display_name varchar(100) [not null]
+  created_at   timestamp   [not null]
+
+  indexes {
+    (faculty, semester) [unique]
+  }
+}
+
+Table subjects {
+  subject_id   bigint       [pk, increment]
+  name         varchar(150) [not null]
+  faculty      varchar(20)  [not null]
+  semester     int          [not null]
+  credit_hours int
+
+  indexes {
+    (faculty, semester, name) [unique]
+  }
+}
+
+Table subject_enrollments {
+  enrollment_id bigint    [pk, increment]
+  student_id    bigint    [not null, ref: > students.student_id]
+  subject_id    bigint    [not null, ref: > subjects.subject_id]
+  enrolled_at   timestamp [not null]
+
+  indexes {
+    (student_id, subject_id) [unique]
+  }
+}
+
+Table teacher_assignments {
+  assignment_id bigint    [pk, increment]
+  teacher_id    bigint    [not null, ref: > teachers.teacher_id]
+  subject_id    bigint    [not null, ref: > subjects.subject_id]
+  assigned_at   timestamp [not null]
+  version       bigint
+
+  indexes {
+    (teacher_id, subject_id) [unique]
+  }
+}
+
+// ─────────────────────────────────────────────
+// CLASS (LIVE CLASS) MODULE
+// ─────────────────────────────────────────────
+
+Table classes {
+  class_id    bigint       [pk, increment]
+  class_name  varchar(100) [not null]
+  subject     varchar(100)
+  semester    int
+  faculty     varchar(20)
+  department  varchar(100)
+  fcm_topic_id varchar(150) [not null, unique, note: "FCM topic for push notifications"]
+  teacher_id  bigint        [ref: > teachers.teacher_id, note: "Nullable until assigned by admin"]
+  created_at  timestamp    [not null]
+}
+
+Table class_enrollments {
+  enrollment_id bigint    [pk, increment]
+  class_id      bigint    [not null, ref: > classes.class_id]
+  student_id    bigint    [not null, ref: > students.student_id]
+  enrolled_at   timestamp [not null]
+
+  indexes {
+    (class_id, student_id) [unique]
+  }
+}
+
+Table calendar_events {
+  event_id        bigint       [pk, increment]
+  event_date      date         [not null]
+  event_name      varchar(200)
+  is_holiday      boolean      [not null]
+  ai_message      text
+  approval_status varchar(20)  [note: "PENDING | APPROVED | REJECTED"]
+  approved_by     bigint       [ref: > admins.admin_id, note: "FK to admins"]
+  approved_at     timestamp
+  created_at      timestamp    [not null]
+}
+
+// ─────────────────────────────────────────────
+// DOUBT MODULE
+// ─────────────────────────────────────────────
+
+Table doubts {
+  doubt_id   bigint    [pk, increment]
+  student_id bigint    [not null, ref: > students.student_id]
+  class_id   bigint    [not null, ref: > classes.class_id]
+  question   text      [not null]
+  ai_answer  text
+  status     varchar(20) [note: "OPEN | AI_ANSWERED | TEACHER_ANSWERED | CLOSED"]
+  is_helpful boolean
+  created_at timestamp [not null]
+}
+
+Table doubt_answers {
+  answer_id   bigint    [pk, increment]
+  doubt_id    bigint    [not null, ref: > doubts.doubt_id]
+  answered_by bigint    [not null, ref: > users.user_id]
+  answer      text      [not null]
+  is_verified boolean   [not null, default: false]
+  created_at  timestamp [not null]
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICATION MODULE
+// ─────────────────────────────────────────────
+
+Table notifications {
+  notification_id bigint       [pk, increment]
+  title           varchar(200)
+  message         text         [not null]
+  sender_id       bigint       [not null, ref: > users.user_id]
+  type            varchar(30)  [note: "ANNOUNCEMENT | ALERT | REMINDER | ..."]
+  status          varchar(20)  [note: "PENDING | SENT | FAILED"]
+  priority        varchar(10)  [note: "LOW | NORMAL | HIGH"]
+  idempotency_key varchar(255) [unique]
+  created_at      timestamp    [not null]
+}
+
+Table notification_targets {
+  target_id       bigint      [pk, increment]
+  notification_id bigint      [not null, ref: > notifications.notification_id]
+  class_id        bigint      [ref: > classes.class_id]
+  target_type     varchar(20) [note: "CLASS | ALL | INDIVIDUAL"]
+}
+
+// ─────────────────────────────────────────────
+// BROADCAST MODULE
+// ─────────────────────────────────────────────
+
+Table broadcast_jobs {
+  job_id          bigint      [pk, increment]
+  notification_id bigint      [not null, ref: > notifications.notification_id]
+  status          varchar(20) [note: "PENDING | IN_PROGRESS | COMPLETED | FAILED"]
+  total_users     int
+  sent_count      int         [default: 0]
+  failed_count    int         [default: 0]
+  attempts        int         [default: 0]
+  next_retry_at   timestamp
+  created_at      timestamp   [not null]
+}
+
+Table failed_batches {
+  batch_id      bigint      [pk, increment]
+  job_id        bigint      [not null, ref: > broadcast_jobs.job_id]
+  fcm_tokens    text
+  error_message text
+  attempts      int         [default: 0]
+  status        varchar(20) [note: "PENDING | RETRYING | EXHAUSTED"]
+  next_retry_at timestamp
+  created_at    timestamp   [not null]
+}
+
+// ─────────────────────────────────────────────
+// VERIFICATION MODULE
+// ─────────────────────────────────────────────
+
+Table teacher_verification_requests {
+  request_id       bigint      [pk, increment]
+  user_id          bigint      [not null, ref: > users.user_id]
+  status           varchar(20) [not null, default: "PENDING", note: "PENDING | APPROVED | REJECTED"]
+  rejection_reason text
+  reviewed_by      bigint      [ref: > users.user_id]
+  reviewed_at      timestamp
+  submitted_at     timestamp   [not null]
+  updated_at       timestamp
+  version          bigint
+}
+
+// Element collection — stored as a child table by Hibernate
+Table verification_documents {
+  id           bigint       [pk, increment]
+  request_id   bigint       [not null, ref: > teacher_verification_requests.request_id]
+  document_url varchar(500) [not null]
+}

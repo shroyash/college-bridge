@@ -1,5 +1,6 @@
 package com.college.bridge.auth.service;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -50,6 +51,7 @@ public class AdminUserService {
     private final TeacherVerificationRepository verificationRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserMapper userMapper;
+    private final UserTokenRevocationService userTokenRevocationService;
 
     @Transactional(readOnly = true)
     public Page<UserProfileResponse> getAllUsers(Pageable pageable) {
@@ -78,8 +80,7 @@ public class AdminUserService {
 
     @Transactional(readOnly = true)
     public Page<UserProfileResponse> filterUsers(UserRole role, UserStatus status, Pageable pageable) {
-        Specification<User> spec = UserSpecification.hasRole(role)
-                .and(UserSpecification.hasStatus(status));
+        Specification<User> spec = UserSpecification.hasRole(role);
 
         Page<User> userPage = userRepository.findAll(spec, pageable);
 
@@ -163,21 +164,45 @@ public class AdminUserService {
     }
 
     public void suspendUser(Long userId) {
+
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+                .orElseThrow(() ->
+                        new UserNotFoundException(
+                                "User not found with ID: " + userId
+                        ));
 
         if (UserRole.ADMIN.equals(user.getRole())) {
-            long adminCount = userRepository.countByRoleAndStatus(UserRole.ADMIN, UserStatus.ACTIVE);
+
+            long adminCount =
+                    userRepository.countByRoleAndStatus(
+                            UserRole.ADMIN,
+                            UserStatus.ACTIVE
+                    );
+
             if (adminCount <= 1) {
-                throw new BusinessRuleException("Cannot suspend the only remaining active Administrator.");
+                throw new BusinessRuleException(
+                        "Cannot suspend the only remaining active Administrator."
+                );
             }
         }
+
+        Instant suspendedAt = Instant.now();
 
         user.setStatus(UserStatus.SUSPENDED);
         userRepository.save(user);
 
         refreshTokenRepository.revokeAllByUser(user);
-        log.info("User ID: {} suspended.", userId);
+
+        userTokenRevocationService.revokeUserTokens(
+                userId,
+                suspendedAt
+        );
+
+        log.info(
+                "User ID: {} suspended at {}.",
+                userId,
+                suspendedAt
+        );
     }
 
     public void activateUser(Long userId) {

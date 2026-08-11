@@ -1,23 +1,19 @@
 package com.college.bridge.academic.entity;
 
+import com.college.bridge.institution.entity.Institution;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
-/**
- * Represents a cohort (class group) defined by a unique Faculty + Semester pair.
- * <p>
- * Example: Faculty=BCA, Semester=1 → displayName="BCA First Semester"
- * <p>
- * When a student registers and selects their faculty and semester, the backend
- * looks up the matching {@code AcademicClass} and enrolls the student.
- */
 @Entity
 @Table(
     name = "academic_classes",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"faculty", "semester"})
+    uniqueConstraints = @UniqueConstraint(
+        name = "uk_academic_classes_institution_faculty_semester",
+        columnNames = {"institution_id", "faculty", "semester"}
+    )
 )
 @Data
 @Builder
@@ -30,6 +26,10 @@ public class AcademicClass {
     @Column(name = "class_id")
     private Long classId;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "institution_id", nullable = false)
+    private Institution institution;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "faculty", nullable = false, length = 20)
     private Faculty faculty;
@@ -37,10 +37,6 @@ public class AcademicClass {
     @Column(name = "semester", nullable = false)
     private Integer semester;
 
-    /**
-     * Human-readable name, e.g. "BCA First Semester", "BSC CSIT Third Semester".
-     * Auto-generated during seeding.
-     */
     @Column(name = "display_name", nullable = false, length = 100)
     private String displayName;
 

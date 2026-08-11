@@ -3,6 +3,7 @@ package com.college.bridge.auth.exception;
 import com.college.bridge.common.exception.BusinessRuleException;
 import com.college.bridge.common.exception.DuplicateResourceException;
 import com.college.bridge.common.exception.ResourceNotFoundException;
+import com.college.bridge.common.exception.TenantMismatchException;
 import com.college.bridge.common.response.ApiResponse;
 import com.college.bridge.common.response.FieldError;
 import org.springframework.http.HttpStatus;
@@ -82,6 +83,13 @@ public class AuthExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
+
+    @ExceptionHandler(TenantMismatchException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTenantMismatchException(TenantMismatchException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneralException(Exception ex) {

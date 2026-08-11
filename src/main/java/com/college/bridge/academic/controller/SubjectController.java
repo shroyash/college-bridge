@@ -3,7 +3,7 @@ package com.college.bridge.academic.controller;
 import com.college.bridge.academic.dto.SubjectResponse;
 import com.college.bridge.academic.entity.Faculty;
 import com.college.bridge.academic.service.SubjectService;
-import com.college.bridge.auth.security.CustomUserDetails;
+import com.college.bridge.auth.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -20,6 +20,10 @@ public class SubjectController {
 
     private final SubjectService subjectService;
 
+    @GetMapping("/{id}")
+    public ResponseEntity<SubjectResponse> getSubjectById(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(subjectService.getSubjectById(id));
+    }
 
     @GetMapping
     public ResponseEntity<List<SubjectResponse>> getSubjectsByFacultyAndSemester(
@@ -39,10 +43,9 @@ public class SubjectController {
         return ResponseEntity.ok(subjectService.searchSubjects(name));
     }
 
-
     @GetMapping("/my-subjects")
     public ResponseEntity<List<SubjectResponse>> getMySubjects(
-            @AuthenticationPrincipal CustomUserDetails principal) {
+            @AuthenticationPrincipal UserPrincipal principal) {
 
         Long studentId = principal.getStudentId();
         if (studentId == null) {
@@ -50,7 +53,6 @@ public class SubjectController {
         }
         return ResponseEntity.ok(subjectService.getSubjectsForStudent(studentId));
     }
-
 
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
     @GetMapping("/student/{studentId}")

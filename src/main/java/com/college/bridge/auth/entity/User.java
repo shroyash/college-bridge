@@ -1,5 +1,6 @@
 package com.college.bridge.auth.entity;
 
+import com.college.bridge.institution.entity.Institution;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -10,7 +11,13 @@ import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "users")
+@Table(
+    name = "users",
+    uniqueConstraints = @UniqueConstraint(
+        name = "uk_users_institution_email",
+        columnNames = {"institution_id", "email"}
+    )
+)
 @SQLDelete(sql = "UPDATE users SET deleted = true, deleted_at = NOW() WHERE user_id = ? AND version = ?")
 @SQLRestriction("deleted = false")
 @Data
@@ -24,10 +31,17 @@ public class User {
     @Column(name = "user_id")
     private Long userId;
 
+    /**
+     * Associated institution. Nullable ONLY for SUPER_ADMIN role.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "institution_id", nullable = true)
+    private Institution institution;
+
     @Column(name = "name", nullable = false, length = 100)
     private String name;
 
-    @Column(name = "email", nullable = false, unique = true, length = 150)
+    @Column(name = "email", nullable = false, length = 150)
     private String email;
 
     @Column(name = "password_hash", nullable = false, length = 255)

@@ -2,18 +2,12 @@ package com.college.bridge.clazz.entity;
 
 import com.college.bridge.academic.entity.Faculty;
 import com.college.bridge.auth.entity.Teacher;
+import com.college.bridge.institution.entity.Institution;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
-/**
- * Represents a teaching class — a specific subject being taught to a
- * specific faculty cohort in a specific semester.
- * <p>
- * A teacher may be assigned or unassigned; unassigned classes have {@code teacher == null}.
- * Admin assigns the teacher after class creation.
- */
 @Entity
 @Table(name = "classes")
 @Data
@@ -27,6 +21,10 @@ public class ClassEntity {
     @Column(name = "class_id")
     private Long classId;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "institution_id", nullable = false)
+    private Institution institution;
+
     @Column(name = "class_name", nullable = false, length = 100)
     private String className;
 
@@ -36,10 +34,6 @@ public class ClassEntity {
     @Column(name = "semester")
     private Integer semester;
 
-    /**
-     * The faculty this class belongs to, allowing admins to filter
-     * classes by programme.
-     */
     @Enumerated(EnumType.STRING)
     @Column(name = "faculty", length = 20)
     private Faculty faculty;
@@ -47,11 +41,9 @@ public class ClassEntity {
     @Column(name = "department", length = 100)
     private String department;
 
-    /** FCM topic ID used for push notifications to all class subscribers. */
     @Column(name = "fcm_topic_id", nullable = false, unique = true, length = 150)
     private String fcmTopicId;
 
-    /** Nullable until admin assigns a teacher. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "teacher_id")
     private Teacher teacher;
@@ -61,4 +53,3 @@ public class ClassEntity {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 }
-
