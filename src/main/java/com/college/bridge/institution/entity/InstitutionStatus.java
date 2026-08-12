@@ -1,7 +1,8 @@
 package com.college.bridge.institution.entity;
 
 public enum InstitutionStatus {
+    PENDING,
     ACTIVE,
-    SUSPENDED,
-    INACTIVE
+    REJECTED,
+    SUSPENDED
 }

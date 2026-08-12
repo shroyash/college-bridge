@@ -1,8 +1,5 @@
 package com.college.bridge.auth.security;
 
-import java.util.Arrays;
-import java.util.Collections;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -21,6 +18,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.Collections;
 
 @Configuration
 @EnableWebSecurity
@@ -51,11 +51,14 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Public auth endpoints (register, login, refresh, OTP flows)
+                        // Public auth endpoints (register, login, refresh, OTP flows, register-institution)
                         .requestMatchers("/api/auth/**").permitAll()
 
                         // OTP standalone controller — also public
                         .requestMatchers("/api/otp/**").permitAll()
+
+                        // Super Admin endpoints
+                        .requestMatchers("/api/super-admin/**").hasRole("SUPER_ADMIN")
 
                         // Admin-only endpoints
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -113,4 +116,3 @@ public class SecurityConfig {
         return source;
     }
 }
-

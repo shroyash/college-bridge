@@ -1,7 +1,11 @@
 package com.college.bridge.auth.security;
 
+import com.college.bridge.auth.entity.User;
+import com.college.bridge.auth.entity.UserRole;
+import com.college.bridge.auth.entity.UserStatus;
 import com.college.bridge.auth.service.UserTokenRevocationService;
 import com.college.bridge.common.tenant.TenantContext;
+import com.college.bridge.institution.entity.InstitutionStatus;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -93,6 +97,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     userDetails = userDetailsService.loadUserByInstitutionIdAndEmail(institutionId, userEmail);
                 } else {
                     userDetails = userDetailsService.loadUserByUsername(userEmail);
+                }
+
+                if (userDetails instanceof UserPrincipal principal) {
+                    User user = principal.getUser();
+                    if (user.getRole() != UserRole.SUPER_ADMIN) {
+                        if (user.getInstitution() == null
+                                || user.getInstitution().getStatus() != InstitutionStatus.ACTIVE
+                                || user.getStatus() != UserStatus.ACTIVE) {
+                            log.warn("Rejected JWT request for user ID: {} - Institution status: {}, User status: {}",
+                                    user.getUserId(),
+                                    user.getInstitution() != null ? user.getInstitution().getStatus() : "null",
+                                    user.getStatus());
+                            TenantContext.clear();
+                            filterChain.doFilter(request, response);
+                            return;
+                        }
+                    }
                 }
 
                 boolean tokenRevoked = userTokenRevocationService.isTokenRevoked(

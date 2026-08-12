@@ -48,6 +48,9 @@ class AccountControllerTest {
     private CustomUserDetailsService customUserDetailsService;
 
     @MockBean
+    private com.college.bridge.auth.service.UserTokenRevocationService userTokenRevocationService;
+
+    @MockBean
     private JwtAuthenticationEntryPoint authenticationEntryPoint;
 
     @MockBean

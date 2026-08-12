@@ -2,7 +2,6 @@ package com.college.bridge.auth.security;
 
 import com.college.bridge.auth.entity.User;
 import com.college.bridge.auth.entity.UserRole;
-import com.college.bridge.auth.entity.UserStatus;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -66,8 +65,6 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return user != null
-                && UserStatus.ACTIVE.equals(user.getStatus())
-                && !user.isDeleted();
+        return user != null && !user.isDeleted();
     }
 }

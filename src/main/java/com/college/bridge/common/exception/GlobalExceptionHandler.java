@@ -1,6 +1,7 @@
 package com.college.bridge.common.exception;
 
 import com.college.bridge.academic.exception.TeacherAssignmentAlreadyExistsException;
+import com.college.bridge.auth.exception.AccountSuspendedException;
 import com.college.bridge.common.response.ApiResponse;
 import com.college.bridge.common.response.FieldError;
 import jakarta.persistence.EntityNotFoundException;
@@ -79,6 +80,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(TeacherAssignmentAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<Void>> handleTeacherAssignmentAlreadyExists(TeacherAssignmentAlreadyExistsException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    /**
+     * Handles institution & user status rejection exceptions during login / access.
+     */
+    @ExceptionHandler({
+            InstitutionPendingException.class,
+            InstitutionRejectedException.class,
+            InstitutionSuspendedException.class,
+            AccountPendingVerificationException.class,
+            AccountSuspendedException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleStatusExceptions(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ApiResponse.error(ex.getMessage()));
     }
 

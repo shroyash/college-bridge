@@ -1,5 +1,12 @@
 package com.college.bridge.auth.service;
 
+import com.college.bridge.auth.exception.ProfileImageException;
+import com.college.bridge.common.exception.BusinessRuleException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -7,14 +14,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Objects;
 import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-import org.springframework.web.multipart.MultipartFile;
-
-import com.college.bridge.auth.exception.ProfileImageException;
-
-import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
@@ -45,7 +44,23 @@ public class FileStorageService {
             throw new ProfileImageException("File size exceeds the limit of 5MB.");
         }
 
-        String originalFileName = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
+        return saveFileToDisk(file);
+    }
+
+    public String storeDocument(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessRuleException("Failed to store empty document file.");
+        }
+
+        if (file.getSize() > 20 * 1024 * 1024) {
+            throw new BusinessRuleException("Document file size exceeds the limit of 20MB.");
+        }
+
+        return saveFileToDisk(file);
+    }
+
+    private String saveFileToDisk(MultipartFile file) {
+        String originalFileName = StringUtils.cleanPath(Objects.requireNonNullElse(file.getOriginalFilename(), "file"));
         String fileExtension = "";
         int i = originalFileName.lastIndexOf('.');
         if (i > 0) {
@@ -56,16 +71,16 @@ public class FileStorageService {
 
         try {
             if (fileName.contains("..")) {
-                throw new ProfileImageException("Filename contains invalid path sequence: " + fileName);
+                throw new BusinessRuleException("Filename contains invalid path sequence: " + fileName);
             }
 
             Path targetLocation = this.fileStorageLocation.resolve(fileName);
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
-            log.info("Uploaded profile image stored at: {}", targetLocation);
+            log.info("Uploaded file stored at: {}", targetLocation);
             return "/uploads/" + fileName;
         } catch (IOException ex) {
-            throw new ProfileImageException("Could not store file " + fileName + ". Please try again!");
+            throw new BusinessRuleException("Could not store file " + fileName + ". Please try again!");
         }
     }
 }

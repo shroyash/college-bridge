@@ -8,6 +8,7 @@ import com.college.bridge.auth.security.JwtAccessDeniedHandler;
 import com.college.bridge.auth.security.JwtAuthenticationEntryPoint;
 import com.college.bridge.auth.security.JwtService;
 import com.college.bridge.auth.service.AuthService;
+import com.college.bridge.auth.service.UserTokenRevocationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,9 @@ class AuthControllerTest {
     private CustomUserDetailsService customUserDetailsService;
 
     @MockBean
+    private UserTokenRevocationService userTokenRevocationService;
+
+    @MockBean
     private JwtAuthenticationEntryPoint authenticationEntryPoint;
 
     @MockBean
@@ -53,6 +57,7 @@ class AuthControllerTest {
     @DisplayName("POST /api/auth/register - Should register student successfully")
     void testRegisterSuccess() throws Exception {
         RegisterRequest request = RegisterRequest.builder()
+                .institutionCode("DEFAULT")
                 .email("student@college.edu")
                 .password("Password123!")
                 .name("Jane Student")

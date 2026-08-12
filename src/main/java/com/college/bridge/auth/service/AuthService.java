@@ -8,19 +8,19 @@ import com.college.bridge.academic.repository.SubjectEnrollmentRepository;
 import com.college.bridge.academic.repository.SubjectRepository;
 import com.college.bridge.auth.dto.*;
 import com.college.bridge.auth.entity.*;
+import com.college.bridge.auth.exception.AccountSuspendedException;
 import com.college.bridge.auth.repository.*;
+import com.college.bridge.auth.security.CustomUserDetailsService;
 import com.college.bridge.auth.security.JwtProperties;
 import com.college.bridge.auth.security.JwtService;
 import com.college.bridge.auth.security.UserPrincipal;
-import com.college.bridge.common.exception.DuplicateResourceException;
-import com.college.bridge.common.exception.ResourceNotFoundException;
+import com.college.bridge.common.exception.*;
 import com.college.bridge.common.tenant.TenantContext;
 import com.college.bridge.institution.entity.Institution;
+import com.college.bridge.institution.entity.InstitutionStatus;
 import com.college.bridge.institution.repository.InstitutionRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +44,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
-    private final AuthenticationManager authenticationManager;
+    private final CustomUserDetailsService userDetailsService;
     private final OtpService otpService;
 
     public AuthService(
@@ -58,7 +58,7 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             JwtProperties jwtProperties,
-            AuthenticationManager authenticationManager,
+            CustomUserDetailsService userDetailsService,
             OtpService otpService
     ) {
         this.userRepository = userRepository;
@@ -71,7 +71,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.jwtProperties = jwtProperties;
-        this.authenticationManager = authenticationManager;
+        this.userDetailsService = userDetailsService;
         this.otpService = otpService;
     }
 
@@ -96,6 +96,7 @@ public class AuthService {
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(UserRole.STUDENT)
+                .status(UserStatus.ACTIVE)
                 .build();
         User savedUser = userRepository.save(user);
 
@@ -133,19 +134,57 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        String principalName;
+        User user;
         if (request.getInstitutionCode() != null && !request.getInstitutionCode().trim().isEmpty()) {
-            principalName = request.getInstitutionCode() + ":" + request.getEmail();
+            Institution institution = institutionRepository.findByCode(request.getInstitutionCode().trim())
+                    .orElseThrow(() -> new BadCredentialsException("Invalid email or password."));
+            user = userRepository.findByInstitution_InstitutionIdAndEmail(institution.getInstitutionId(), request.getEmail())
+                    .orElseThrow(() -> new BadCredentialsException("Invalid email or password."));
         } else {
-            principalName = request.getEmail();
+            user = userRepository.findByEmail(request.getEmail())
+                    .orElseThrow(() -> new BadCredentialsException("Invalid email or password."));
         }
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(principalName, request.getPassword())
-        );
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid email or password.");
+        }
 
-        UserPrincipal userDetails = (UserPrincipal) authentication.getPrincipal();
-        User user = userDetails.getUser();
+        // Enforce status checking in strict order
+        if (user.getRole() == UserRole.SUPER_ADMIN) {
+            if (user.getStatus() != UserStatus.ACTIVE) {
+                throw new AccountSuspendedException("User account is suspended.");
+            }
+        } else {
+            // Check institution status first
+            Institution institution = user.getInstitution();
+            if (institution == null || institution.getStatus() == InstitutionStatus.PENDING) {
+                throw new InstitutionPendingException("Institution registration is awaiting approval.");
+            } else if (institution.getStatus() == InstitutionStatus.REJECTED) {
+                String reason = institution.getRejectionReason();
+                String msg = "Institution registration was rejected." + (reason != null && !reason.isBlank() ? " Reason: " + reason : "");
+                throw new InstitutionRejectedException(msg, reason);
+            } else if (institution.getStatus() == InstitutionStatus.SUSPENDED) {
+                throw new InstitutionSuspendedException("Institution is suspended. Please contact support.");
+            } else if (institution.getStatus() != InstitutionStatus.ACTIVE) {
+                throw new InstitutionSuspendedException("Institution status is invalid.");
+            }
+
+            // Only check user status after institution is ACTIVE
+            if (user.getStatus() == UserStatus.PENDING_VERIFICATION) {
+                throw new AccountPendingVerificationException("User account is awaiting verification.");
+            } else if (user.getStatus() == UserStatus.SUSPENDED) {
+                throw new AccountSuspendedException("User account is suspended.");
+            } else if (user.getStatus() != UserStatus.ACTIVE) {
+                throw new AccountSuspendedException("User account is not active.");
+            }
+        }
+
+        UserPrincipal userDetails;
+        if (user.getInstitution() != null) {
+            userDetails = (UserPrincipal) userDetailsService.loadUserByInstitutionIdAndEmail(user.getInstitution().getInstitutionId(), user.getEmail());
+        } else {
+            userDetails = (UserPrincipal) userDetailsService.loadUserByUsername(user.getEmail());
+        }
 
         String accessToken = jwtService.generateAccessToken(userDetails);
         RefreshToken refreshToken = createRefreshToken(user);
@@ -277,7 +316,7 @@ public class AuthService {
         );
 
         if (!isValidToken) {
-            throw new org.springframework.security.authentication.BadCredentialsException("Invalid or expired password reset token.");
+            throw new BadCredentialsException("Invalid or expired password reset token.");
         }
 
         Long tenantId = TenantContext.get();
