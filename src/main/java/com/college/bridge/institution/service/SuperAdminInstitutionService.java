@@ -6,19 +6,26 @@ import com.college.bridge.auth.entity.UserStatus;
 import com.college.bridge.auth.repository.UserRepository;
 import com.college.bridge.common.exception.BusinessRuleException;
 import com.college.bridge.common.exception.ResourceNotFoundException;
-import com.college.bridge.institution.dto.InstitutionDocumentResponse;
-import com.college.bridge.institution.dto.PendingInstitutionResponse;
+import com.college.bridge.common.response.PageResponse;
+import com.college.bridge.institution.dto.*;
 import com.college.bridge.institution.entity.Institution;
 import com.college.bridge.institution.entity.InstitutionStatus;
 import com.college.bridge.institution.repository.InstitutionDocumentRepository;
 import com.college.bridge.institution.repository.InstitutionRepository;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +35,117 @@ public class SuperAdminInstitutionService {
     private final InstitutionRepository institutionRepository;
     private final InstitutionDocumentRepository institutionDocumentRepository;
     private final UserRepository userRepository;
+
+    @Transactional(readOnly = true)
+    public PageResponse<SuperAdminInstitutionResponse> getAllInstitutions(
+            Pageable pageable,
+            String search,
+            InstitutionStatus status
+    ) {
+        Specification<Institution> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (search != null && !search.trim().isEmpty()) {
+                String searchPattern = "%" + search.trim().toLowerCase() + "%";
+                Predicate nameLike = cb.like(cb.lower(root.get("name")), searchPattern);
+                Predicate codeLike = cb.like(cb.lower(root.get("code")), searchPattern);
+                predicates.add(cb.or(nameLike, codeLike));
+            }
+
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Institution> page = institutionRepository.findAll(spec, pageable);
+        Map<Long, Map<UserRole, Long>> countsMap = fetchUserCountsMap();
+
+        Page<SuperAdminInstitutionResponse> dtoPage = page.map(inst -> {
+            Map<UserRole, Long> roleCounts = countsMap.getOrDefault(inst.getInstitutionId(), Map.of());
+            long students = roleCounts.getOrDefault(UserRole.STUDENT, 0L);
+            long teachers = roleCounts.getOrDefault(UserRole.TEACHER, 0L);
+
+            return SuperAdminInstitutionResponse.builder()
+                    .institutionId(inst.getInstitutionId())
+                    .institutionName(inst.getName())
+                    .profileImage(inst.getProfileImage())
+                    .location(inst.getLocation() != null ? inst.getLocation() : "Kathmandu")
+                    .website(inst.getWebsite())
+                    .status(inst.getStatus())
+                    .totalStudents(students)
+                    .totalTeachers(teachers)
+                    .createdAt(inst.getCreatedAt())
+                    .build();
+        });
+
+        return PageResponse.from(dtoPage);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<SuperAdminPendingInstitutionResponse> getPendingInstitutionsPaginated(
+            Pageable pageable,
+            String search
+    ) {
+        Specification<Institution> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("status"), InstitutionStatus.PENDING));
+
+            if (search != null && !search.trim().isEmpty()) {
+                String searchPattern = "%" + search.trim().toLowerCase() + "%";
+                Predicate nameLike = cb.like(cb.lower(root.get("name")), searchPattern);
+                Predicate codeLike = cb.like(cb.lower(root.get("code")), searchPattern);
+                predicates.add(cb.or(nameLike, codeLike));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Institution> page = institutionRepository.findAll(spec, pageable);
+        Map<Long, Map<UserRole, Long>> countsMap = fetchUserCountsMap();
+
+        Page<SuperAdminPendingInstitutionResponse> dtoPage = page.map(inst -> {
+            Map<UserRole, Long> roleCounts = countsMap.getOrDefault(inst.getInstitutionId(), Map.of());
+            long students = roleCounts.getOrDefault(UserRole.STUDENT, 0L);
+            long teachers = roleCounts.getOrDefault(UserRole.TEACHER, 0L);
+
+            User submittedBy = inst.getSubmittedBy();
+            String contactPerson = submittedBy != null ? submittedBy.getName() : null;
+            String email = submittedBy != null ? submittedBy.getEmail() : null;
+
+            return SuperAdminPendingInstitutionResponse.builder()
+                    .institutionId(inst.getInstitutionId())
+                    .institutionName(inst.getName())
+                    .profileImage(inst.getProfileImage())
+                    .location(inst.getLocation() != null ? inst.getLocation() : "Kathmandu")
+                    .website(inst.getWebsite())
+                    .contactPerson(contactPerson)
+                    .email(email)
+                    .status(inst.getStatus())
+                    .totalStudents(students)
+                    .totalTeachers(teachers)
+                    .submittedAt(inst.getCreatedAt())
+                    .build();
+        });
+
+        return PageResponse.from(dtoPage);
+    }
+
+    private Map<Long, Map<UserRole, Long>> fetchUserCountsMap() {
+        List<Object[]> rawCounts = userRepository.countUsersGroupByInstitutionAndRole();
+        Map<Long, Map<UserRole, Long>> countsMap = new HashMap<>();
+
+        for (Object[] row : rawCounts) {
+            Long instId = (Long) row[0];
+            UserRole role = (UserRole) row[1];
+            Long count = (Long) row[2];
+
+            countsMap.computeIfAbsent(instId, k -> new HashMap<>()).put(role, count);
+        }
+
+        return countsMap;
+    }
 
     @Transactional(readOnly = true)
     public List<PendingInstitutionResponse> getPendingInstitutions() {
@@ -78,10 +196,8 @@ public class SuperAdminInstitutionService {
         institution.setReviewedAt(LocalDateTime.now());
         institutionRepository.save(institution);
 
-        // Find submitting admin user and flip status to ACTIVE
         User submittingAdmin = institution.getSubmittedBy();
         if (submittingAdmin == null) {
-            // Fallback: search for ADMIN user in this institution
             submittingAdmin = userRepository.findByInstitution_InstitutionIdAndRole(institutionId, UserRole.ADMIN)
                     .stream().findFirst().orElse(null);
         }

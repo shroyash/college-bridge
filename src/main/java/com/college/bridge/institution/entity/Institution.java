@@ -32,6 +32,15 @@ public class Institution {
     @Builder.Default
     private InstitutionStatus status = InstitutionStatus.PENDING;
 
+    @Column(name = "location", length = 150)
+    private String location;
+
+    @Column(name = "website", length = 255)
+    private String website;
+
+    @Column(name = "profile_image", length = 255)
+    private String profileImage;
+
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
 

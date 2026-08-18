@@ -31,9 +31,6 @@ public class User {
     @Column(name = "user_id")
     private Long userId;
 
-    /**
-     * Associated institution. Nullable ONLY for SUPER_ADMIN role.
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "institution_id", nullable = true)
     private Institution institution;

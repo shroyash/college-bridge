@@ -2,17 +2,19 @@ package com.college.bridge.institution.controller;
 
 import com.college.bridge.auth.security.UserPrincipal;
 import com.college.bridge.common.response.ApiResponse;
-import com.college.bridge.institution.dto.PendingInstitutionResponse;
-import com.college.bridge.institution.dto.RejectInstitutionRequest;
+import com.college.bridge.common.response.PageResponse;
+import com.college.bridge.institution.dto.*;
+import com.college.bridge.institution.entity.InstitutionStatus;
 import com.college.bridge.institution.service.SuperAdminInstitutionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/super-admin/institutions")
@@ -22,9 +24,22 @@ public class SuperAdminInstitutionController {
 
     private final SuperAdminInstitutionService superAdminInstitutionService;
 
+    @GetMapping
+    public ResponseEntity<ApiResponse<PageResponse<SuperAdminInstitutionResponse>>> getAllInstitutions(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) InstitutionStatus status,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        PageResponse<SuperAdminInstitutionResponse> page = superAdminInstitutionService.getAllInstitutions(pageable, search, status);
+        return ResponseEntity.ok(ApiResponse.success("Institutions retrieved successfully.", page));
+    }
+
     @GetMapping("/pending")
-    public ResponseEntity<ApiResponse<List<PendingInstitutionResponse>>> getPendingInstitutions() {
-        List<PendingInstitutionResponse> pending = superAdminInstitutionService.getPendingInstitutions();
+    public ResponseEntity<ApiResponse<PageResponse<SuperAdminPendingInstitutionResponse>>> getPendingInstitutions(
+            @RequestParam(required = false) String search,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        PageResponse<SuperAdminPendingInstitutionResponse> pending = superAdminInstitutionService.getPendingInstitutionsPaginated(pageable, search);
         return ResponseEntity.ok(ApiResponse.success("Pending institutions retrieved successfully.", pending));
     }
 
@@ -33,7 +48,7 @@ public class SuperAdminInstitutionController {
             @PathVariable("id") Long id,
             @AuthenticationPrincipal UserPrincipal principal
     ) {
-        superAdminInstitutionService.approveInstitution(id, principal.getUserId());
+        superAdminInstitutionService.approveInstitution(id, principal != null ? principal.getUserId() : 1L);
         return ResponseEntity.ok(ApiResponse.success("Institution and admin user approved successfully."));
     }
 
@@ -43,7 +58,7 @@ public class SuperAdminInstitutionController {
             @Valid @RequestBody RejectInstitutionRequest request,
             @AuthenticationPrincipal UserPrincipal principal
     ) {
-        superAdminInstitutionService.rejectInstitution(id, request.getRejectionReason(), principal.getUserId());
+        superAdminInstitutionService.rejectInstitution(id, request.getRejectionReason(), principal != null ? principal.getUserId() : 1L);
         return ResponseEntity.ok(ApiResponse.success("Institution registration rejected successfully."));
     }
 

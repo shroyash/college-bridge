@@ -116,6 +116,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     }
                 }
 
+
                 boolean tokenRevoked = userTokenRevocationService.isTokenRevoked(
                         userId,
                         issuedAt
@@ -144,10 +145,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new WebAuthenticationDetailsSource()
                                 .buildDetails(request)
                 );
-
                 SecurityContextHolder
                         .getContext()
                         .setAuthentication(authToken);
+
+                log.info("JWT authenticated user: {}", userDetails.getUsername());
+                log.info("JWT user authorities: {}", userDetails.getAuthorities());
+                log.info("SecurityContext authorities: {}",
+                        SecurityContextHolder.getContext()
+                                .getAuthentication()
+                                .getAuthorities());
             }
 
             filterChain.doFilter(request, response);
