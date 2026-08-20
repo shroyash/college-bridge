@@ -6,9 +6,15 @@ import com.college.bridge.auth.dto.UpdateTeacherRequest;
 import com.college.bridge.auth.entity.Teacher;
 import com.college.bridge.auth.entity.User;
 import com.college.bridge.auth.entity.UserRole;
+import com.college.bridge.auth.entity.UserStatus;
 import com.college.bridge.auth.mapper.TeacherMapper;
 import com.college.bridge.auth.repository.TeacherRepository;
 import com.college.bridge.auth.repository.UserRepository;
+import com.college.bridge.common.exception.BusinessRuleException;
+import com.college.bridge.common.exception.ResourceNotFoundException;
+import com.college.bridge.common.tenant.TenantContext;
+import com.college.bridge.institution.entity.Institution;
+import com.college.bridge.institution.repository.InstitutionRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,19 +31,30 @@ public class TeacherService {
 
     private final TeacherRepository teacherRepository;
     private final UserRepository userRepository;
+    private final InstitutionRepository institutionRepository;
     private final TeacherMapper teacherMapper;
     private final PasswordEncoder passwordEncoder;
 
 
     public TeacherResponse createTeacher(CreateTeacherRequest request) {
 
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email is already registered.");
+        Long tenantId = TenantContext.get();
+        if (tenantId == null) {
+            throw new BusinessRuleException("Cannot create teacher without institution context.");
+        }
+
+        Institution institution = institutionRepository.findById(tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Institution not found with ID: " + tenantId));
+
+        if (userRepository.existsByInstitution_InstitutionIdAndEmail(tenantId, request.getEmail())) {
+            throw new IllegalArgumentException("Email is already registered in this institution.");
         }
 
         User user = teacherMapper.toUser(request);
 
+        user.setInstitution(institution);
         user.setRole(UserRole.TEACHER);
+        user.setStatus(UserStatus.ACTIVE);
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
 
         user = userRepository.save(user);
@@ -80,11 +97,13 @@ public class TeacherService {
 
         User user = teacher.getUser();
 
+        Long tenantId = user.getInstitution() != null ? user.getInstitution().getInstitutionId() : null;
         if (!user.getEmail().equals(request.getEmail())
-                && userRepository.existsByEmail(request.getEmail())) {
+                && tenantId != null
+                && userRepository.existsByInstitution_InstitutionIdAndEmail(tenantId, request.getEmail())) {
 
             throw new IllegalArgumentException(
-                    "Email is already registered."
+                    "Email is already registered in this institution."
             );
         }
 

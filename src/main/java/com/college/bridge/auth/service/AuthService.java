@@ -20,7 +20,11 @@ import com.college.bridge.institution.entity.Institution;
 import com.college.bridge.institution.entity.InstitutionStatus;
 import com.college.bridge.institution.repository.InstitutionRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +50,7 @@ public class AuthService {
     private final JwtProperties jwtProperties;
     private final CustomUserDetailsService userDetailsService;
     private final OtpService otpService;
+    private final AuthenticationManager authenticationManager;
 
     public AuthService(
             UserRepository userRepository,
@@ -59,8 +64,8 @@ public class AuthService {
             JwtService jwtService,
             JwtProperties jwtProperties,
             CustomUserDetailsService userDetailsService,
-            OtpService otpService
-    ) {
+            OtpService otpService,
+            AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
         this.studentRepository = studentRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -73,22 +78,27 @@ public class AuthService {
         this.jwtProperties = jwtProperties;
         this.userDetailsService = userDetailsService;
         this.otpService = otpService;
+        this.authenticationManager = authenticationManager;
     }
 
     public AuthResponse register(RegisterRequest request) {
         Institution institution = institutionRepository.findByCode(request.getInstitutionCode())
-                .orElseThrow(() -> new ResourceNotFoundException("Institution not found with code: " + request.getInstitutionCode()));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Institution not found with code: " + request.getInstitutionCode()));
 
-        if (userRepository.existsByInstitution_InstitutionIdAndEmail(institution.getInstitutionId(), request.getEmail())) {
-            throw new DuplicateResourceException("Email is already registered in institution " + request.getInstitutionCode() + ": " + request.getEmail());
+        if (userRepository.existsByInstitution_InstitutionIdAndEmail(institution.getInstitutionId(),
+                request.getEmail())) {
+            throw new DuplicateResourceException("Email is already registered in institution "
+                    + request.getInstitutionCode() + ": " + request.getEmail());
         }
 
         AcademicClass academicClass = academicClassRepository
-                .findByInstitution_InstitutionIdAndFacultyAndSemester(institution.getInstitutionId(), request.getFaculty(), request.getSemester())
+                .findByInstitution_InstitutionIdAndFacultyAndSemester(institution.getInstitutionId(),
+                        request.getFaculty(), request.getSemester())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No academic class found for faculty " + request.getFaculty()
-                                + " semester " + request.getSemester() + " in institution " + request.getInstitutionCode()
-                ));
+                                + " semester " + request.getSemester() + " in institution "
+                                + request.getInstitutionCode()));
 
         User user = User.builder()
                 .institution(institution)
@@ -134,20 +144,24 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        User user;
+        String username;
         if (request.getInstitutionCode() != null && !request.getInstitutionCode().trim().isEmpty()) {
-            Institution institution = institutionRepository.findByCode(request.getInstitutionCode().trim())
-                    .orElseThrow(() -> new BadCredentialsException("Invalid email or password."));
-            user = userRepository.findByInstitution_InstitutionIdAndEmail(institution.getInstitutionId(), request.getEmail())
-                    .orElseThrow(() -> new BadCredentialsException("Invalid email or password."));
+            username = request.getInstitutionCode().trim() + ":" + request.getEmail().trim();
         } else {
-            user = userRepository.findByEmail(request.getEmail())
-                    .orElseThrow(() -> new BadCredentialsException("Invalid email or password."));
+            username = request.getEmail().trim();
         }
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(username, request.getPassword())
+            );
+        } catch (AuthenticationException e) {
             throw new BadCredentialsException("Invalid email or password.");
         }
+
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        User user = principal.getUser();
 
         // Enforce status checking in strict order
         if (user.getRole() == UserRole.SUPER_ADMIN) {
@@ -161,7 +175,8 @@ public class AuthService {
                 throw new InstitutionPendingException("Institution registration is awaiting approval.");
             } else if (institution.getStatus() == InstitutionStatus.REJECTED) {
                 String reason = institution.getRejectionReason();
-                String msg = "Institution registration was rejected." + (reason != null && !reason.isBlank() ? " Reason: " + reason : "");
+                String msg = "Institution registration was rejected."
+                        + (reason != null && !reason.isBlank() ? " Reason: " + reason : "");
                 throw new InstitutionRejectedException(msg, reason);
             } else if (institution.getStatus() == InstitutionStatus.SUSPENDED) {
                 throw new InstitutionSuspendedException("Institution is suspended. Please contact support.");
@@ -181,7 +196,8 @@ public class AuthService {
 
         UserPrincipal userDetails;
         if (user.getInstitution() != null) {
-            userDetails = (UserPrincipal) userDetailsService.loadUserByInstitutionIdAndEmail(user.getInstitution().getInstitutionId(), user.getEmail());
+            userDetails = (UserPrincipal) userDetailsService
+                    .loadUserByInstitutionIdAndEmail(user.getInstitution().getInstitutionId(), user.getEmail());
         } else {
             userDetails = (UserPrincipal) userDetailsService.loadUserByUsername(user.getEmail());
         }
@@ -207,7 +223,8 @@ public class AuthService {
 
         if (refreshToken.isRevoked()) {
             refreshTokenRepository.revokeAllByUser(user);
-            throw new SecurityException("This refresh token has already been used and is revoked. All active sessions for this account are terminated for safety.");
+            throw new SecurityException(
+                    "This refresh token has already been used and is revoked. All active sessions for this account are terminated for safety.");
         }
 
         if (refreshToken.isExpired()) {
@@ -312,8 +329,7 @@ public class AuthService {
         boolean isValidToken = otpService.validateVerificationToken(
                 request.getEmail(),
                 request.getVerificationToken(),
-                OtpType.PASSWORD_RESET
-        );
+                OtpType.PASSWORD_RESET);
 
         if (!isValidToken) {
             throw new BadCredentialsException("Invalid or expired password reset token.");
@@ -323,10 +339,12 @@ public class AuthService {
         User user;
         if (tenantId != null) {
             user = userRepository.findByInstitution_InstitutionIdAndEmail(tenantId, request.getEmail())
-                    .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
+                    .orElseThrow(
+                            () -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
         } else {
             user = userRepository.findByEmail(request.getEmail())
-                    .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
+                    .orElseThrow(
+                            () -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));

@@ -11,8 +11,12 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+
 import java.util.List;
 
+@Slf4j
 @RestControllerAdvice
 public class AuthExceptionHandler {
 
@@ -120,11 +124,9 @@ public class AuthExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneralException(Exception ex) {
-        String message = (ex.getMessage() != null && !ex.getMessage().isBlank())
-                ? ex.getMessage()
-                : "An unexpected error occurred. Please try again later.";
+        log.error("Unhandled exception caught in AuthExceptionHandler: ", ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(message));
+                .body(ApiResponse.error("An unexpected error occurred. Please try again later."));
     }
 }

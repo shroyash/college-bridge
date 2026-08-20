@@ -1,6 +1,5 @@
 package com.college.bridge.clazz.controller;
 
-import com.college.bridge.academic.entity.Faculty;
 import com.college.bridge.auth.entity.User;
 import com.college.bridge.auth.entity.UserRole;
 import com.college.bridge.auth.entity.UserStatus;
@@ -86,14 +85,14 @@ class ClassControllerTest {
     @DisplayName("POST /api/admin/classes - Should create a class")
     void testCreateClassSuccess() throws Exception {
         CreateClassRequest request = CreateClassRequest.builder()
-                .faculty(Faculty.BCA)
+                .faculty("BCA")
                 .semester(1)
                 .build();
 
         ClassResponse response = ClassResponse.builder()
                 .classId(1L)
                 .className("BCA 1st Semester")
-                .faculty(Faculty.BCA)
+                .faculty("BCA")
                 .semester(1)
                 .build();
 

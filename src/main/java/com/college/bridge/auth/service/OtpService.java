@@ -56,7 +56,7 @@ public class OtpService {
 
         otpRepository.save(otp);
 
-        log.info("Generated OTP {} for email {} and type {}", code, email, type);
+        log.info("Generated OTP for email {} and type {}", email, type);
 
         CompletableFuture.runAsync(() -> {
             try {
@@ -68,7 +68,7 @@ public class OtpService {
                 mailSender.send(message);
                 log.info("OTP Email sent successfully to {}", email);
             } catch (Exception ex) {
-                log.warn("Could not send SMTP email to {}. If Google Mail credentials are not set up yet, find your OTP code here in logs: OTP = {}", email, code, ex);
+                log.warn("Could not send SMTP email to {}. Check mail configuration.", email, ex);
             }
         });
     }
@@ -101,7 +101,7 @@ public class OtpService {
         otp.setVerificationToken(token);
         otpRepository.save(otp);
 
-        log.info("OTP verified successfully for email {}. Verification token: {}", email, token);
+        log.info("OTP verified successfully for email {}", email);
         return token;
     }
 

@@ -91,16 +91,11 @@ public class JwtService {
     }
 
     public Claims parseClaims(String token) {
-        try {
-            return Jwts.parser()
-                    .verifyWith(publicKey)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-
-        } catch (ExpiredJwtException e) {
-            return e.getClaims();
-        }
+        return Jwts.parser()
+                .verifyWith(publicKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     public Long extractInstitutionId(String token) {

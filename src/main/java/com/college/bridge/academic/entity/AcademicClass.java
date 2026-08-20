@@ -30,9 +30,8 @@ public class AcademicClass {
     @JoinColumn(name = "institution_id", nullable = false)
     private Institution institution;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "faculty", nullable = false, length = 20)
-    private Faculty faculty;
+    private String faculty;
 
     @Column(name = "semester", nullable = false)
     private Integer semester;

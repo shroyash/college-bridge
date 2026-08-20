@@ -24,6 +24,7 @@ import com.college.bridge.auth.entity.UserStatus;
 import com.college.bridge.auth.service.AdminUserService;
 import com.college.bridge.common.response.ApiResponse;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -97,7 +98,7 @@ public class AdminUserController {
     @PutMapping("/users/{id}/role")
     public ResponseEntity<ApiResponse<Void>> changeRole(
             @PathVariable Long id,
-            @RequestBody ChangeRoleRequest request,
+            @Valid @RequestBody ChangeRoleRequest request,
             Principal principal) {
         adminUserService.changeRole(id, request, extractEmail(principal));
         return ResponseEntity.ok(ApiResponse.success("Role changed."));

@@ -1,7 +1,6 @@
 package com.college.bridge.multitenancy;
 
 import com.college.bridge.academic.entity.AcademicClass;
-import com.college.bridge.academic.entity.Faculty;
 import com.college.bridge.academic.entity.Subject;
 import com.college.bridge.academic.repository.AcademicClassRepository;
 import com.college.bridge.academic.repository.SubjectRepository;
@@ -117,7 +116,7 @@ public class MultiTenancyIntegrationTest {
         subjectA = subjectRepository.save(Subject.builder()
                 .institution(instA)
                 .name("Physics Inst A")
-                .faculty(Faculty.BCA)
+                .faculty("BCA")
                 .semester(1)
                 .creditHours(3)
                 .build());
@@ -125,7 +124,7 @@ public class MultiTenancyIntegrationTest {
         subjectB = subjectRepository.save(Subject.builder()
                 .institution(instB)
                 .name("Chemistry Inst B")
-                .faculty(Faculty.BCA)
+                .faculty("BCA")
                 .semester(1)
                 .creditHours(3)
                 .build());
@@ -134,7 +133,7 @@ public class MultiTenancyIntegrationTest {
         classA = classRepository.save(ClassEntity.builder()
                 .institution(instA)
                 .className("BCA Semester 1 - Inst A")
-                .faculty(Faculty.BCA)
+                .faculty("BCA")
                 .semester(1)
                 .fcmTopicId("topic-a-" + UUID.randomUUID().toString().substring(0, 8))
                 .build());
@@ -142,7 +141,7 @@ public class MultiTenancyIntegrationTest {
         classB = classRepository.save(ClassEntity.builder()
                 .institution(instB)
                 .className("BCA Semester 1 - Inst B")
-                .faculty(Faculty.BCA)
+                .faculty("BCA")
                 .semester(1)
                 .fcmTopicId("topic-b-" + UUID.randomUUID().toString().substring(0, 8))
                 .build());

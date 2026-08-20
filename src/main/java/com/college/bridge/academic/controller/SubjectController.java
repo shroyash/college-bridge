@@ -1,7 +1,6 @@
 package com.college.bridge.academic.controller;
 
 import com.college.bridge.academic.dto.SubjectResponse;
-import com.college.bridge.academic.entity.Faculty;
 import com.college.bridge.academic.service.SubjectService;
 import com.college.bridge.auth.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +26,7 @@ public class SubjectController {
 
     @GetMapping
     public ResponseEntity<List<SubjectResponse>> getSubjectsByFacultyAndSemester(
-            @RequestParam Faculty faculty,
+            @RequestParam String faculty,
             @RequestParam Integer semester) {
         return ResponseEntity.ok(subjectService.getSubjects(faculty, semester));
     }
@@ -47,7 +46,7 @@ public class SubjectController {
     public ResponseEntity<List<SubjectResponse>> getMySubjects(
             @AuthenticationPrincipal UserPrincipal principal) {
 
-        Long studentId = principal.getStudentId();
+        Long studentId =principal.getStudentId();
         if (studentId == null) {
             throw new AccessDeniedException("Only students can access this resource");
         }

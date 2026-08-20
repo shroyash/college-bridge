@@ -1,7 +1,6 @@
 package com.college.bridge.academic;
 
 import com.college.bridge.academic.entity.AcademicClass;
-import com.college.bridge.academic.entity.Faculty;
 import com.college.bridge.academic.entity.Subject;
 import com.college.bridge.academic.repository.AcademicClassRepository;
 import com.college.bridge.academic.repository.SubjectRepository;
@@ -33,8 +32,8 @@ public class AcademicDataInitializer implements CommandLineRunner {
         "", "First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth"
     };
 
-    private static final Map<Faculty, Map<Integer, List<String>>> CURRICULUM = Map.of(
-        Faculty.BCA, Map.of(
+    private static final Map<String, Map<Integer, List<String>>> CURRICULUM = Map.of(
+        "BCA", Map.of(
             1, List.of("Mathematics I", "Digital Logic", "Computer Fundamentals", "English I", "Statistics I"),
             2, List.of("Mathematics II", "Data Structures", "Operating Systems", "English II", "Statistics II"),
             3, List.of("Object Oriented Programming", "Database Management Systems", "Discrete Mathematics", "Software Engineering I", "Web Technology"),
@@ -61,8 +60,8 @@ public class AcademicDataInitializer implements CommandLineRunner {
         int classCount = 0;
         int subjectCount = 0;
 
-        for (Map.Entry<Faculty, Map<Integer, List<String>>> facultyEntry : CURRICULUM.entrySet()) {
-            Faculty faculty = facultyEntry.getKey();
+        for (Map.Entry<String, Map<Integer, List<String>>> facultyEntry : CURRICULUM.entrySet()) {
+            String faculty = facultyEntry.getKey();
 
             for (Map.Entry<Integer, List<String>> semEntry : facultyEntry.getValue().entrySet()) {
                 int semester = semEntry.getKey();
@@ -70,7 +69,7 @@ public class AcademicDataInitializer implements CommandLineRunner {
 
                 if (!academicClassRepository.existsByInstitution_InstitutionIdAndFacultyAndSemester(defaultInstitution.getInstitutionId(), faculty, semester)) {
                     String ordinal = semester < ORDINALS.length ? ORDINALS[semester] : semester + "th";
-                    String displayName = formatFacultyName(faculty) + " " + ordinal + " Semester";
+                    String displayName = faculty + " " + ordinal + " Semester";
                     academicClassRepository.save(AcademicClass.builder()
                             .institution(defaultInstitution)
                             .faculty(faculty)
@@ -96,15 +95,5 @@ public class AcademicDataInitializer implements CommandLineRunner {
         }
 
         log.info("Academic seed complete — {} classes, {} subjects created for institution {}.", classCount, subjectCount, defaultInstitution.getCode());
-    }
-
-    private String formatFacultyName(Faculty faculty) {
-        return switch (faculty) {
-            case BCA -> "BCA";
-            case BBA -> "BBA";
-            case BSC_CSIT -> "BSc CSIT";
-            case BIM -> "BIM";
-            case BHM -> "BHM";
-        };
     }
 }

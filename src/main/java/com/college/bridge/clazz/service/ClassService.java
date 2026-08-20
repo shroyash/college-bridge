@@ -59,7 +59,7 @@ public class ClassService {
         Institution institution = institutionRepository.findById(tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Institution not found with id: " + tenantId));
 
-        String className = request.getFaculty().name() + " Semester " + request.getSemester();
+        String className = request.getFaculty() + " Semester " + request.getSemester();
         String fcmTopicId = "class-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
 
         ClassEntity classEntity = ClassEntity.builder()

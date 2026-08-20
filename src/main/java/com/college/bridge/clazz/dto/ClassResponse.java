@@ -1,6 +1,5 @@
 package com.college.bridge.clazz.dto;
 
-import com.college.bridge.academic.entity.Faculty;
 import lombok.*;
 
 /**
@@ -15,7 +14,7 @@ public class ClassResponse {
     private Long classId;
     private String className;
     private String subject;
-    private Faculty faculty;
+    private String faculty;
     private Integer semester;
     private String fcmTopicId;
     private String teacherName;

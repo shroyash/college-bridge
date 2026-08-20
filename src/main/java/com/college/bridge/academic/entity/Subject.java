@@ -34,9 +34,8 @@ public class Subject {
     @Column(name = "name", nullable = false, length = 150)
     private String name;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "faculty", nullable = false, length = 20)
-    private Faculty faculty;
+    private String faculty;
 
     @Column(name = "semester", nullable = false)
     private Integer semester;

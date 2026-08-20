@@ -1,6 +1,5 @@
 package com.college.bridge.auth.controller;
 
-import com.college.bridge.academic.entity.Faculty;
 import com.college.bridge.auth.dto.*;
 import com.college.bridge.auth.entity.UserRole;
 import com.college.bridge.auth.security.CustomUserDetailsService;
@@ -61,7 +60,7 @@ class AuthControllerTest {
                 .email("student@college.edu")
                 .password("Password123!")
                 .name("Jane Student")
-                .faculty(Faculty.BCA)
+                .faculty("BCA")
                 .semester(1)
                 .build();
 

@@ -1,6 +1,5 @@
 package com.college.bridge.clazz.entity;
 
-import com.college.bridge.academic.entity.Faculty;
 import com.college.bridge.auth.entity.Teacher;
 import com.college.bridge.institution.entity.Institution;
 import jakarta.persistence.*;
@@ -34,9 +33,8 @@ public class ClassEntity {
     @Column(name = "semester")
     private Integer semester;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "faculty", length = 20)
-    private Faculty faculty;
+    private String faculty;
 
     @Column(name = "department", length = 100)
     private String department;

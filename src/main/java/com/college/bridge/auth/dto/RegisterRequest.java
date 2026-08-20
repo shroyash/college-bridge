@@ -1,6 +1,5 @@
 package com.college.bridge.auth.dto;
 
-import com.college.bridge.academic.entity.Faculty;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
@@ -29,8 +28,10 @@ public class RegisterRequest {
     @Size(min = 6, max = 100, message = "Password must be at least 6 characters")
     private String password;
 
-    @NotNull(message = "Faculty is required")
-    private Faculty faculty;
+    @NotBlank(message = "Faculty is required")
+    @Size(max = 20, message = "Faculty must not exceed 20 characters")
+    @Pattern(regexp = "^[A-Z0-9_]{2,20}$", message = "Faculty must be 2-20 uppercase alphanumeric characters or underscores")
+    private String faculty;
 
     @NotNull(message = "Semester is required")
     @Min(value = 1, message = "Semester must be at least 1")

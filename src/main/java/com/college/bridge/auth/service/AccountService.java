@@ -40,7 +40,8 @@ public class AccountService {
 
     @Transactional(readOnly = true)
     public UserProfileResponse getProfile(String email) {
-        User user = userRepository.findByEmail(email)
+        Long tenantId = com.college.bridge.common.tenant.TenantContext.get();
+        User user = (tenantId != null ? userRepository.findByInstitution_InstitutionIdAndEmail(tenantId, email) : userRepository.findByEmail(email))
                 .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
 
         Student student = null;
@@ -52,7 +53,8 @@ public class AccountService {
     }
 
     public UserProfileResponse updateProfile(String email, UpdateProfileRequest request) {
-        User user = userRepository.findByEmail(email)
+        Long tenantId = com.college.bridge.common.tenant.TenantContext.get();
+        User user = (tenantId != null ? userRepository.findByInstitution_InstitutionIdAndEmail(tenantId, email) : userRepository.findByEmail(email))
                 .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
 
         user.setName(request.getName());

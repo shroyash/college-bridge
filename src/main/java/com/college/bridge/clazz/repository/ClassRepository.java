@@ -1,6 +1,5 @@
 package com.college.bridge.clazz.repository;
 
-import com.college.bridge.academic.entity.Faculty;
 import com.college.bridge.auth.entity.Teacher;
 import com.college.bridge.clazz.entity.ClassEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,7 +13,7 @@ public interface ClassRepository extends JpaRepository<ClassEntity, Long> {
 
     List<ClassEntity> findByInstitution_InstitutionIdAndTeacherIsNull(Long institutionId);
 
-    List<ClassEntity> findByInstitution_InstitutionIdAndFacultyAndSemester(Long institutionId, Faculty faculty, Integer semester);
+    List<ClassEntity> findByInstitution_InstitutionIdAndFacultyAndSemester(Long institutionId, String faculty, Integer semester);
 
     List<ClassEntity> findByInstitution_InstitutionId(Long institutionId);
 

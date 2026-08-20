@@ -17,7 +17,7 @@ public class SubjectResponse {
         return SubjectResponse.builder()
                 .subjectId(subject.getSubjectId())
                 .name(subject.getName())
-                .faculty(subject.getFaculty().name())
+                .faculty(subject.getFaculty())
                 .semester(subject.getSemester())
                 .creditHours(subject.getCreditHours())
                 .build();

@@ -216,8 +216,18 @@ public class AdminUserService {
     }
 
     public void changeRole(Long userId, ChangeRoleRequest request, String adminEmail) {
+        if (UserRole.SUPER_ADMIN.equals(request.getRole())) {
+            throw new SecurityException("Cannot promote user to SUPER_ADMIN via admin role management.");
+        }
+
         User targetUser = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+
+        Long currentTenant = com.college.bridge.common.tenant.TenantContext.get();
+        if (currentTenant != null && targetUser.getInstitution() != null 
+                && !currentTenant.equals(targetUser.getInstitution().getInstitutionId())) {
+            throw new com.college.bridge.common.exception.TenantMismatchException("User does not belong to your institution.");
+        }
 
         if (targetUser.getRole() == request.getRole()) {
             return;
