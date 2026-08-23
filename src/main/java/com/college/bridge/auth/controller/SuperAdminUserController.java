@@ -46,4 +46,16 @@ public class SuperAdminUserController {
         PageResponse<SuperAdminUserResponse> result = superAdminUserService.getAdmins(pageable, search, status);
         return ResponseEntity.ok(ApiResponse.success("Admin users retrieved successfully.", result));
     }
+
+    @org.springframework.web.bind.annotation.PostMapping("/users/{id}/suspend")
+    public ResponseEntity<ApiResponse<Void>> suspendUser(@org.springframework.web.bind.annotation.PathVariable("id") Long id) {
+        superAdminUserService.suspendUser(id);
+        return ResponseEntity.ok(ApiResponse.success("User suspended successfully."));
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/users/{id}/activate")
+    public ResponseEntity<ApiResponse<Void>> activateUser(@org.springframework.web.bind.annotation.PathVariable("id") Long id) {
+        superAdminUserService.activateUser(id);
+        return ResponseEntity.ok(ApiResponse.success("User activated successfully."));
+    }
 }

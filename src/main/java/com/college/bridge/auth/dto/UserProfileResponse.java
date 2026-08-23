@@ -22,8 +22,10 @@ public class UserProfileResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class StudentProfileDetails {
+        private Long studentId;
         private String faculty;
-        private String semester;
+        private Integer semester;
         private Long academicClassId;
+        private String displayName;
     }
 }

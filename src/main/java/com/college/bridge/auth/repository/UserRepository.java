@@ -32,4 +32,7 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
 
     @org.springframework.data.jpa.repository.Query("SELECT u.institution.institutionId, u.role, COUNT(u) FROM User u WHERE u.institution.institutionId IS NOT NULL AND u.deleted = false GROUP BY u.institution.institutionId, u.role")
     List<Object[]> countUsersGroupByInstitutionAndRole();
+
+    @org.springframework.data.jpa.repository.Query("SELECT u.institution.institutionId, u.status, COUNT(u) FROM User u WHERE u.institution.institutionId IS NOT NULL AND u.deleted = false GROUP BY u.institution.institutionId, u.status")
+    List<Object[]> countUsersGroupByInstitutionAndStatus();
 }

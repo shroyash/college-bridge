@@ -16,9 +16,11 @@ public interface UserMapper {
     @Mapping(target = "teacherId", source = "teacher.teacherId")
     UserProfileResponse toProfileResponse(User user, Student student, Teacher teacher);
 
+    @Mapping(target = "studentId", source = "studentId")
     @Mapping(target = "academicClassId", source = "academicClass.classId")
     @Mapping(target = "faculty", source = "academicClass.faculty")
     @Mapping(target = "semester", source = "academicClass.semester")
+    @Mapping(target = "displayName", source = "academicClass.displayName")
     UserProfileResponse.StudentProfileDetails mapStudentToDetails(Student student);
 
     default UserProfileResponse toProfileResponse(User user) {

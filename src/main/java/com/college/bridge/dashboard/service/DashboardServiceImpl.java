@@ -1,8 +1,8 @@
 package com.college.bridge.dashboard.service;
 
+import com.college.bridge.academic.repository.AcademicClassRepository;
 import com.college.bridge.auth.repository.StudentRepository;
 import com.college.bridge.auth.repository.TeacherRepository;
-import com.college.bridge.clazz.repository.ClassRepository;
 import com.college.bridge.dashboard.dto.DashboardMetric;
 import com.college.bridge.dashboard.dto.DashboardResponse;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +19,7 @@ public class DashboardServiceImpl implements DashboardService {
 
     private final StudentRepository studentRepository;
     private final TeacherRepository teacherRepository;
-    private final ClassRepository classRepository;
+    private final AcademicClassRepository academicClassRepository;
 
     @Override
     public DashboardResponse getDashboard() {
@@ -44,7 +44,7 @@ public class DashboardServiceImpl implements DashboardService {
                 DashboardMetric.builder()
                         .key("classes")
                         .title("Total Classes")
-                        .value(classRepository.count())
+                        .value(academicClassRepository.count())
                         .build());
 
         return DashboardResponse.builder()

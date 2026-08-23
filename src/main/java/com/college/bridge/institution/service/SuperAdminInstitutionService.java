@@ -61,21 +61,37 @@ public class SuperAdminInstitutionService {
 
         Page<Institution> page = institutionRepository.findAll(spec, pageable);
         Map<Long, Map<UserRole, Long>> countsMap = fetchUserCountsMap();
+        Map<Long, Map<UserStatus, Long>> statusCountsMap = fetchUserStatusCountsMap();
 
         Page<SuperAdminInstitutionResponse> dtoPage = page.map(inst -> {
             Map<UserRole, Long> roleCounts = countsMap.getOrDefault(inst.getInstitutionId(), Map.of());
+            Map<UserStatus, Long> statusCounts = statusCountsMap.getOrDefault(inst.getInstitutionId(), Map.of());
+
             long students = roleCounts.getOrDefault(UserRole.STUDENT, 0L);
             long teachers = roleCounts.getOrDefault(UserRole.TEACHER, 0L);
+            long admins = roleCounts.getOrDefault(UserRole.ADMIN, 0L);
+
+            long active = statusCounts.getOrDefault(UserStatus.ACTIVE, 0L);
+            long suspended = statusCounts.getOrDefault(UserStatus.SUSPENDED, 0L);
+
+            User submittedBy = inst.getSubmittedBy();
 
             return SuperAdminInstitutionResponse.builder()
                     .institutionId(inst.getInstitutionId())
                     .institutionName(inst.getName())
+                    .code(inst.getCode())
                     .profileImage(inst.getProfileImage())
                     .location(inst.getLocation() != null ? inst.getLocation() : "Kathmandu")
                     .website(inst.getWebsite())
+                    .contactEmail(submittedBy != null ? submittedBy.getEmail() : null)
+                    .contactPhone(null)
+                    .address(inst.getLocation())
                     .status(inst.getStatus())
                     .totalStudents(students)
                     .totalTeachers(teachers)
+                    .totalAdmins(admins)
+                    .activeUsers(active)
+                    .suspendedUsers(suspended)
                     .createdAt(inst.getCreatedAt())
                     .build();
         });
@@ -145,6 +161,21 @@ public class SuperAdminInstitutionService {
         }
 
         return countsMap;
+    }
+
+    private Map<Long, Map<UserStatus, Long>> fetchUserStatusCountsMap() {
+        List<Object[]> rawCounts = userRepository.countUsersGroupByInstitutionAndStatus();
+        Map<Long, Map<UserStatus, Long>> statusCountsMap = new HashMap<>();
+
+        for (Object[] row : rawCounts) {
+            Long instId = (Long) row[0];
+            UserStatus status = (UserStatus) row[1];
+            Long count = (Long) row[2];
+
+            statusCountsMap.computeIfAbsent(instId, k -> new HashMap<>()).put(status, count);
+        }
+
+        return statusCountsMap;
     }
 
     @Transactional(readOnly = true)

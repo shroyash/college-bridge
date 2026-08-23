@@ -5,6 +5,7 @@ import java.security.Principal;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,8 +17,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.college.bridge.auth.dto.BulkTransferRequest;
+import com.college.bridge.auth.dto.BulkTransferResponse;
 import com.college.bridge.auth.dto.ChangeRoleRequest;
 import com.college.bridge.auth.dto.RejectTeacherRequest;
+import com.college.bridge.auth.dto.StudentFilterOptionsResponse;
 import com.college.bridge.auth.dto.UserProfileResponse;
 import com.college.bridge.auth.entity.UserRole;
 import com.college.bridge.auth.entity.UserStatus;
@@ -30,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
 public class AdminUserController {
 
     private final AdminUserService adminUserService;
@@ -66,6 +71,34 @@ public class AdminUserController {
         return ResponseEntity.ok(ApiResponse.success("Filtered results.", page));
     }
 
+    @GetMapping("/students")
+    public ResponseEntity<ApiResponse<Page<UserProfileResponse>>> getStudents(
+            @RequestParam(required = false) String faculty,
+            @RequestParam(required = false) Integer semester,
+            @RequestParam(required = false) String search,
+            Pageable pageable,
+            Principal principal) {
+        Page<UserProfileResponse> page = adminUserService.getStudentsFiltered(principal, faculty, semester, search, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Students fetched successfully.", page));
+    }
+
+    @GetMapping("/students/filter-options")
+    public ResponseEntity<ApiResponse<StudentFilterOptionsResponse>> getStudentFilterOptions(Principal principal) {
+        StudentFilterOptionsResponse options = adminUserService.getStudentFilterOptions(principal);
+        return ResponseEntity.ok(ApiResponse.success("Student filter options fetched.", options));
+    }
+
+    @PostMapping("/students/bulk-transfer")
+    public ResponseEntity<ApiResponse<BulkTransferResponse>> bulkTransferStudents(
+            @Valid @RequestBody BulkTransferRequest request,
+            Principal principal) {
+        BulkTransferResponse response = adminUserService.bulkTransferStudents(principal, request);
+        return ResponseEntity.ok(ApiResponse.success(
+                response.getUpdatedStudents() + " students successfully updated.",
+                response
+        ));
+    }
+
     @PostMapping("/teacher/{id}/verify")
     public ResponseEntity<ApiResponse<Void>> verifyTeacher(
             @PathVariable Long id,
@@ -98,10 +131,10 @@ public class AdminUserController {
     @PutMapping("/users/{id}/role")
     public ResponseEntity<ApiResponse<Void>> changeRole(
             @PathVariable Long id,
-            @Valid @RequestBody ChangeRoleRequest request,
+            @RequestBody ChangeRoleRequest request,
             Principal principal) {
         adminUserService.changeRole(id, request, extractEmail(principal));
-        return ResponseEntity.ok(ApiResponse.success("Role changed."));
+        return ResponseEntity.ok(ApiResponse.success("User role updated."));
     }
 
     @DeleteMapping("/users/{id}")

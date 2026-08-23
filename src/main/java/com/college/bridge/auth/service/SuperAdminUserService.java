@@ -22,6 +22,17 @@ import java.util.List;
 public class SuperAdminUserService {
 
     private final UserRepository userRepository;
+    private final AdminUserService adminUserService;
+
+    @Transactional
+    public void suspendUser(Long userId) {
+        adminUserService.suspendUser(userId);
+    }
+
+    @Transactional
+    public void activateUser(Long userId) {
+        adminUserService.activateUser(userId);
+    }
 
     @Transactional(readOnly = true)
     public PageResponse<SuperAdminUserResponse> getUsers(

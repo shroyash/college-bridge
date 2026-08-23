@@ -1,7 +1,7 @@
 package com.college.bridge.doubt.entity;
 
+import com.college.bridge.academic.entity.Subject;
 import com.college.bridge.auth.entity.Student;
-import com.college.bridge.clazz.entity.ClassEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -26,8 +26,8 @@ public class Doubt {
     private Student student;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "class_id", nullable = false)
-    private ClassEntity classEntity;
+    @JoinColumn(name = "subject_id", nullable = false)
+    private Subject subject;
 
     @Column(name = "question", nullable = false, columnDefinition = "TEXT")
     private String question;
