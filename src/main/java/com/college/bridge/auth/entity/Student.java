@@ -22,8 +22,8 @@ public class Student {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "academic_class_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "academic_class_id", nullable = true)
     private AcademicClass academicClass;
 
     @org.hibernate.annotations.CreationTimestamp

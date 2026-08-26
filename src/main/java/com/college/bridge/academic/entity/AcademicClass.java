@@ -1,5 +1,6 @@
 package com.college.bridge.academic.entity;
 
+import com.college.bridge.auth.entity.Teacher;
 import com.college.bridge.institution.entity.Institution;
 import jakarta.persistence.*;
 import lombok.*;
@@ -38,6 +39,10 @@ public class AcademicClass {
 
     @Column(name = "display_name", nullable = false, length = 100)
     private String displayName;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "class_teacher_id", nullable = true)
+    private Teacher classTeacher;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

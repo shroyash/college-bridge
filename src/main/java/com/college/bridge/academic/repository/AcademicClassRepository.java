@@ -19,4 +19,15 @@ public interface AcademicClassRepository extends JpaRepository<AcademicClass, Lo
 
     @Query("SELECT DISTINCT ac.faculty FROM AcademicClass ac WHERE ac.institution.institutionId = :institutionId")
     List<String> findDistinctFacultiesByInstitutionId(Long institutionId);
+
+    @Query("SELECT ac FROM AcademicClass ac WHERE ac.institution.institutionId = :institutionId " +
+           "AND (:faculty IS NULL OR :faculty = '' OR LOWER(ac.faculty) = LOWER(:faculty)) " +
+           "AND (:semester IS NULL OR ac.semester = :semester) " +
+           "AND (:search IS NULL OR :search = '' OR LOWER(ac.displayName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(ac.faculty) LIKE LOWER(CONCAT('%', :search, '%')))")
+    List<AcademicClass> findClassesFiltered(
+            @org.springframework.data.repository.query.Param("institutionId") Long institutionId,
+            @org.springframework.data.repository.query.Param("faculty") String faculty,
+            @org.springframework.data.repository.query.Param("semester") Integer semester,
+            @org.springframework.data.repository.query.Param("search") String search
+    );
 }

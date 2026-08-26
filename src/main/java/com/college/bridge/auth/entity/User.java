@@ -38,6 +38,10 @@ public class User {
     @Column(name = "name", nullable = false, length = 100)
     private String name;
 
+    public String getFullName() {
+        return name;
+    }
+
     @Column(name = "email", nullable = false, length = 150)
     private String email;
 

@@ -9,8 +9,6 @@ import com.college.bridge.auth.entity.UserRole;
 import com.college.bridge.auth.repository.UserRepository;
 import com.college.bridge.auth.security.JwtService;
 import com.college.bridge.auth.security.UserPrincipal;
-import com.college.bridge.clazz.entity.ClassEntity;
-import com.college.bridge.clazz.repository.ClassRepository;
 import com.college.bridge.common.config.EnvLoader;
 import com.college.bridge.institution.entity.Institution;
 import com.college.bridge.institution.entity.InstitutionStatus;
@@ -54,9 +52,6 @@ public class MultiTenancyIntegrationTest {
     private SubjectRepository subjectRepository;
 
     @Autowired
-    private ClassRepository classRepository;
-
-    @Autowired
     private AcademicClassRepository academicClassRepository;
 
     @Autowired
@@ -73,8 +68,8 @@ public class MultiTenancyIntegrationTest {
     private String tokenAdminB;
     private Subject subjectA;
     private Subject subjectB;
-    private ClassEntity classA;
-    private ClassEntity classB;
+    private AcademicClass classA;
+    private AcademicClass classB;
 
     @BeforeEach
     void setUp() {
@@ -130,20 +125,18 @@ public class MultiTenancyIntegrationTest {
                 .build());
 
         // Create Classes
-        classA = classRepository.save(ClassEntity.builder()
+        classA = academicClassRepository.save(AcademicClass.builder()
                 .institution(instA)
-                .className("BCA Semester 1 - Inst A")
+                .displayName("BCA 1st Semester Inst A")
                 .faculty("BCA")
                 .semester(1)
-                .fcmTopicId("topic-a-" + UUID.randomUUID().toString().substring(0, 8))
                 .build());
 
-        classB = classRepository.save(ClassEntity.builder()
+        classB = academicClassRepository.save(AcademicClass.builder()
                 .institution(instB)
-                .className("BCA Semester 1 - Inst B")
+                .displayName("BCA 1st Semester Inst B")
                 .faculty("BCA")
                 .semester(1)
-                .fcmTopicId("topic-b-" + UUID.randomUUID().toString().substring(0, 8))
                 .build());
     }
 
@@ -168,14 +161,14 @@ public class MultiTenancyIntegrationTest {
     @DisplayName("Admin A can fetch Class A by ID, but gets 404 when fetching Class B by ID")
     void testClassByIdTenantIsolation() throws Exception {
         // Fetch own class -> 200 OK
-        mockMvc.perform(get("/api/classes/{id}", classA.getClassId())
+        mockMvc.perform(get("/api/admin/academic/classes/{id}/details", classA.getClassId())
                         .header("Authorization", "Bearer " + tokenAdminA)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.className").value("BCA Semester 1 - Inst A"));
+                .andExpect(jsonPath("$.data.displayName").value("BCA 1st Semester Inst A"));
 
         // Fetch cross-tenant class -> 404 NOT FOUND
-        mockMvc.perform(get("/api/classes/{id}", classB.getClassId())
+        mockMvc.perform(get("/api/admin/academic/classes/{id}/details", classB.getClassId())
                         .header("Authorization", "Bearer " + tokenAdminA)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
@@ -193,11 +186,11 @@ public class MultiTenancyIntegrationTest {
                 .andExpect(jsonPath("$[*].name", not(hasItem("Chemistry Inst B"))));
 
         // List classes for Admin A
-        mockMvc.perform(get("/api/admin/classes")
+        mockMvc.perform(get("/api/admin/academic/classes")
                         .header("Authorization", "Bearer " + tokenAdminA)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[*].className", hasItem("BCA Semester 1 - Inst A")))
-                .andExpect(jsonPath("$.data[*].className", not(hasItem("BCA Semester 1 - Inst B"))));
+                .andExpect(jsonPath("$.data[*].displayName", hasItem("BCA 1st Semester Inst A")))
+                .andExpect(jsonPath("$.data[*].displayName", not(hasItem("BCA 1st Semester Inst B"))));
     }
 }

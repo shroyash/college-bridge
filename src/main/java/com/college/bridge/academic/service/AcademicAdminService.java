@@ -17,7 +17,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import com.college.bridge.academic.entity.TeacherAssignment;
+import com.college.bridge.academic.repository.TeacherAssignmentRepository;
+import com.college.bridge.auth.entity.Student;
+import com.college.bridge.auth.entity.Teacher;
+import com.college.bridge.auth.repository.StudentRepository;
+import com.college.bridge.auth.repository.TeacherRepository;
+
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +37,9 @@ public class AcademicAdminService {
     private final AcademicClassRepository academicClassRepository;
     private final SubjectRepository subjectRepository;
     private final InstitutionRepository institutionRepository;
+    private final StudentRepository studentRepository;
+    private final TeacherRepository teacherRepository;
+    private final TeacherAssignmentRepository teacherAssignmentRepository;
 
     private static final String[] ORDINALS = {
         "", "First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth", "Eleventh", "Twelfth"
@@ -55,7 +68,7 @@ public class AcademicAdminService {
 
         AcademicClass saved = academicClassRepository.save(academicClass);
         log.info("Created AcademicClass ID: {} ({}) for institution: {}", saved.getClassId(), saved.getDisplayName(), tenantId);
-        return AcademicClassResponse.from(saved);
+        return AcademicClassResponse.from(saved, 0);
     }
 
     @Transactional(readOnly = true)
@@ -66,11 +79,171 @@ public class AcademicAdminService {
 
     @Transactional(readOnly = true)
     public List<AcademicClassResponse> getAcademicClasses() {
+        return getAcademicClassesFiltered(null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AcademicClassResponse> getAcademicClassesFiltered(String faculty, Integer semester, String search) {
         Long tenantId = requireTenantId();
-        return academicClassRepository.findByInstitution_InstitutionId(tenantId)
-                .stream()
-                .map(AcademicClassResponse::from)
-                .toList();
+        List<AcademicClass> classes = academicClassRepository.findClassesFiltered(tenantId, faculty, semester, search);
+        return classes.stream().map(ac -> {
+            int studentCount = (int) studentRepository.countByAcademicClass_ClassId(ac.getClassId());
+            return AcademicClassResponse.from(ac, studentCount);
+        }).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ClassDetailResponse getClassDetails(Long classId) {
+        Long tenantId = requireTenantId();
+        AcademicClass academicClass = academicClassRepository.findByClassIdAndInstitution_InstitutionId(classId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Academic class not found or access denied: " + classId));
+
+        List<Student> students = studentRepository.findByAcademicClass_ClassId(classId);
+        List<ClassStudentResponse> studentResponses = students.stream().map(s -> ClassStudentResponse.builder()
+                .studentId(s.getStudentId())
+                .userId(s.getUser() != null ? s.getUser().getUserId() : null)
+                .fullName(s.getUser() != null ? s.getUser().getFullName() : "Unknown")
+                .email(s.getUser() != null ? s.getUser().getEmail() : "")
+                .status(s.getUser() != null && s.getUser().getStatus() != null ? s.getUser().getStatus().name() : "ACTIVE")
+                .build()).toList();
+
+        // Get subjects for this class's faculty and semester in institution
+        List<Subject> subjects = subjectRepository.findByInstitution_InstitutionIdAndFacultyAndSemester(
+                tenantId, academicClass.getFaculty(), academicClass.getSemester()
+        );
+
+        // Fetch teachers assigned to these subjects
+        List<ClassTeacherResponse> teacherResponses = new ArrayList<>();
+        Map<Teacher, List<Subject>> teacherSubjectMap = subjects.stream()
+                .flatMap(sub -> sub.getAssignments().stream())
+                .collect(Collectors.groupingBy(
+                        TeacherAssignment::getTeacher,
+                        Collectors.mapping(TeacherAssignment::getSubject, Collectors.toList())
+                ));
+
+        for (Map.Entry<Teacher, List<Subject>> entry : teacherSubjectMap.entrySet()) {
+            Teacher teacher = entry.getKey();
+            List<Subject> teacherSubjects = entry.getValue();
+            boolean isClassTeacher = academicClass.getClassTeacher() != null &&
+                    academicClass.getClassTeacher().getTeacherId().equals(teacher.getTeacherId());
+
+            teacherResponses.add(ClassTeacherResponse.builder()
+                    .teacherId(teacher.getTeacherId())
+                    .userId(teacher.getUser() != null ? teacher.getUser().getUserId() : null)
+                    .fullName(teacher.getUser() != null ? teacher.getUser().getFullName() : "Unknown")
+                    .email(teacher.getUser() != null ? teacher.getUser().getEmail() : "")
+                    .assignedSubjects(teacherSubjects.stream().map(Subject::getName).toList())
+                    .isClassTeacher(isClassTeacher)
+                    .build());
+        }
+
+        // If class teacher is set but not in subject teacher map, include class teacher too
+        if (academicClass.getClassTeacher() != null) {
+            Teacher ct = academicClass.getClassTeacher();
+            if (teacherResponses.stream().noneMatch(tr -> tr.getTeacherId().equals(ct.getTeacherId()))) {
+                teacherResponses.add(ClassTeacherResponse.builder()
+                        .teacherId(ct.getTeacherId())
+                        .userId(ct.getUser() != null ? ct.getUser().getUserId() : null)
+                        .fullName(ct.getUser() != null ? ct.getUser().getFullName() : "Unknown")
+                        .email(ct.getUser() != null ? ct.getUser().getEmail() : "")
+                        .assignedSubjects(List.of())
+                        .isClassTeacher(true)
+                        .build());
+            }
+        }
+
+        String classTeacherName = academicClass.getClassTeacher() != null && academicClass.getClassTeacher().getUser() != null
+                ? academicClass.getClassTeacher().getUser().getFullName()
+                : null;
+
+        return ClassDetailResponse.builder()
+                .classId(academicClass.getClassId())
+                .displayName(academicClass.getDisplayName())
+                .faculty(academicClass.getFaculty())
+                .semester(academicClass.getSemester())
+                .totalStudents(studentResponses.size())
+                .classTeacherId(academicClass.getClassTeacher() != null ? academicClass.getClassTeacher().getTeacherId() : null)
+                .classTeacherName(classTeacherName)
+                .institutionId(academicClass.getInstitution().getInstitutionId())
+                .institutionName(academicClass.getInstitution().getName())
+                .createdBy("Institution Admin")
+                .createdAt(academicClass.getCreatedAt() != null ? academicClass.getCreatedAt().toString() : "")
+                .students(studentResponses)
+                .teachers(teacherResponses)
+                .build();
+    }
+
+    @Transactional
+    public ClassStudentResponse addStudentToClass(Long classId, Long studentId) {
+        Long tenantId = requireTenantId();
+        AcademicClass academicClass = academicClassRepository.findByClassIdAndInstitution_InstitutionId(classId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Academic class not found: " + classId));
+
+        Student student = studentRepository.findById(studentId)
+                .filter(s -> s.getUser() != null && s.getUser().getInstitution() != null && s.getUser().getInstitution().getInstitutionId().equals(tenantId))
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found or access denied: " + studentId));
+
+        student.setAcademicClass(academicClass);
+        Student saved = studentRepository.save(student);
+        log.info("Assigned student ID {} to AcademicClass ID {}", studentId, classId);
+
+        return ClassStudentResponse.builder()
+                .studentId(saved.getStudentId())
+                .userId(saved.getUser().getUserId())
+                .fullName(saved.getUser().getFullName())
+                .email(saved.getUser().getEmail())
+                .status(saved.getUser().getStatus() != null ? saved.getUser().getStatus().name() : "ACTIVE")
+                .build();
+    }
+
+    @Transactional
+    public void removeStudentFromClass(Long classId, Long studentId) {
+        Long tenantId = requireTenantId();
+        AcademicClass academicClass = academicClassRepository.findByClassIdAndInstitution_InstitutionId(classId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Academic class not found: " + classId));
+
+        Student student = studentRepository.findById(studentId)
+                .filter(s -> s.getUser() != null && s.getUser().getInstitution() != null && s.getUser().getInstitution().getInstitutionId().equals(tenantId))
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found or access denied: " + studentId));
+
+        if (student.getAcademicClass() != null && student.getAcademicClass().getClassId().equals(classId)) {
+            student.setAcademicClass(null);
+            studentRepository.save(student);
+            log.info("Removed student ID {} from class ID {} (account preserved)", studentId, classId);
+        }
+    }
+
+    @Transactional
+    public AcademicClassResponse assignClassTeacher(Long classId, Long teacherId) {
+        Long tenantId = requireTenantId();
+        AcademicClass academicClass = academicClassRepository.findByClassIdAndInstitution_InstitutionId(classId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Academic class not found: " + classId));
+
+        if (teacherId != null) {
+            Teacher teacher = teacherRepository.findById(teacherId)
+                    .filter(t -> t.getUser() != null && t.getUser().getInstitution() != null && t.getUser().getInstitution().getInstitutionId().equals(tenantId))
+                    .orElseThrow(() -> new ResourceNotFoundException("Teacher not found: " + teacherId));
+            academicClass.setClassTeacher(teacher);
+        } else {
+            academicClass.setClassTeacher(null);
+        }
+
+        AcademicClass saved = academicClassRepository.save(academicClass);
+        int count = (int) studentRepository.countByAcademicClass_ClassId(classId);
+        return AcademicClassResponse.from(saved, count);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ClassStudentResponse> getUnassignedStudents() {
+        Long tenantId = requireTenantId();
+        List<Student> unassigned = studentRepository.findByUser_Institution_InstitutionIdAndAcademicClassIsNull(tenantId);
+        return unassigned.stream().map(s -> ClassStudentResponse.builder()
+                .studentId(s.getStudentId())
+                .userId(s.getUser() != null ? s.getUser().getUserId() : null)
+                .fullName(s.getUser() != null ? s.getUser().getFullName() : "Unknown")
+                .email(s.getUser() != null ? s.getUser().getEmail() : "")
+                .status(s.getUser() != null && s.getUser().getStatus() != null ? s.getUser().getStatus().name() : "ACTIVE")
+                .build()).toList();
     }
 
     @Transactional

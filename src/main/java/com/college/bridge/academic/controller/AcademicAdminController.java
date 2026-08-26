@@ -36,9 +36,52 @@ public class AcademicAdminController {
     }
 
     @GetMapping("/classes")
-    public ResponseEntity<ApiResponse<List<AcademicClassResponse>>> getAcademicClasses() {
-        List<AcademicClassResponse> classes = academicAdminService.getAcademicClasses();
+    public ResponseEntity<ApiResponse<List<AcademicClassResponse>>> getAcademicClasses(
+            @RequestParam(required = false) String faculty,
+            @RequestParam(required = false) Integer semester,
+            @RequestParam(required = false) String search
+    ) {
+        List<AcademicClassResponse> classes = academicAdminService.getAcademicClassesFiltered(faculty, semester, search);
         return ResponseEntity.ok(ApiResponse.success("Academic classes retrieved.", classes));
+    }
+
+    @GetMapping("/classes/{classId}/details")
+    public ResponseEntity<ApiResponse<ClassDetailResponse>> getClassDetails(@PathVariable Long classId) {
+        ClassDetailResponse response = academicAdminService.getClassDetails(classId);
+        return ResponseEntity.ok(ApiResponse.success("Class details retrieved successfully.", response));
+    }
+
+    @PostMapping("/classes/{classId}/students/{studentId}")
+    public ResponseEntity<ApiResponse<ClassStudentResponse>> addStudentToClass(
+            @PathVariable Long classId,
+            @PathVariable Long studentId
+    ) {
+        ClassStudentResponse response = academicAdminService.addStudentToClass(classId, studentId);
+        return ResponseEntity.ok(ApiResponse.success("Student added to class successfully.", response));
+    }
+
+    @DeleteMapping("/classes/{classId}/students/{studentId}")
+    public ResponseEntity<ApiResponse<Void>> removeStudentFromClass(
+            @PathVariable Long classId,
+            @PathVariable Long studentId
+    ) {
+        academicAdminService.removeStudentFromClass(classId, studentId);
+        return ResponseEntity.ok(ApiResponse.success("Student removed from class."));
+    }
+
+    @PutMapping("/classes/{classId}/class-teacher/{teacherId}")
+    public ResponseEntity<ApiResponse<AcademicClassResponse>> assignClassTeacher(
+            @PathVariable Long classId,
+            @PathVariable Long teacherId
+    ) {
+        AcademicClassResponse response = academicAdminService.assignClassTeacher(classId, teacherId);
+        return ResponseEntity.ok(ApiResponse.success("Class teacher assigned successfully.", response));
+    }
+
+    @GetMapping("/unassigned-students")
+    public ResponseEntity<ApiResponse<List<ClassStudentResponse>>> getUnassignedStudents() {
+        List<ClassStudentResponse> unassigned = academicAdminService.getUnassignedStudents();
+        return ResponseEntity.ok(ApiResponse.success("Unassigned students retrieved.", unassigned));
     }
 
     @PutMapping("/classes/{classId}")
