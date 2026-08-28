@@ -15,7 +15,6 @@ import com.college.bridge.auth.security.JwtProperties;
 import com.college.bridge.auth.security.JwtService;
 import com.college.bridge.auth.security.UserPrincipal;
 import com.college.bridge.common.exception.*;
-import com.college.bridge.common.tenant.TenantContext;
 import com.college.bridge.institution.entity.Institution;
 import com.college.bridge.institution.entity.InstitutionStatus;
 import com.college.bridge.institution.repository.InstitutionRepository;
@@ -31,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @Slf4j
@@ -49,7 +47,6 @@ public class AuthService {
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
     private final CustomUserDetailsService userDetailsService;
-    private final OtpService otpService;
     private final AuthenticationManager authenticationManager;
 
     public AuthService(
@@ -64,7 +61,6 @@ public class AuthService {
             JwtService jwtService,
             JwtProperties jwtProperties,
             CustomUserDetailsService userDetailsService,
-            OtpService otpService,
             AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
         this.studentRepository = studentRepository;
@@ -77,11 +73,11 @@ public class AuthService {
         this.jwtService = jwtService;
         this.jwtProperties = jwtProperties;
         this.userDetailsService = userDetailsService;
-        this.otpService = otpService;
         this.authenticationManager = authenticationManager;
     }
 
     public AuthResponse register(RegisterRequest request) {
+
         Institution institution = institutionRepository.findByCode(request.getInstitutionCode())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Institution not found with code: " + request.getInstitutionCode()));
@@ -110,7 +106,6 @@ public class AuthService {
                 .build();
         User savedUser = userRepository.save(user);
 
-        // Create Student profile linked to the resolved academic class
         Student student = Student.builder()
                 .user(savedUser)
                 .academicClass(academicClass)
@@ -134,12 +129,24 @@ public class AuthService {
         String accessToken = jwtService.generateAccessToken(userPrincipal);
         RefreshToken refreshToken = createRefreshToken(savedUser);
 
-        return AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken.getToken())
+        InstitutionInfoResponse instResponse = InstitutionInfoResponse.builder()
+                .institutionId(institution.getInstitutionId())
+                .name(institution.getName())
+                .code(institution.getCode())
+                .build();
+
+        UserInfoResponse userResponse = UserInfoResponse.builder()
+                .userId(savedUser.getUserId())
                 .name(savedUser.getName())
                 .email(savedUser.getEmail())
                 .role(savedUser.getRole().name())
+                .institution(instResponse)
+                .build();
+
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken.getToken())
+                .user(userResponse)
                 .build();
     }
 
@@ -163,7 +170,34 @@ public class AuthService {
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
         User user = principal.getUser();
 
-        // Enforce status checking in strict order
+        validateAccountStatus(user);
+
+        String accessToken = jwtService.generateAccessToken(principal);
+        RefreshToken refreshToken = createRefreshToken(user);
+
+        Institution inst = user.getInstitution();
+        InstitutionInfoResponse instResponse = inst != null ? InstitutionInfoResponse.builder()
+                .institutionId(inst.getInstitutionId())
+                .name(inst.getName())
+                .code(inst.getCode())
+                .build() : null;
+
+        UserInfoResponse userResponse = UserInfoResponse.builder()
+                .userId(user.getUserId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .role(user.getRole().name())
+                .institution(instResponse)
+                .build();
+
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken.getToken())
+                .user(userResponse)
+                .build();
+    }
+
+    private void validateAccountStatus(User user) {
         if (user.getRole() == UserRole.SUPER_ADMIN) {
             if (user.getStatus() != UserStatus.ACTIVE) {
                 throw new AccountSuspendedException("User account is suspended.");
@@ -193,25 +227,6 @@ public class AuthService {
                 throw new AccountSuspendedException("User account is not active.");
             }
         }
-
-        UserPrincipal userDetails;
-        if (user.getInstitution() != null) {
-            userDetails = (UserPrincipal) userDetailsService
-                    .loadUserByInstitutionIdAndEmail(user.getInstitution().getInstitutionId(), user.getEmail());
-        } else {
-            userDetails = (UserPrincipal) userDetailsService.loadUserByUsername(user.getEmail());
-        }
-
-        String accessToken = jwtService.generateAccessToken(userDetails);
-        RefreshToken refreshToken = createRefreshToken(user);
-
-        return AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken.getToken())
-                .name(user.getName())
-                .email(user.getEmail())
-                .role(user.getRole().name())
-                .build();
     }
 
     public AuthResponse refreshToken(TokenRefreshRequest request) {
@@ -246,15 +261,28 @@ public class AuthService {
                 .build();
         refreshTokenRepository.save(newRefreshToken);
 
-        UserPrincipal userPrincipal = new UserPrincipal(user);
+        UserPrincipal userPrincipal = userDetailsService.buildUserPrincipal(user);
         String accessToken = jwtService.generateAccessToken(userPrincipal);
+
+        Institution inst = user.getInstitution();
+        InstitutionInfoResponse instResponse = inst != null ? InstitutionInfoResponse.builder()
+                .institutionId(inst.getInstitutionId())
+                .name(inst.getName())
+                .code(inst.getCode())
+                .build() : null;
+
+        UserInfoResponse userResponse = UserInfoResponse.builder()
+                .userId(user.getUserId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .role(user.getRole().name())
+                .institution(instResponse)
+                .build();
 
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(newRefreshTokenStr)
-                .name(user.getName())
-                .email(user.getEmail())
-                .role(user.getRole().name())
+                .user(userResponse)
                 .build();
     }
 
@@ -281,76 +309,5 @@ public class AuthService {
                 .build();
 
         return refreshTokenRepository.save(refreshToken);
-    }
-
-    public void forgotPassword(ForgotPasswordRequest request) {
-        Long tenantId = TenantContext.get();
-        Optional<User> userOpt;
-        if (tenantId != null) {
-            userOpt = userRepository.findByInstitution_InstitutionIdAndEmail(tenantId, request.getEmail());
-        } else {
-            userOpt = userRepository.findByEmail(request.getEmail());
-        }
-
-        if (userOpt.isPresent()) {
-            otpService.sendOtp(request.getEmail(), OtpType.PASSWORD_RESET);
-            log.info("Password reset OTP requested and sent for: {}", request.getEmail());
-        } else {
-            log.warn("Password reset requested for non-existent email: {}", request.getEmail());
-        }
-    }
-
-    public OtpVerificationResponse verifyOtp(VerifyOtpRequest request) {
-        String token = otpService.verifyOtp(request.getEmail(), request.getCode(), request.getType());
-        return OtpVerificationResponse.builder()
-                .verified(true)
-                .verificationToken(token)
-                .build();
-    }
-
-    public void resendOtp(ForgotPasswordRequest request) {
-        Long tenantId = TenantContext.get();
-        Optional<User> userOpt;
-        if (tenantId != null) {
-            userOpt = userRepository.findByInstitution_InstitutionIdAndEmail(tenantId, request.getEmail());
-        } else {
-            userOpt = userRepository.findByEmail(request.getEmail());
-        }
-
-        if (userOpt.isPresent()) {
-            otpService.sendOtp(request.getEmail(), OtpType.PASSWORD_RESET);
-            log.info("Verification OTP resent to: {}", request.getEmail());
-        } else {
-            log.warn("Resend OTP requested for non-existent email: {}", request.getEmail());
-        }
-    }
-
-    public void resetPassword(ResetPasswordRequest request) {
-        boolean isValidToken = otpService.validateVerificationToken(
-                request.getEmail(),
-                request.getVerificationToken(),
-                OtpType.PASSWORD_RESET);
-
-        if (!isValidToken) {
-            throw new BadCredentialsException("Invalid or expired password reset token.");
-        }
-
-        Long tenantId = TenantContext.get();
-        User user;
-        if (tenantId != null) {
-            user = userRepository.findByInstitution_InstitutionIdAndEmail(tenantId, request.getEmail())
-                    .orElseThrow(
-                            () -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
-        } else {
-            user = userRepository.findByEmail(request.getEmail())
-                    .orElseThrow(
-                            () -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
-        }
-
-        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
-        userRepository.save(user);
-
-        refreshTokenRepository.revokeAllByUser(user);
-        log.info("Password reset successful and all sessions revoked for user: {}", request.getEmail());
     }
 }

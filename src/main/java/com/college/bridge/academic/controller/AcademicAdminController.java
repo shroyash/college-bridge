@@ -93,6 +93,12 @@ public class AcademicAdminController {
         return ResponseEntity.ok(ApiResponse.success("Academic class updated successfully.", response));
     }
 
+    @DeleteMapping("/classes/{classId}")
+    public ResponseEntity<ApiResponse<Void>> deleteAcademicClass(@PathVariable Long classId) {
+        academicAdminService.deleteAcademicClass(classId);
+        return ResponseEntity.ok(ApiResponse.success("Academic class deleted successfully."));
+    }
+
     @PostMapping("/subjects")
     public ResponseEntity<ApiResponse<SubjectResponse>> createSubject(
             @Valid @RequestBody CreateSubjectRequest request

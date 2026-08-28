@@ -38,11 +38,15 @@ public class AccountService {
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
 
+    private User findUserByEmail(String email) {
+        Long tenantId = com.college.bridge.common.tenant.TenantContext.get();
+        return (tenantId != null ? userRepository.findByInstitution_InstitutionIdAndEmail(tenantId, email) : userRepository.findByEmail(email))
+                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
+    }
+
     @Transactional(readOnly = true)
     public UserProfileResponse getProfile(String email) {
-        Long tenantId = com.college.bridge.common.tenant.TenantContext.get();
-        User user = (tenantId != null ? userRepository.findByInstitution_InstitutionIdAndEmail(tenantId, email) : userRepository.findByEmail(email))
-                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
+        User user = findUserByEmail(email);
 
         Student student = null;
         if (com.college.bridge.auth.entity.UserRole.STUDENT.equals(user.getRole())) {
@@ -53,9 +57,7 @@ public class AccountService {
     }
 
     public UserProfileResponse updateProfile(String email, UpdateProfileRequest request) {
-        Long tenantId = com.college.bridge.common.tenant.TenantContext.get();
-        User user = (tenantId != null ? userRepository.findByInstitution_InstitutionIdAndEmail(tenantId, email) : userRepository.findByEmail(email))
-                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
+        User user = findUserByEmail(email);
 
         user.setName(request.getName());
         if (request.getFcmToken() != null) {
@@ -74,8 +76,7 @@ public class AccountService {
     }
 
     public void changePassword(String email, ChangePasswordRequest request) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
+        User user = findUserByEmail(email);
 
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
             throw new InvalidPasswordException("Current password does not match.");
@@ -89,7 +90,17 @@ public class AccountService {
     }
 
     public void initiateEmailChange(String currentEmail, InitiateEmailChangeRequest request) {
-        if (userRepository.existsByEmail(request.getNewEmail())) {
+        User user = findUserByEmail(currentEmail);
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new InvalidPasswordException("Current password does not match.");
+        }
+
+        Long tenantId = com.college.bridge.common.tenant.TenantContext.get();
+        boolean exists = (tenantId != null) 
+                ? userRepository.existsByInstitution_InstitutionIdAndEmail(tenantId, request.getNewEmail())
+                : userRepository.existsByEmail(request.getNewEmail());
+        if (exists) {
             throw new EmailAlreadyExistsException("The new email is already registered.");
         }
 
@@ -98,10 +109,13 @@ public class AccountService {
     }
 
     public void confirmEmailChange(String currentEmail, ConfirmEmailChangeRequest request) {
-        User user = userRepository.findByEmail(currentEmail)
-                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + currentEmail));
+        User user = findUserByEmail(currentEmail);
 
-        if (userRepository.existsByEmail(request.getNewEmail())) {
+        Long tenantId = com.college.bridge.common.tenant.TenantContext.get();
+        boolean exists = (tenantId != null) 
+                ? userRepository.existsByInstitution_InstitutionIdAndEmail(tenantId, request.getNewEmail())
+                : userRepository.existsByEmail(request.getNewEmail());
+        if (exists) {
             throw new EmailAlreadyExistsException("The new email is already registered.");
         }
 
@@ -115,8 +129,7 @@ public class AccountService {
     }
 
     public String uploadProfileImage(String email, MultipartFile file) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
+        User user = findUserByEmail(email);
 
         String imageUrl = fileStorageService.storeFile(file);
         user.setImageUrl(imageUrl);
@@ -127,8 +140,7 @@ public class AccountService {
     }
 
     public void deleteOwnAccount(String email, String password) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
+        User user = findUserByEmail(email);
 
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new InvalidPasswordException("Password verification failed. Cannot delete account.");

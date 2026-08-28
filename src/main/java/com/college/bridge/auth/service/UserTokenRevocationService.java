@@ -9,7 +9,7 @@ import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
-public class UserTokenRevocationService {
+public class UserTokenRevocationService implements TokenRevocationService {
 
     private static final String KEY_PREFIX = "user:revoked-at:";
 

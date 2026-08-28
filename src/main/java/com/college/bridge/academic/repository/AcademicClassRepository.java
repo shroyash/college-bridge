@@ -13,7 +13,11 @@ public interface AcademicClassRepository extends JpaRepository<AcademicClass, Lo
 
     boolean existsByInstitution_InstitutionIdAndFacultyAndSemester(Long institutionId, String faculty, Integer semester);
 
+    long countByInstitution_InstitutionId(Long institutionId);
+
     List<AcademicClass> findByInstitution_InstitutionId(Long institutionId);
+
+    List<AcademicClass> findByInstitution_InstitutionIdAndClassTeacher_TeacherId(Long institutionId, Long teacherId);
 
     Optional<AcademicClass> findByClassIdAndInstitution_InstitutionId(Long classId, Long institutionId);
 

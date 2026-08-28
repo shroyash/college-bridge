@@ -45,6 +45,8 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
 
     long countByAcademicClass_ClassId(Long classId);
 
+    long countByUser_Institution_InstitutionId(Long institutionId);
+
     @EntityGraph(attributePaths = {"academicClass", "user"})
     @Query("SELECT s FROM Student s WHERE s.user.institution.institutionId = :tenantId " +
            "AND (:faculty IS NULL OR s.academicClass.faculty = :faculty) " +

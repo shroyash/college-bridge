@@ -67,7 +67,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         return buildUserPrincipal(user);
     }
 
-    private UserPrincipal buildUserPrincipal(User user) {
+    public UserPrincipal buildUserPrincipal(User user) {
         Long studentId = null;
         Long teacherId = null;
 

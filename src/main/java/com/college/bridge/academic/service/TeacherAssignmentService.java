@@ -50,11 +50,27 @@ public class TeacherAssignmentService {
 
         List<Subject> subjects = subjectRepository.findAllById(subjectIds);
 
-
         if (subjects.size() != subjectIds.size()) {
             throw new EntityNotFoundException(
                     "One or more selected subjects do not exist."
             );
+        }
+
+        // Institution tenant isolation — subjects must belong to the teacher's institution
+        Long teacherInstitutionId = teacher.getUser() != null && teacher.getUser().getInstitution() != null
+                ? teacher.getUser().getInstitution().getInstitutionId()
+                : null;
+        if (teacherInstitutionId != null) {
+            List<String> crossTenantSubjects = subjects.stream()
+                    .filter(s -> s.getInstitution() == null
+                            || !s.getInstitution().getInstitutionId().equals(teacherInstitutionId))
+                    .map(Subject::getName)
+                    .toList();
+            if (!crossTenantSubjects.isEmpty()) {
+                throw new EntityNotFoundException(
+                        "Subjects do not belong to this institution: " + String.join(", ", crossTenantSubjects)
+                );
+            }
         }
 
         List<TeacherAssignment> existingAssignments =

@@ -366,6 +366,24 @@ public class AcademicAdminService {
         return AcademicClassResponse.from(saved);
     }
 
+    @Transactional
+    public void deleteAcademicClass(Long classId) {
+        Long tenantId = requireTenantId();
+        AcademicClass academicClass = academicClassRepository.findByClassIdAndInstitution_InstitutionId(classId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Academic class not found or access denied: " + classId));
+
+        // Un-assign all students from this class (preserve their accounts)
+        List<Student> enrolledStudents = studentRepository.findByAcademicClass_ClassId(classId);
+        for (Student student : enrolledStudents) {
+            student.setAcademicClass(null);
+            studentRepository.save(student);
+        }
+        log.info("Un-assigned {} students from class ID: {}", enrolledStudents.size(), classId);
+
+        academicClassRepository.delete(academicClass);
+        log.info("Deleted AcademicClass ID: {} for institution: {}", classId, tenantId);
+    }
+
 
     private void ensureAcademicClassExists(Institution institution, String faculty, Integer semester) {
         if (!academicClassRepository.existsByInstitution_InstitutionIdAndFacultyAndSemester(institution.getInstitutionId(), faculty, semester)) {

@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -44,12 +45,16 @@ public class TeacherAcademicService {
         Long institutionId = teacher.getUser().getInstitution().getInstitutionId();
         List<TeacherAssignment> assignments = teacherAssignmentRepository.findByTeacherTeacherId(teacherId);
 
-        // Map assignments to academic classes via subject faculty & semester
-        List<AcademicClass> classes = assignments.stream()
+        List<AcademicClass> subjectClasses = assignments.stream()
                 .map(a -> academicClassRepository.findByInstitution_InstitutionIdAndFacultyAndSemester(
                         institutionId, a.getSubject().getFaculty(), a.getSubject().getSemester()
                 ))
                 .flatMap(java.util.Optional::stream)
+                .toList();
+
+        List<AcademicClass> classTeacherClasses = academicClassRepository.findByInstitution_InstitutionIdAndClassTeacher_TeacherId(institutionId, teacherId);
+
+        List<AcademicClass> classes = Stream.concat(subjectClasses.stream(), classTeacherClasses.stream())
                 .distinct()
                 .toList();
 
@@ -65,8 +70,20 @@ public class TeacherAcademicService {
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher not found: " + teacherId));
 
         Long institutionId = teacher.getUser().getInstitution().getInstitutionId();
-        AcademicClass academicClass = academicClassRepository.findByClassIdAndInstitution_InstitutionId(classId, institutionId)
+        AcademicClass academicClass = academicClassRepository.findById(classId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic class not found: " + classId));
+
+        if (!academicClass.getInstitution().getInstitutionId().equals(institutionId)) {
+            throw new ResourceNotFoundException("Class does not belong to the teacher's institution");
+        }
+
+        boolean isSubjectAssigned = teacherAssignmentRepository.existsByTeacher_TeacherIdAndSubject_FacultyAndSubject_Semester(
+                teacherId, academicClass.getFaculty(), academicClass.getSemester());
+        boolean isClassTeacher = academicClass.getClassTeacher() != null && academicClass.getClassTeacher().getTeacherId().equals(teacherId);
+
+        if (!isSubjectAssigned && !isClassTeacher) {
+            throw new ResourceNotFoundException("Teacher is not authorized to access this class");
+        }
 
         List<Student> students = studentRepository.findByAcademicClass_ClassId(classId);
         List<ClassStudentResponse> studentResponses = students.stream().map(s -> ClassStudentResponse.builder()
@@ -92,7 +109,7 @@ public class TeacherAcademicService {
         for (Map.Entry<Teacher, List<Subject>> entry : teacherSubjectMap.entrySet()) {
             Teacher t = entry.getKey();
             List<Subject> teacherSubjects = entry.getValue();
-            boolean isClassTeacher = academicClass.getClassTeacher() != null &&
+            boolean isCT = academicClass.getClassTeacher() != null &&
                     academicClass.getClassTeacher().getTeacherId().equals(t.getTeacherId());
 
             teacherResponses.add(ClassTeacherResponse.builder()
@@ -101,7 +118,7 @@ public class TeacherAcademicService {
                     .fullName(t.getUser() != null ? t.getUser().getFullName() : "Unknown")
                     .email(t.getUser() != null ? t.getUser().getEmail() : "")
                     .assignedSubjects(teacherSubjects.stream().map(Subject::getName).toList())
-                    .isClassTeacher(isClassTeacher)
+                    .isClassTeacher(isCT)
                     .build());
         }
 

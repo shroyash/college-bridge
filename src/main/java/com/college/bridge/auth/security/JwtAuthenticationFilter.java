@@ -26,18 +26,20 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Date;
 
+import com.college.bridge.auth.service.TokenRevocationService;
+
 @Component
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
-    private final UserTokenRevocationService userTokenRevocationService;
+    private final TokenRevocationService userTokenRevocationService;
 
     public JwtAuthenticationFilter(
             JwtService jwtService,
             CustomUserDetailsService userDetailsService,
-            UserTokenRevocationService userTokenRevocationService
+            TokenRevocationService userTokenRevocationService
     ) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;

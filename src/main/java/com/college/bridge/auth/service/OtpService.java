@@ -115,4 +115,18 @@ public class OtpService {
                         && otp.getCreatedAt().plusMinutes(15).isAfter(LocalDateTime.now()))
                 .orElse(false);
     }
+
+    public void invalidateVerificationToken(String email, String token, OtpType type) {
+        if (token == null || token.isBlank()) {
+            return;
+        }
+
+        otpRepository.findFirstByEmailAndTypeAndVerifiedOrderByCreatedAtDesc(email, type, true)
+                .ifPresent(otp -> {
+                    if (token.equals(otp.getVerificationToken())) {
+                        otp.setVerificationToken(null);
+                        otpRepository.save(otp);
+                    }
+                });
+    }
 }

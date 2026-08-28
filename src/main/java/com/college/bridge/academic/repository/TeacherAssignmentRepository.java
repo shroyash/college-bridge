@@ -17,6 +17,12 @@ public interface TeacherAssignmentRepository
             Subject subject
     );
 
+    boolean existsByTeacher_TeacherIdAndSubject_FacultyAndSubject_Semester(
+            Long teacherId,
+            String faculty,
+            Integer semester
+    );
+
     void deleteByTeacherTeacherId(Long teacherId);
 
 }

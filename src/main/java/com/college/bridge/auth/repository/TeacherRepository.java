@@ -18,5 +18,9 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long> {
     Optional<Teacher> findByUser_UserId(Long userId);
 
     List<Teacher> findByUser_UserIdIn(List<Long> userIds);
+
+    long countByUser_Institution_InstitutionId(Long institutionId);
+
+    org.springframework.data.domain.Page<Teacher> findByUser_Institution_InstitutionId(Long institutionId, org.springframework.data.domain.Pageable pageable);
 }
 

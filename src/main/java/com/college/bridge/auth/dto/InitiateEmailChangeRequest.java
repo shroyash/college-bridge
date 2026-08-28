@@ -13,4 +13,7 @@ public class InitiateEmailChangeRequest {
     @NotBlank(message = "New email is required")
     @Email(message = "Invalid email format")
     private String newEmail;
+
+    @NotBlank(message = "Current password is required")
+    private String currentPassword;
 }

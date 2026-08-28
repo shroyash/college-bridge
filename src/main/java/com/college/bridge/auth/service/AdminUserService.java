@@ -60,39 +60,29 @@ public class AdminUserService {
     private final AcademicClassRepository academicClassRepository;
     private final SubjectEnrollmentRepository subjectEnrollmentRepository;
     private final UserMapper userMapper;
-    private final UserTokenRevocationService userTokenRevocationService;
+    private final TokenRevocationService userTokenRevocationService;
 
     @Transactional(readOnly = true)
     public Page<UserProfileResponse> getAllUsers(Pageable pageable) {
-        return userRepository.findAll(pageable)
-                .map(user -> {
-                    Student student = null;
-                    if (UserRole.STUDENT.equals(user.getRole())) {
-                        student = studentRepository.findByUser(user).orElse(null);
-                    }
-                    return userMapper.toProfileResponse(user, student);
-                });
+        Page<User> userPage = userRepository.findAll(pageable);
+        return mapUsersToProfileResponse(userPage);
     }
 
     @Transactional(readOnly = true)
     public Page<UserProfileResponse> searchUsers(String query, Pageable pageable) {
         Specification<User> spec = UserSpecification.search(query);
-        return userRepository.findAll(spec, pageable)
-                .map(user -> {
-                    Student student = null;
-                    if (UserRole.STUDENT.equals(user.getRole())) {
-                        student = studentRepository.findByUser(user).orElse(null);
-                    }
-                    return userMapper.toProfileResponse(user, student);
-                });
+        Page<User> userPage = userRepository.findAll(spec, pageable);
+        return mapUsersToProfileResponse(userPage);
     }
 
     @Transactional(readOnly = true)
     public Page<UserProfileResponse> filterUsers(UserRole role, UserStatus status, Pageable pageable) {
         Specification<User> spec = UserSpecification.hasRole(role);
-
         Page<User> userPage = userRepository.findAll(spec, pageable);
+        return mapUsersToProfileResponse(userPage);
+    }
 
+    private Page<UserProfileResponse> mapUsersToProfileResponse(Page<User> userPage) {
         List<Long> userIds = userPage.getContent().stream()
                 .map(User::getUserId)
                 .toList();
@@ -100,10 +90,9 @@ public class AdminUserService {
         Map<Long, Student> studentByUserId = Collections.emptyMap();
         Map<Long, Teacher> teacherByUserId = Collections.emptyMap();
 
-        if (UserRole.STUDENT.equals(role) && !userIds.isEmpty()) {
+        if (!userIds.isEmpty()) {
             studentByUserId = studentRepository.findByUser_UserIdIn(userIds).stream()
                     .collect(Collectors.toMap(s -> s.getUser().getUserId(), Function.identity()));
-        } else if (UserRole.TEACHER.equals(role) && !userIds.isEmpty()) {
             teacherByUserId = teacherRepository.findByUser_UserIdIn(userIds).stream()
                     .collect(Collectors.toMap(t -> t.getUser().getUserId(), Function.identity()));
         }
@@ -118,76 +107,13 @@ public class AdminUserService {
         });
     }
 
-    @Transactional(readOnly = true)
-    public Page<UserProfileResponse> getStudentsFiltered(Principal principal, String faculty, Integer semester, String search, Pageable pageable) {
-        Long tenantId = getTenantId(principal);
-        String searchPattern = (search != null && !search.isBlank()) ? search.trim() : null;
-        String facultyParam = (faculty != null && !faculty.isBlank()) ? faculty.trim() : null;
-
-        return studentRepository.findStudentsFiltered(tenantId, facultyParam, semester, searchPattern, pageable)
-                .map(student -> userMapper.toProfileResponse(student.getUser(), student));
-    }
-
-    @Transactional(readOnly = true)
-    public StudentFilterOptionsResponse getStudentFilterOptions(Principal principal) {
-        Long tenantId = getTenantId(principal);
-        List<String> faculties = academicClassRepository.findDistinctFacultiesByInstitutionId(tenantId);
-        List<Integer> semesters = List.of(1, 2, 3, 4, 5, 6, 7, 8);
-
-        return StudentFilterOptionsResponse.builder()
-                .faculties(faculties)
-                .semesters(semesters)
-                .build();
-    }
-
-    @Transactional
-    public BulkTransferResponse bulkTransferStudents(Principal principal, BulkTransferRequest request) {
-        Long tenantId = getTenantId(principal);
-
-        if (request.getStudentIds() == null || request.getStudentIds().isEmpty()) {
-            throw new BusinessRuleException("Student IDs list must not be empty.");
-        }
-
-        AcademicClass targetClass = academicClassRepository
-                .findByClassIdAndInstitution_InstitutionId(request.getTargetClassId(), tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Target Academic Class not found for ID: " + request.getTargetClassId()));
-
-        long validStudents = studentRepository.countByStudentIdInAndTenantId(request.getStudentIds(), tenantId);
-        if (validStudents != request.getStudentIds().size()) {
-            throw new TenantMismatchException("One or more selected students do not belong to your institution.");
-        }
-
-        int updatedCount = studentRepository.bulkUpdateAcademicClass(request.getStudentIds(), targetClass.getClassId(), tenantId);
-
-        subjectEnrollmentRepository.bulkDeleteByStudentIds(request.getStudentIds());
-
-        subjectEnrollmentRepository.bulkInsertEnrollmentsForTargetClass(
-                request.getStudentIds(),
-                tenantId,
-                targetClass.getFaculty(),
-                targetClass.getSemester()
-        );
-
-        log.info("Bulk transferred {} students to AcademicClass {} (Faculty: {}, Sem: {}) for tenant {}.",
-                updatedCount, targetClass.getClassId(), targetClass.getFaculty(), targetClass.getSemester(), tenantId);
-
-        return BulkTransferResponse.builder()
-                .success(true)
-                .updatedStudents(updatedCount)
-                .targetClass(BulkTransferResponse.TargetClassDto.builder()
-                        .classId(targetClass.getClassId())
-                        .faculty(targetClass.getFaculty())
-                        .semester(targetClass.getSemester())
-                        .displayName(targetClass.getDisplayName())
-                        .build())
-                .build();
-    }
-
     public void verifyTeacher(Long teacherId, String adminEmail) {
         Teacher teacher = teacherRepository.findById(teacherId)
                 .orElseThrow(() -> new UserNotFoundException("Teacher not found with ID: " + teacherId));
 
         User user = teacher.getUser();
+        validateTenantAccess(user);
+
         if (UserStatus.ACTIVE.equals(user.getStatus())) {
             throw new TeacherAlreadyVerifiedException("Teacher is already verified.");
         }
@@ -209,6 +135,8 @@ public class AdminUserService {
                 .orElseThrow(() -> new UserNotFoundException("Teacher not found with ID: " + teacherId));
 
         User user = teacher.getUser();
+        validateTenantAccess(user);
+
         user.setStatus(UserStatus.SUSPENDED);
         userRepository.save(user);
 
@@ -226,6 +154,8 @@ public class AdminUserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
 
+        validateTenantAccess(user);
+
         user.setStatus(UserStatus.SUSPENDED);
         userRepository.save(user);
 
@@ -238,6 +168,8 @@ public class AdminUserService {
     public void activateUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+
+        validateTenantAccess(user);
 
         user.setStatus(UserStatus.ACTIVE);
         userRepository.save(user);
@@ -253,11 +185,7 @@ public class AdminUserService {
         User targetUser = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
 
-        Long currentTenant = com.college.bridge.common.tenant.TenantContext.get();
-        if (currentTenant != null && targetUser.getInstitution() != null 
-                && !currentTenant.equals(targetUser.getInstitution().getInstitutionId())) {
-            throw new TenantMismatchException("User does not belong to your institution.");
-        }
+        validateTenantAccess(targetUser);
 
         if (targetUser.getRole() == request.getRole()) {
             return;
@@ -296,6 +224,8 @@ public class AdminUserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
 
+        validateTenantAccess(user);
+
         if (UserRole.ADMIN.equals(user.getRole())) {
             long adminCount = userRepository.countByRoleAndStatus(UserRole.ADMIN, UserStatus.ACTIVE);
             if (adminCount <= 1) {
@@ -308,17 +238,11 @@ public class AdminUserService {
         log.info("User ID: {} soft-deleted by Admin.", userId);
     }
 
-    private Long getTenantId(Principal principal) {
-        Long tenantId = com.college.bridge.common.tenant.TenantContext.get();
-        if (tenantId != null) {
-            return tenantId;
+    private void validateTenantAccess(User targetUser) {
+        Long currentTenant = com.college.bridge.common.tenant.TenantContext.get();
+        if (currentTenant != null && targetUser.getInstitution() != null 
+                && !currentTenant.equals(targetUser.getInstitution().getInstitutionId())) {
+            throw new TenantMismatchException("User does not belong to your institution.");
         }
-        if (principal != null && principal.getName() != null) {
-            User user = userRepository.findByEmail(principal.getName()).orElse(null);
-            if (user != null && user.getInstitution() != null) {
-                return user.getInstitution().getInstitutionId();
-            }
-        }
-        throw new BusinessRuleException("Institution context is missing.");
     }
 }

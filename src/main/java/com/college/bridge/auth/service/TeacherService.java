@@ -24,6 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 
+import com.college.bridge.common.exception.TenantMismatchException;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -74,15 +76,20 @@ public class TeacherService {
                 .orElseThrow(() ->
                         new EntityNotFoundException("Teacher not found."));
 
+        validateTenantAccess(teacher);
+
         return teacherMapper.toResponse(teacher);
     }
 
 
     @Transactional(readOnly = true)
     public Page<TeacherResponse> getTeachers(Pageable pageable) {
+        Long tenantId = TenantContext.get();
+        Page<Teacher> page = (tenantId != null)
+                ? teacherRepository.findByUser_Institution_InstitutionId(tenantId, pageable)
+                : teacherRepository.findAll(pageable);
 
-        return teacherRepository.findAll(pageable)
-                .map(teacherMapper::toResponse);
+        return page.map(teacherMapper::toResponse);
     }
 
 
@@ -94,6 +101,8 @@ public class TeacherService {
         Teacher teacher = teacherRepository.findById(teacherId)
                 .orElseThrow(() ->
                         new EntityNotFoundException("Teacher not found."));
+
+        validateTenantAccess(teacher);
 
         User user = teacher.getUser();
 
@@ -119,7 +128,17 @@ public class TeacherService {
                 .orElseThrow(() ->
                         new EntityNotFoundException("Teacher not found."));
 
+        validateTenantAccess(teacher);
+
         teacherRepository.delete(teacher);
     }
 
+    private void validateTenantAccess(Teacher teacher) {
+        Long currentTenant = TenantContext.get();
+        if (currentTenant != null && teacher.getUser() != null && teacher.getUser().getInstitution() != null) {
+            if (!currentTenant.equals(teacher.getUser().getInstitution().getInstitutionId())) {
+                throw new TenantMismatchException("Teacher does not belong to your institution.");
+            }
+        }
+    }
 }

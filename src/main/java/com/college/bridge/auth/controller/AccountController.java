@@ -4,7 +4,6 @@ import java.security.Principal;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-
 import com.college.bridge.auth.dto.ChangePasswordRequest;
 import com.college.bridge.auth.dto.ConfirmEmailChangeRequest;
 import com.college.bridge.auth.dto.InitiateEmailChangeRequest;
@@ -36,9 +34,6 @@ public class AccountController {
     private String extractEmail(Principal principal) {
         if (principal != null) {
             return principal.getName();
-        }
-        if (SecurityContextHolder.getContext().getAuthentication() != null) {
-            return SecurityContextHolder.getContext().getAuthentication().getName();
         }
         return null;
     }

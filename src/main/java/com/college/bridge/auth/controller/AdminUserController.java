@@ -31,6 +31,8 @@ import com.college.bridge.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+import com.college.bridge.auth.service.StudentCohortService;
+
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
@@ -38,6 +40,7 @@ import lombok.RequiredArgsConstructor;
 public class AdminUserController {
 
     private final AdminUserService adminUserService;
+    private final StudentCohortService studentCohortService;
 
     private String extractEmail(Principal principal) {
         if (principal != null) {
@@ -78,13 +81,13 @@ public class AdminUserController {
             @RequestParam(required = false) String search,
             Pageable pageable,
             Principal principal) {
-        Page<UserProfileResponse> page = adminUserService.getStudentsFiltered(principal, faculty, semester, search, pageable);
+        Page<UserProfileResponse> page = studentCohortService.getStudentsFiltered(principal, faculty, semester, search, pageable);
         return ResponseEntity.ok(ApiResponse.success("Students fetched successfully.", page));
     }
 
     @GetMapping("/students/filter-options")
     public ResponseEntity<ApiResponse<StudentFilterOptionsResponse>> getStudentFilterOptions(Principal principal) {
-        StudentFilterOptionsResponse options = adminUserService.getStudentFilterOptions(principal);
+        StudentFilterOptionsResponse options = studentCohortService.getStudentFilterOptions(principal);
         return ResponseEntity.ok(ApiResponse.success("Student filter options fetched.", options));
     }
 
@@ -92,7 +95,7 @@ public class AdminUserController {
     public ResponseEntity<ApiResponse<BulkTransferResponse>> bulkTransferStudents(
             @Valid @RequestBody BulkTransferRequest request,
             Principal principal) {
-        BulkTransferResponse response = adminUserService.bulkTransferStudents(principal, request);
+        BulkTransferResponse response = studentCohortService.bulkTransferStudents(principal, request);
         return ResponseEntity.ok(ApiResponse.success(
                 response.getUpdatedStudents() + " students successfully updated.",
                 response

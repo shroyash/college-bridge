@@ -60,10 +60,7 @@ public class SecurityConfig {
                                 "/api/auth/register",
                                 "/api/auth/login",
                                 "/api/auth/refresh",
-                                "/api/auth/forgot-password",
-                                "/api/auth/verify-otp",
-                                "/api/auth/resend-otp",
-                                "/api/auth/reset-password",
+                                "/api/auth/password/**",
                                 "/api/auth/register-institution"
                         ).permitAll()
 
@@ -74,8 +71,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/super-admin/**").hasRole("SUPER_ADMIN")
 
                         // Admin-only endpoints
-                        .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "INSTITUTION_ADMIN", "SUPER_ADMIN")
-                        .requestMatchers("/api/files/**").hasAnyRole("ADMIN", "INSTITUTION_ADMIN", "SUPER_ADMIN")
+                        .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                        .requestMatchers("/api/files/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
 
                         // Account endpoints — any authenticated user
                         .requestMatchers("/api/account/**").authenticated()
