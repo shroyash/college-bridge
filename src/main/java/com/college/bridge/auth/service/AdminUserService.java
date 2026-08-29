@@ -1,6 +1,5 @@
 package com.college.bridge.auth.service;
 
-import java.security.Principal;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
@@ -14,14 +13,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.college.bridge.academic.entity.AcademicClass;
-import com.college.bridge.academic.repository.AcademicClassRepository;
-import com.college.bridge.academic.repository.SubjectEnrollmentRepository;
-import com.college.bridge.auth.dto.BulkTransferRequest;
-import com.college.bridge.auth.dto.BulkTransferResponse;
 import com.college.bridge.auth.dto.ChangeRoleRequest;
-import com.college.bridge.auth.dto.RejectTeacherRequest;
-import com.college.bridge.auth.dto.StudentFilterOptionsResponse;
 import com.college.bridge.auth.dto.UserProfileResponse;
 import com.college.bridge.auth.entity.Student;
 import com.college.bridge.auth.entity.Teacher;
@@ -29,7 +21,6 @@ import com.college.bridge.auth.entity.User;
 import com.college.bridge.auth.entity.UserRole;
 import com.college.bridge.auth.entity.UserStatus;
 import com.college.bridge.auth.exception.InvalidRoleException;
-import com.college.bridge.auth.exception.TeacherAlreadyVerifiedException;
 import com.college.bridge.auth.exception.UserNotFoundException;
 import com.college.bridge.auth.mapper.UserMapper;
 import com.college.bridge.auth.repository.RefreshTokenRepository;
@@ -38,10 +29,7 @@ import com.college.bridge.auth.repository.TeacherRepository;
 import com.college.bridge.auth.repository.UserRepository;
 import com.college.bridge.auth.specification.UserSpecification;
 import com.college.bridge.common.exception.BusinessRuleException;
-import com.college.bridge.common.exception.ResourceNotFoundException;
 import com.college.bridge.common.exception.TenantMismatchException;
-import com.college.bridge.verification.entity.VerificationStatus;
-import com.college.bridge.verification.repository.TeacherVerificationRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -55,10 +43,7 @@ public class AdminUserService {
     private final UserRepository userRepository;
     private final StudentRepository studentRepository;
     private final TeacherRepository teacherRepository;
-    private final TeacherVerificationRepository verificationRepository;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final AcademicClassRepository academicClassRepository;
-    private final SubjectEnrollmentRepository subjectEnrollmentRepository;
     private final UserMapper userMapper;
     private final TokenRevocationService userTokenRevocationService;
 
@@ -105,49 +90,6 @@ public class AdminUserService {
             Teacher teacher = finalTeacherMap.get(user.getUserId());
             return userMapper.toProfileResponse(user, student, teacher);
         });
-    }
-
-    public void verifyTeacher(Long teacherId, String adminEmail) {
-        Teacher teacher = teacherRepository.findById(teacherId)
-                .orElseThrow(() -> new UserNotFoundException("Teacher not found with ID: " + teacherId));
-
-        User user = teacher.getUser();
-        validateTenantAccess(user);
-
-        if (UserStatus.ACTIVE.equals(user.getStatus())) {
-            throw new TeacherAlreadyVerifiedException("Teacher is already verified.");
-        }
-
-        user.setStatus(UserStatus.ACTIVE);
-        userRepository.save(user);
-
-        verificationRepository.findByUser(user)
-                .ifPresent(req -> {
-                    req.setStatus(VerificationStatus.APPROVED);
-                    verificationRepository.save(req);
-                });
-
-        log.info("Teacher ID: {} verified by Admin: {}.", teacherId, adminEmail);
-    }
-
-    public void rejectTeacher(Long teacherId, RejectTeacherRequest request, String adminEmail) {
-        Teacher teacher = teacherRepository.findById(teacherId)
-                .orElseThrow(() -> new UserNotFoundException("Teacher not found with ID: " + teacherId));
-
-        User user = teacher.getUser();
-        validateTenantAccess(user);
-
-        user.setStatus(UserStatus.SUSPENDED);
-        userRepository.save(user);
-
-        verificationRepository.findByUser(user)
-                .ifPresent(req -> {
-                    req.setStatus(VerificationStatus.REJECTED);
-                    req.setRejectionReason(request.getRejectionReason());
-                    verificationRepository.save(req);
-                });
-
-        log.info("Teacher ID: {} rejected by Admin: {}. Reason: {}", teacherId, adminEmail, request.getRejectionReason());
     }
 
     public void suspendUser(Long userId) {

@@ -1,9 +1,11 @@
 package com.college.bridge.academic.entity;
 
-import com.college.bridge.institution.entity.Institution;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -11,8 +13,8 @@ import java.util.Set;
 @Table(
     name = "subjects",
     uniqueConstraints = @UniqueConstraint(
-        name = "uk_subjects_institution_faculty_semester_name",
-        columnNames = {"institution_id", "faculty", "semester", "name"}
+        name = "uk_subjects_level_name",
+        columnNames = {"level_id", "name"}
     )
 )
 @Getter
@@ -28,22 +30,31 @@ public class Subject {
     private Long subjectId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "institution_id", nullable = false)
-    private Institution institution;
+    @JoinColumn(name = "level_id", nullable = false)
+    private AcademicLevel academicLevel;
 
     @Column(name = "name", nullable = false, length = 150)
     private String name;
 
-    @Column(name = "faculty", nullable = false, length = 20)
-    private String faculty;
-
-    @Column(name = "semester", nullable = false)
-    private Integer semester;
+    @Column(name = "code", length = 50)
+    private String code;
 
     @Column(name = "credit_hours")
     private Integer creditHours;
 
+    @Column(name = "fcm_topic_id", length = 100)
+    private String fcmTopicId;
+
     @OneToMany(mappedBy = "subject")
     @Builder.Default
     private Set<TeacherAssignment> assignments = new HashSet<>();
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    @Builder.Default
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }

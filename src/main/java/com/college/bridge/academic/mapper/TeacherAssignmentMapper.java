@@ -21,7 +21,10 @@ public interface TeacherAssignmentMapper {
     @Mapping(target = "assignmentId", source = "assignmentId")
     @Mapping(target = "subjectId", source = "subject.subjectId")
     @Mapping(target = "subjectName", source = "subject.name")
-    @Mapping(target = "faculty", source = "subject.faculty")
-    @Mapping(target = "semester", source = "subject.semester")
+    @Mapping(target = "subjectCode", source = "subject.code")
+    @Mapping(target = "levelId", source = "subject.academicLevel.levelId")
+    @Mapping(target = "levelName", source = "subject.academicLevel.name")
+    @Mapping(target = "programId", source = "subject.academicLevel.program.programId")
+    @Mapping(target = "programName", source = "subject.academicLevel.program.name")
     TeacherAssignmentResponse toResponse(TeacherAssignment entity);
 }

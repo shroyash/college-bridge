@@ -1,5 +1,6 @@
 package com.college.bridge.academic.controller;
 
+import com.college.bridge.academic.dto.SubjectDetailResponse;
 import com.college.bridge.academic.dto.SubjectResponse;
 import com.college.bridge.academic.service.SubjectService;
 import com.college.bridge.auth.security.UserPrincipal;
@@ -24,11 +25,17 @@ public class SubjectController {
         return ResponseEntity.ok(subjectService.getSubjectById(id));
     }
 
+    @GetMapping("/{id}/details")
+    public ResponseEntity<SubjectDetailResponse> getSubjectDetails(
+            @PathVariable("id") Long id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(subjectService.getSubjectDetails(id, principal));
+    }
+
     @GetMapping
-    public ResponseEntity<List<SubjectResponse>> getSubjectsByFacultyAndSemester(
-            @RequestParam String faculty,
-            @RequestParam Integer semester) {
-        return ResponseEntity.ok(subjectService.getSubjects(faculty, semester));
+    public ResponseEntity<List<SubjectResponse>> getSubjectsByLevel(
+            @RequestParam Long levelId) {
+        return ResponseEntity.ok(subjectService.getSubjectsByLevel(levelId));
     }
 
     @GetMapping("/all")
@@ -46,7 +53,7 @@ public class SubjectController {
     public ResponseEntity<List<SubjectResponse>> getMySubjects(
             @AuthenticationPrincipal UserPrincipal principal) {
 
-        Long studentId =principal.getStudentId();
+        Long studentId = principal.getStudentId();
         if (studentId == null) {
             throw new AccessDeniedException("Only students can access this resource");
         }

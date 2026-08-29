@@ -8,18 +8,33 @@ import lombok.Value;
 @Builder
 public class SubjectResponse {
     Long subjectId;
+    Long levelId;
+    String levelName;
+    Long programId;
+    String programName;
     String name;
-    String faculty;
-    Integer semester;
+    String code;
     Integer creditHours;
+    String fcmTopicId;
 
     public static SubjectResponse from(Subject subject) {
+        Long levelId = subject.getAcademicLevel() != null ? subject.getAcademicLevel().getLevelId() : null;
+        String levelName = subject.getAcademicLevel() != null ? subject.getAcademicLevel().getName() : null;
+        Long programId = (subject.getAcademicLevel() != null && subject.getAcademicLevel().getProgram() != null)
+                ? subject.getAcademicLevel().getProgram().getProgramId() : null;
+        String programName = (subject.getAcademicLevel() != null && subject.getAcademicLevel().getProgram() != null)
+                ? subject.getAcademicLevel().getProgram().getName() : null;
+
         return SubjectResponse.builder()
                 .subjectId(subject.getSubjectId())
+                .levelId(levelId)
+                .levelName(levelName)
+                .programId(programId)
+                .programName(programName)
                 .name(subject.getName())
-                .faculty(subject.getFaculty())
-                .semester(subject.getSemester())
+                .code(subject.getCode())
                 .creditHours(subject.getCreditHours())
+                .fcmTopicId(subject.getFcmTopicId())
                 .build();
     }
 }

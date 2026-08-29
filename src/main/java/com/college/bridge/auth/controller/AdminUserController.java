@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.college.bridge.auth.dto.BulkTransferRequest;
 import com.college.bridge.auth.dto.BulkTransferResponse;
 import com.college.bridge.auth.dto.ChangeRoleRequest;
-import com.college.bridge.auth.dto.RejectTeacherRequest;
 import com.college.bridge.auth.dto.StudentFilterOptionsResponse;
 import com.college.bridge.auth.dto.UserProfileResponse;
 import com.college.bridge.auth.entity.UserRole;
@@ -76,12 +75,12 @@ public class AdminUserController {
 
     @GetMapping("/students")
     public ResponseEntity<ApiResponse<Page<UserProfileResponse>>> getStudents(
-            @RequestParam(required = false) String faculty,
-            @RequestParam(required = false) Integer semester,
+            @RequestParam(required = false) Long programId,
+            @RequestParam(required = false) Long levelId,
             @RequestParam(required = false) String search,
             Pageable pageable,
             Principal principal) {
-        Page<UserProfileResponse> page = studentCohortService.getStudentsFiltered(principal, faculty, semester, search, pageable);
+        Page<UserProfileResponse> page = studentCohortService.getStudentsFiltered(principal, programId, levelId, search, pageable);
         return ResponseEntity.ok(ApiResponse.success("Students fetched successfully.", page));
     }
 
@@ -100,23 +99,6 @@ public class AdminUserController {
                 response.getUpdatedStudents() + " students successfully updated.",
                 response
         ));
-    }
-
-    @PostMapping("/teacher/{id}/verify")
-    public ResponseEntity<ApiResponse<Void>> verifyTeacher(
-            @PathVariable Long id,
-            Principal principal) {
-        adminUserService.verifyTeacher(id, extractEmail(principal));
-        return ResponseEntity.ok(ApiResponse.success("Teacher verified."));
-    }
-
-    @PostMapping("/teacher/{id}/reject")
-    public ResponseEntity<ApiResponse<Void>> rejectTeacher(
-            @PathVariable Long id,
-            @RequestBody RejectTeacherRequest request,
-            Principal principal) {
-        adminUserService.rejectTeacher(id, request, extractEmail(principal));
-        return ResponseEntity.ok(ApiResponse.success("Teacher rejected."));
     }
 
     @PostMapping("/users/{id}/suspend")

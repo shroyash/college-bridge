@@ -46,6 +46,7 @@ class FileStorageControllerTest {
     private JwtAccessDeniedHandler accessDeniedHandler;
 
     @Test
+    @org.springframework.security.test.context.support.WithMockUser(roles = "ADMIN")
     @DisplayName("POST /api/files/upload - Should upload file and return storage URL")
     void testUploadSuccess() throws Exception {
         MockMultipartFile file = new MockMultipartFile(

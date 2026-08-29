@@ -1,25 +1,29 @@
 package com.college.bridge.academic.repository;
 
 import com.college.bridge.academic.entity.Subject;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.data.jpa.repository.EntityGraph;
-
+@Repository
 public interface SubjectRepository extends JpaRepository<Subject, Long> {
 
-    @EntityGraph(attributePaths = {"assignments", "assignments.teacher", "assignments.teacher.user"})
-    List<Subject> findByInstitution_InstitutionIdAndFacultyAndSemester(Long institutionId, String faculty, Integer semester);
+    @EntityGraph(attributePaths = {"academicLevel", "academicLevel.program", "assignments", "assignments.teacher", "assignments.teacher.user"})
+    List<Subject> findByAcademicLevel_LevelId(Long levelId);
 
-    boolean existsByInstitution_InstitutionIdAndNameAndFacultyAndSemester(Long institutionId, String name, String faculty, Integer semester);
+    @EntityGraph(attributePaths = {"academicLevel", "academicLevel.program"})
+    List<Subject> findByAcademicLevel_Program_Institution_InstitutionId(Long institutionId);
 
-    List<Subject> findByInstitution_InstitutionIdAndNameContainingIgnoreCase(Long institutionId, String name);
+    @EntityGraph(attributePaths = {"academicLevel", "academicLevel.program"})
+    Optional<Subject> findBySubjectIdAndAcademicLevel_Program_Institution_InstitutionId(Long subjectId, Long institutionId);
 
-    List<Subject> findByInstitution_InstitutionId(Long institutionId);
+    boolean existsByAcademicLevel_LevelIdAndName(Long levelId, String name);
 
-    Optional<Subject> findBySubjectIdAndInstitution_InstitutionId(Long subjectId, Long institutionId);
+    @EntityGraph(attributePaths = {"academicLevel", "academicLevel.program"})
+    List<Subject> findByAcademicLevel_Program_Institution_InstitutionIdAndNameContainingIgnoreCase(Long institutionId, String name);
 
-    long countByInstitution_InstitutionId(Long institutionId);
+    long countByAcademicLevel_Program_Institution_InstitutionId(Long institutionId);
 }

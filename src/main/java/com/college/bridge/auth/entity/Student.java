@@ -1,13 +1,17 @@
 package com.college.bridge.auth.entity;
 
-import com.college.bridge.academic.entity.AcademicClass;
+import com.college.bridge.academic.entity.AcademicLevel;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "students")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,17 +27,17 @@ public class Student {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "academic_class_id", nullable = true)
-    private AcademicClass academicClass;
+    @JoinColumn(name = "level_id", nullable = true)
+    private AcademicLevel academicLevel;
 
-    @org.hibernate.annotations.CreationTimestamp
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
-    private java.time.LocalDateTime createdAt = java.time.LocalDateTime.now();
+    private LocalDateTime createdAt = LocalDateTime.now();
 
-    @org.hibernate.annotations.UpdateTimestamp
+    @UpdateTimestamp
     @Column(name = "updated_at")
-    private java.time.LocalDateTime updatedAt;
+    private LocalDateTime updatedAt;
 
     @Version
     @Column(name = "version")

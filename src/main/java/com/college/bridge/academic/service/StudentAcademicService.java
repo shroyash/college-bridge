@@ -3,7 +3,7 @@ package com.college.bridge.academic.service;
 import com.college.bridge.academic.dto.ClassDetailResponse;
 import com.college.bridge.academic.dto.ClassStudentResponse;
 import com.college.bridge.academic.dto.ClassTeacherResponse;
-import com.college.bridge.academic.entity.AcademicClass;
+import com.college.bridge.academic.entity.AcademicLevel;
 import com.college.bridge.academic.entity.Subject;
 import com.college.bridge.academic.entity.TeacherAssignment;
 import com.college.bridge.academic.repository.SubjectRepository;
@@ -34,13 +34,12 @@ public class StudentAcademicService {
         Student student = studentRepository.findByStudentId(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found with ID: " + studentId));
 
-        AcademicClass academicClass = student.getAcademicClass();
-        if (academicClass == null) {
-            throw new ResourceNotFoundException("Student is not currently assigned to any class.");
+        AcademicLevel level = student.getAcademicLevel();
+        if (level == null) {
+            throw new ResourceNotFoundException("Student is not currently assigned to any academic level.");
         }
 
-        Long institutionId = student.getUser().getInstitution().getInstitutionId();
-        List<Student> classmates = studentRepository.findByAcademicClass_ClassId(academicClass.getClassId());
+        List<Student> classmates = studentRepository.findByAcademicLevel_LevelId(level.getLevelId());
 
         List<ClassStudentResponse> studentResponses = classmates.stream().map(s -> ClassStudentResponse.builder()
                 .studentId(s.getStudentId())
@@ -50,9 +49,7 @@ public class StudentAcademicService {
                 .status(s.getUser() != null && s.getUser().getStatus() != null ? s.getUser().getStatus().name() : "ACTIVE")
                 .build()).toList();
 
-        List<Subject> subjects = subjectRepository.findByInstitution_InstitutionIdAndFacultyAndSemester(
-                institutionId, academicClass.getFaculty(), academicClass.getSemester()
-        );
+        List<Subject> subjects = subjectRepository.findByAcademicLevel_LevelId(level.getLevelId());
 
         List<ClassTeacherResponse> teacherResponses = new ArrayList<>();
         Map<Teacher, List<Subject>> teacherSubjectMap = subjects.stream()
@@ -65,8 +62,6 @@ public class StudentAcademicService {
         for (Map.Entry<Teacher, List<Subject>> entry : teacherSubjectMap.entrySet()) {
             Teacher teacher = entry.getKey();
             List<Subject> teacherSubjects = entry.getValue();
-            boolean isClassTeacher = academicClass.getClassTeacher() != null &&
-                    academicClass.getClassTeacher().getTeacherId().equals(teacher.getTeacherId());
 
             teacherResponses.add(ClassTeacherResponse.builder()
                     .teacherId(teacher.getTeacherId())
@@ -74,40 +69,22 @@ public class StudentAcademicService {
                     .fullName(teacher.getUser() != null ? teacher.getUser().getFullName() : "Unknown")
                     .email(teacher.getUser() != null ? teacher.getUser().getEmail() : "")
                     .assignedSubjects(teacherSubjects.stream().map(Subject::getName).toList())
-                    .isClassTeacher(isClassTeacher)
+                    .isClassTeacher(false)
                     .build());
         }
 
-        if (academicClass.getClassTeacher() != null) {
-            Teacher ct = academicClass.getClassTeacher();
-            if (teacherResponses.stream().noneMatch(tr -> tr.getTeacherId().equals(ct.getTeacherId()))) {
-                teacherResponses.add(ClassTeacherResponse.builder()
-                        .teacherId(ct.getTeacherId())
-                        .userId(ct.getUser() != null ? ct.getUser().getUserId() : null)
-                        .fullName(ct.getUser() != null ? ct.getUser().getFullName() : "Unknown")
-                        .email(ct.getUser() != null ? ct.getUser().getEmail() : "")
-                        .assignedSubjects(List.of())
-                        .isClassTeacher(true)
-                        .build());
-            }
-        }
-
-        String classTeacherName = academicClass.getClassTeacher() != null && academicClass.getClassTeacher().getUser() != null
-                ? academicClass.getClassTeacher().getUser().getFullName()
-                : null;
+        String displayName = level.getProgram() != null ? level.getProgram().getCode() + " - " + level.getName() : level.getName();
 
         return ClassDetailResponse.builder()
-                .classId(academicClass.getClassId())
-                .displayName(academicClass.getDisplayName())
-                .faculty(academicClass.getFaculty())
-                .semester(academicClass.getSemester())
+                .classId(level.getLevelId())
+                .displayName(displayName)
+                .faculty(level.getProgram() != null ? level.getProgram().getCode() : "")
+                .semester(level.getLevelNumber())
                 .totalStudents(studentResponses.size())
-                .classTeacherId(academicClass.getClassTeacher() != null ? academicClass.getClassTeacher().getTeacherId() : null)
-                .classTeacherName(classTeacherName)
-                .institutionId(academicClass.getInstitution().getInstitutionId())
-                .institutionName(academicClass.getInstitution().getName())
+                .institutionId(level.getProgram() != null && level.getProgram().getInstitution() != null ? level.getProgram().getInstitution().getInstitutionId() : null)
+                .institutionName(level.getProgram() != null && level.getProgram().getInstitution() != null ? level.getProgram().getInstitution().getName() : "")
                 .createdBy("Institution Admin")
-                .createdAt(academicClass.getCreatedAt() != null ? academicClass.getCreatedAt().toString() : "")
+                .createdAt(level.getCreatedAt() != null ? level.getCreatedAt().toString() : "")
                 .students(studentResponses)
                 .teachers(teacherResponses)
                 .build();

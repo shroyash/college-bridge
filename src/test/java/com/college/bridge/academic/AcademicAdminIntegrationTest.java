@@ -1,9 +1,6 @@
 package com.college.bridge.academic;
 
-import com.college.bridge.academic.dto.AcademicClassResponse;
-import com.college.bridge.academic.dto.CreateAcademicClassRequest;
-import com.college.bridge.academic.dto.CreateSubjectRequest;
-import com.college.bridge.academic.dto.SubjectResponse;
+import com.college.bridge.academic.dto.*;
 import com.college.bridge.academic.service.AcademicAdminService;
 import com.college.bridge.common.config.EnvLoader;
 import com.college.bridge.common.tenant.TenantContext;
@@ -41,8 +38,8 @@ public class AcademicAdminIntegrationTest {
     @BeforeEach
     void setUp() {
         institution = institutionRepository.save(Institution.builder()
-                .name("Dynamic Faculty College")
-                .code("DFC_" + UUID.randomUUID().toString().substring(0, 6))
+                .name("Normalized Hierarchy College")
+                .code("NHC_" + UUID.randomUUID().toString().substring(0, 6))
                 .status(InstitutionStatus.ACTIVE)
                 .build());
 
@@ -50,36 +47,36 @@ public class AcademicAdminIntegrationTest {
     }
 
     @Test
-    @DisplayName("Should create custom faculties BIT, BE_CIVIL, BSW and retrieve them in institution faculties list")
-    void testCreateCustomFaculties() {
-        // Create BIT
-        AcademicClassResponse bitClass = academicAdminService.createAcademicClass(CreateAcademicClassRequest.builder()
-                .faculty("BIT")
-                .semester(1)
+    @DisplayName("Should create programs BCA and BE_CIVIL, levels, and subjects in normalized hierarchy")
+    void testCreateNormalizedAcademicHierarchy() {
+        // Create Program BIT
+        AcademicProgramResponse bcaProgram = academicAdminService.createProgram(AcademicProgramRequest.builder()
+                .name("Bachelor of Computer Application")
+                .code("BCA")
                 .build());
-        assertEquals("BIT", bitClass.getFaculty());
-        assertEquals("BIT First Semester", bitClass.getDisplayName());
+        assertEquals("BCA", bcaProgram.getCode());
 
-        // Create BE_CIVIL
-        AcademicClassResponse civilClass = academicAdminService.createAcademicClass(CreateAcademicClassRequest.builder()
-                .faculty("BE_CIVIL")
-                .semester(1)
+        // Create Level 1
+        AcademicLevelResponse level1 = academicAdminService.createLevel(bcaProgram.getProgramId(), AcademicLevelRequest.builder()
+                .name("1st Semester")
+                .levelNumber(1)
+                .type(com.college.bridge.academic.entity.AcademicLevelType.SEMESTER)
                 .build());
-        assertEquals("BE_CIVIL", civilClass.getFaculty());
+        assertEquals("1st Semester", level1.getName());
 
-        // Create BSW Subject (which auto-creates BSW Sem 1 AcademicClass)
-        SubjectResponse bswSubject = academicAdminService.createSubject(CreateSubjectRequest.builder()
-                .name("Social Work Fundamentals")
-                .faculty("BSW")
-                .semester(1)
+        // Create Subject under Level 1
+        SubjectResponse subject = academicAdminService.createSubject(CreateSubjectRequest.builder()
+                .levelId(level1.getLevelId())
+                .name("Data Structures")
+                .code("CACS102")
                 .creditHours(3)
                 .build());
-        assertEquals("BSW", bswSubject.getFaculty());
+        assertEquals("Data Structures", subject.getName());
+        assertEquals("CACS102", subject.getCode());
+        assertEquals(level1.getLevelId(), subject.getLevelId());
 
-        // Retrieve distinct faculties
-        List<String> faculties = academicAdminService.getInstitutionFaculties();
-        assertTrue(faculties.contains("BIT"));
-        assertTrue(faculties.contains("BE_CIVIL"));
-        assertTrue(faculties.contains("BSW"));
+        // Retrieve programs
+        List<AcademicProgramResponse> programs = academicAdminService.getPrograms();
+        assertTrue(programs.stream().anyMatch(p -> p.getCode().equals("BCA")));
     }
 }

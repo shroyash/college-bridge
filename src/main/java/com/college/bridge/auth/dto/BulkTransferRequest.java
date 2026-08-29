@@ -15,6 +15,6 @@ public class BulkTransferRequest {
     @NotEmpty(message = "studentIds list must not be empty.")
     private List<Long> studentIds;
 
-    @NotNull(message = "targetClassId is required.")
-    private Long targetClassId;
+    @NotNull(message = "targetLevelId is required.")
+    private Long targetLevelId;
 }

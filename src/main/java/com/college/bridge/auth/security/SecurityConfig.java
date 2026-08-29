@@ -77,9 +77,6 @@ public class SecurityConfig {
                         // Account endpoints — any authenticated user
                         .requestMatchers("/api/account/**").authenticated()
 
-                        // Teacher verification — submit & view own request (authenticated users)
-                        .requestMatchers(HttpMethod.POST, "/api/verification/submit").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/verification/my-request").authenticated()
 
                         // Class endpoints — teachers and students can view their own
                         .requestMatchers(HttpMethod.GET, "/api/classes/my-classes").authenticated()

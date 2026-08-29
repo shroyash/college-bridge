@@ -4,7 +4,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,21 +16,21 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CreateSubjectRequest {
 
+    @NotNull(message = "Academic level ID is required")
+    private Long levelId;
+
     @NotBlank(message = "Subject name is required")
+    @Size(max = 150, message = "Subject name must not exceed 150 characters")
     private String name;
 
-    @NotBlank(message = "Faculty is required")
-    @Size(max = 20, message = "Faculty must not exceed 20 characters")
-    @Pattern(regexp = "^[A-Z0-9_]{2,20}$", message = "Faculty must be 2-20 uppercase alphanumeric characters or underscores")
-    private String faculty;
-
-    @NotNull(message = "Semester is required")
-    @Min(value = 1, message = "Semester must be at least 1")
-    @Max(value = 12, message = "Semester cannot exceed 12")
-    private Integer semester;
+    @Size(max = 50, message = "Subject code must not exceed 50 characters")
+    private String code;
 
     @Min(value = 1, message = "Credit hours must be at least 1")
     @Max(value = 10, message = "Credit hours cannot exceed 10")
     @Builder.Default
     private Integer creditHours = 3;
+
+    @Size(max = 100, message = "FCM Topic ID must not exceed 100 characters")
+    private String fcmTopicId;
 }

@@ -1,5 +1,6 @@
 package com.college.bridge.auth.dto;
 
+import com.college.bridge.academic.entity.AcademicLevelType;
 import lombok.*;
 
 @Data
@@ -23,9 +24,12 @@ public class UserProfileResponse {
     @AllArgsConstructor
     public static class StudentProfileDetails {
         private Long studentId;
-        private String faculty;
-        private Integer semester;
-        private Long academicClassId;
-        private String displayName;
+        private Long levelId;
+        private String levelName;
+        private Integer levelNumber;
+        private AcademicLevelType levelType;
+        private Long programId;
+        private String programName;
+        private String programCode;
     }
 }

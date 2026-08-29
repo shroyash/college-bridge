@@ -1,6 +1,6 @@
 package com.college.bridge.institution.service;
 
-import com.college.bridge.academic.repository.AcademicClassRepository;
+import com.college.bridge.academic.repository.AcademicLevelRepository;
 import com.college.bridge.auth.entity.User;
 import com.college.bridge.auth.entity.UserRole;
 import com.college.bridge.auth.repository.UserRepository;
@@ -27,7 +27,7 @@ public class InstitutionAdminService {
 
     private final UserRepository userRepository;
     private final InstitutionRepository institutionRepository;
-    private final AcademicClassRepository academicClassRepository;
+    private final AcademicLevelRepository academicLevelRepository;
 
     @Transactional(readOnly = true)
     public InstitutionProfileResponse getInstitutionProfile(Principal principal) {
@@ -37,7 +37,7 @@ public class InstitutionAdminService {
         Long instId = inst.getInstitutionId();
         long studentCount = instId != null ? userRepository.findByInstitution_InstitutionIdAndRole(instId, UserRole.STUDENT).size() : 0;
         long teacherCount = instId != null ? userRepository.findByInstitution_InstitutionIdAndRole(instId, UserRole.TEACHER).size() : 0;
-        long classCount = instId != null ? academicClassRepository.findByInstitution_InstitutionId(instId).size() : 0;
+        long classCount = instId != null ? academicLevelRepository.findByProgram_Institution_InstitutionId(instId).size() : 0;
 
         return mapToResponse(inst, studentCount, teacherCount, classCount);
     }
@@ -61,7 +61,7 @@ public class InstitutionAdminService {
         Long instId = saved.getInstitutionId();
         long studentCount = instId != null ? userRepository.findByInstitution_InstitutionIdAndRole(instId, UserRole.STUDENT).size() : 0;
         long teacherCount = instId != null ? userRepository.findByInstitution_InstitutionIdAndRole(instId, UserRole.TEACHER).size() : 0;
-        long classCount = instId != null ? academicClassRepository.findByInstitution_InstitutionId(instId).size() : 0;
+        long classCount = instId != null ? academicLevelRepository.findByProgram_Institution_InstitutionId(instId).size() : 0;
 
         return mapToResponse(saved, studentCount, teacherCount, classCount);
     }
@@ -91,7 +91,6 @@ public class InstitutionAdminService {
             return institutionRepository.findById(tenantId)
                     .orElseThrow(() -> new ResourceNotFoundException("Institution not found for ID: " + tenantId));
         }
-        // Fallback for SUPER_ADMIN or admins whose user.institution is not directly linked
         return institutionRepository.findAll().stream().findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("No institution found in system."));
     }

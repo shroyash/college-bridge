@@ -1,7 +1,7 @@
 package com.college.bridge.academic.controller;
 
-import com.college.bridge.academic.dto.AcademicClassResponse;
-import com.college.bridge.academic.dto.ClassDetailResponse;
+import com.college.bridge.academic.dto.AcademicLevelResponse;
+import com.college.bridge.academic.dto.SubjectResponse;
 import com.college.bridge.academic.service.TeacherAcademicService;
 import com.college.bridge.auth.security.UserPrincipal;
 import com.college.bridge.common.response.ApiResponse;
@@ -22,26 +22,25 @@ public class TeacherAcademicController {
 
     private final TeacherAcademicService teacherAcademicService;
 
-    @GetMapping("/my-classes")
-    public ResponseEntity<ApiResponse<List<AcademicClassResponse>>> getMyClasses(
+    @GetMapping("/my-subjects")
+    public ResponseEntity<ApiResponse<List<SubjectResponse>>> getMySubjects(
             @AuthenticationPrincipal UserPrincipal principal
     ) {
         if (principal == null || principal.getTeacherId() == null) {
-            throw new AccessDeniedException("Only logged in teachers can access their classes.");
+            throw new AccessDeniedException("Only logged in teachers can access their subjects.");
         }
-        List<AcademicClassResponse> classes = teacherAcademicService.getTeacherClasses(principal.getTeacherId());
-        return ResponseEntity.ok(ApiResponse.success("Teacher classes retrieved.", classes));
+        List<SubjectResponse> subjects = teacherAcademicService.getTeacherAssignedSubjects(principal.getTeacherId());
+        return ResponseEntity.ok(ApiResponse.success("Teacher assigned subjects retrieved.", subjects));
     }
 
-    @GetMapping("/classes/{classId}/details")
-    public ResponseEntity<ApiResponse<ClassDetailResponse>> getClassDetails(
-            @PathVariable Long classId,
+    @GetMapping("/my-classes")
+    public ResponseEntity<ApiResponse<List<AcademicLevelResponse>>> getMyClasses(
             @AuthenticationPrincipal UserPrincipal principal
     ) {
         if (principal == null || principal.getTeacherId() == null) {
-            throw new AccessDeniedException("Only logged in teachers can access class details.");
+            throw new AccessDeniedException("Only logged in teachers can access their academic levels.");
         }
-        ClassDetailResponse response = teacherAcademicService.getTeacherClassDetails(principal.getTeacherId(), classId);
-        return ResponseEntity.ok(ApiResponse.success("Teacher class details retrieved.", response));
+        List<AcademicLevelResponse> levels = teacherAcademicService.getTeacherClasses(principal.getTeacherId());
+        return ResponseEntity.ok(ApiResponse.success("Teacher academic levels retrieved.", levels));
     }
 }

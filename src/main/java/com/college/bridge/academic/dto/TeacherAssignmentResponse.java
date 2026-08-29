@@ -1,6 +1,5 @@
 package com.college.bridge.academic.dto;
 
-
 import lombok.Builder;
 import lombok.Getter;
 
@@ -14,8 +13,13 @@ public class TeacherAssignmentResponse {
 
     private String subjectName;
 
-    private String faculty;
+    private String subjectCode;
 
-    private Integer semester;
+    private Long levelId;
 
+    private String levelName;
+
+    private Long programId;
+
+    private String programName;
 }

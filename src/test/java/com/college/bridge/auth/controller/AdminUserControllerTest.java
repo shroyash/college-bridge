@@ -1,7 +1,6 @@
 package com.college.bridge.auth.controller;
 
 import com.college.bridge.auth.dto.ChangeRoleRequest;
-import com.college.bridge.auth.dto.RejectTeacherRequest;
 import com.college.bridge.auth.dto.UserProfileResponse;
 import com.college.bridge.auth.entity.UserRole;
 import com.college.bridge.auth.entity.UserStatus;
@@ -46,6 +45,9 @@ class AdminUserControllerTest {
     private AdminUserService adminUserService;
 
     @MockBean
+    private com.college.bridge.auth.service.StudentCohortService studentCohortService;
+
+    @MockBean
     private JwtService jwtService;
 
     @MockBean
@@ -80,34 +82,6 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.data.content[0].email").value("user@college.edu"));
     }
 
-    @Test
-    @WithMockUser(username = "admin@college.edu", roles = {"ADMIN"})
-    @DisplayName("POST /api/admin/teacher/{id}/verify - Should verify teacher")
-    void testVerifyTeacherSuccess() throws Exception {
-        doNothing().when(adminUserService).verifyTeacher(1L, "admin@college.edu");
-
-        mockMvc.perform(post("/api/admin/teacher/1/verify"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Teacher verified."));
-    }
-
-    @Test
-    @WithMockUser(username = "admin@college.edu", roles = {"ADMIN"})
-    @DisplayName("POST /api/admin/teacher/{id}/reject - Should reject teacher verification")
-    void testRejectTeacherSuccess() throws Exception {
-        RejectTeacherRequest request = new RejectTeacherRequest();
-        request.setRejectionReason("Incomplete documents");
-
-        doNothing().when(adminUserService).rejectTeacher(eq(1L), any(RejectTeacherRequest.class), eq("admin@college.edu"));
-
-        mockMvc.perform(post("/api/admin/teacher/1/reject")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Teacher rejected."));
-    }
 
     @Test
     @WithMockUser(username = "admin@college.edu", roles = {"ADMIN"})

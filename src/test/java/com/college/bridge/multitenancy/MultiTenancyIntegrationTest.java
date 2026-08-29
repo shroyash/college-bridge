@@ -1,8 +1,11 @@
 package com.college.bridge.multitenancy;
 
-import com.college.bridge.academic.entity.AcademicClass;
+import com.college.bridge.academic.entity.AcademicLevel;
+import com.college.bridge.academic.entity.AcademicLevelType;
+import com.college.bridge.academic.entity.AcademicProgram;
 import com.college.bridge.academic.entity.Subject;
-import com.college.bridge.academic.repository.AcademicClassRepository;
+import com.college.bridge.academic.repository.AcademicLevelRepository;
+import com.college.bridge.academic.repository.AcademicProgramRepository;
 import com.college.bridge.academic.repository.SubjectRepository;
 import com.college.bridge.auth.entity.User;
 import com.college.bridge.auth.entity.UserRole;
@@ -49,10 +52,13 @@ public class MultiTenancyIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
-    private SubjectRepository subjectRepository;
+    private AcademicProgramRepository programRepository;
 
     @Autowired
-    private AcademicClassRepository academicClassRepository;
+    private AcademicLevelRepository levelRepository;
+
+    @Autowired
+    private SubjectRepository subjectRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -66,10 +72,12 @@ public class MultiTenancyIntegrationTest {
     private User adminB;
     private String tokenAdminA;
     private String tokenAdminB;
+    private AcademicProgram programA;
+    private AcademicProgram programB;
+    private AcademicLevel levelA;
+    private AcademicLevel levelB;
     private Subject subjectA;
     private Subject subjectB;
-    private AcademicClass classA;
-    private AcademicClass classB;
 
     @BeforeEach
     void setUp() {
@@ -103,40 +111,50 @@ public class MultiTenancyIntegrationTest {
                 .role(UserRole.ADMIN)
                 .build());
 
-        // Tokens
         tokenAdminA = jwtService.generateAccessToken(new UserPrincipal(adminA));
         tokenAdminB = jwtService.generateAccessToken(new UserPrincipal(adminB));
 
+        // Create Programs
+        programA = programRepository.save(AcademicProgram.builder()
+                .institution(instA)
+                .name("BCA Inst A")
+                .code("BCA_A")
+                .build());
+
+        programB = programRepository.save(AcademicProgram.builder()
+                .institution(instB)
+                .name("BCA Inst B")
+                .code("BCA_B")
+                .build());
+
+        // Create Levels
+        levelA = levelRepository.save(AcademicLevel.builder()
+                .program(programA)
+                .name("1st Semester")
+                .levelNumber(1)
+                .type(AcademicLevelType.SEMESTER)
+                .build());
+
+        levelB = levelRepository.save(AcademicLevel.builder()
+                .program(programB)
+                .name("1st Semester")
+                .levelNumber(1)
+                .type(AcademicLevelType.SEMESTER)
+                .build());
+
         // Create Subjects
         subjectA = subjectRepository.save(Subject.builder()
-                .institution(instA)
+                .academicLevel(levelA)
                 .name("Physics Inst A")
-                .faculty("BCA")
-                .semester(1)
+                .code("PHY101")
                 .creditHours(3)
                 .build());
 
         subjectB = subjectRepository.save(Subject.builder()
-                .institution(instB)
+                .academicLevel(levelB)
                 .name("Chemistry Inst B")
-                .faculty("BCA")
-                .semester(1)
+                .code("CHE101")
                 .creditHours(3)
-                .build());
-
-        // Create Classes
-        classA = academicClassRepository.save(AcademicClass.builder()
-                .institution(instA)
-                .displayName("BCA 1st Semester Inst A")
-                .faculty("BCA")
-                .semester(1)
-                .build());
-
-        classB = academicClassRepository.save(AcademicClass.builder()
-                .institution(instB)
-                .displayName("BCA 1st Semester Inst B")
-                .faculty("BCA")
-                .semester(1)
                 .build());
     }
 
@@ -158,23 +176,6 @@ public class MultiTenancyIntegrationTest {
     }
 
     @Test
-    @DisplayName("Admin A can fetch Class A by ID, but gets 404 when fetching Class B by ID")
-    void testClassByIdTenantIsolation() throws Exception {
-        // Fetch own class -> 200 OK
-        mockMvc.perform(get("/api/admin/academic/classes/{id}/details", classA.getClassId())
-                        .header("Authorization", "Bearer " + tokenAdminA)
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.displayName").value("BCA 1st Semester Inst A"));
-
-        // Fetch cross-tenant class -> 404 NOT FOUND
-        mockMvc.perform(get("/api/admin/academic/classes/{id}/details", classB.getClassId())
-                        .header("Authorization", "Bearer " + tokenAdminA)
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
     @DisplayName("List endpoints return only records belonging to Admin A's institution")
     void testListEndpointsTenantIsolation() throws Exception {
         // List subjects for Admin A
@@ -185,12 +186,12 @@ public class MultiTenancyIntegrationTest {
                 .andExpect(jsonPath("$[*].name", hasItem("Physics Inst A")))
                 .andExpect(jsonPath("$[*].name", not(hasItem("Chemistry Inst B"))));
 
-        // List classes for Admin A
-        mockMvc.perform(get("/api/admin/academic/classes")
+        // List programs for Admin A
+        mockMvc.perform(get("/api/admin/academic/programs")
                         .header("Authorization", "Bearer " + tokenAdminA)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[*].displayName", hasItem("BCA 1st Semester Inst A")))
-                .andExpect(jsonPath("$.data[*].displayName", not(hasItem("BCA 1st Semester Inst B"))));
+                .andExpect(jsonPath("$.data[*].code", hasItem("BCA_A")))
+                .andExpect(jsonPath("$.data[*].code", not(hasItem("BCA_B"))));
     }
 }

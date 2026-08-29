@@ -20,84 +20,66 @@ public class AcademicAdminController {
 
     private final AcademicAdminService academicAdminService;
 
-    @GetMapping("/faculties")
-    public ResponseEntity<ApiResponse<List<String>>> getInstitutionFaculties() {
-        List<String> faculties = academicAdminService.getInstitutionFaculties();
-        return ResponseEntity.ok(ApiResponse.success("Institution faculties retrieved.", faculties));
-    }
+    // --- PROGRAM ENDPOINTS ---
 
-    @PostMapping("/classes")
-    public ResponseEntity<ApiResponse<AcademicClassResponse>> createAcademicClass(
-            @Valid @RequestBody CreateAcademicClassRequest request
+    @PostMapping("/programs")
+    public ResponseEntity<ApiResponse<AcademicProgramResponse>> createProgram(
+            @Valid @RequestBody AcademicProgramRequest request
     ) {
-        AcademicClassResponse response = academicAdminService.createAcademicClass(request);
+        AcademicProgramResponse response = academicAdminService.createProgram(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Academic class created successfully.", response));
+                .body(ApiResponse.success("Academic program created successfully.", response));
     }
 
-    @GetMapping("/classes")
-    public ResponseEntity<ApiResponse<List<AcademicClassResponse>>> getAcademicClasses(
-            @RequestParam(required = false) String faculty,
-            @RequestParam(required = false) Integer semester,
-            @RequestParam(required = false) String search
+    @GetMapping("/programs")
+    public ResponseEntity<ApiResponse<List<AcademicProgramResponse>>> getPrograms() {
+        List<AcademicProgramResponse> programs = academicAdminService.getPrograms();
+        return ResponseEntity.ok(ApiResponse.success("Academic programs retrieved.", programs));
+    }
+
+    @GetMapping("/programs/{programId}")
+    public ResponseEntity<ApiResponse<AcademicProgramResponse>> getProgramById(@PathVariable Long programId) {
+        AcademicProgramResponse program = academicAdminService.getProgramById(programId);
+        return ResponseEntity.ok(ApiResponse.success("Academic program retrieved.", program));
+    }
+
+    @DeleteMapping("/programs/{programId}")
+    public ResponseEntity<ApiResponse<Void>> deleteProgram(@PathVariable Long programId) {
+        academicAdminService.deleteProgram(programId);
+        return ResponseEntity.ok(ApiResponse.success("Academic program deleted successfully."));
+    }
+
+    // --- LEVEL ENDPOINTS ---
+
+    @PostMapping("/programs/{programId}/levels")
+    public ResponseEntity<ApiResponse<AcademicLevelResponse>> createLevel(
+            @PathVariable Long programId,
+            @Valid @RequestBody AcademicLevelRequest request
     ) {
-        List<AcademicClassResponse> classes = academicAdminService.getAcademicClassesFiltered(faculty, semester, search);
-        return ResponseEntity.ok(ApiResponse.success("Academic classes retrieved.", classes));
+        AcademicLevelResponse response = academicAdminService.createLevel(programId, request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Academic level created successfully.", response));
     }
 
-    @GetMapping("/classes/{classId}/details")
-    public ResponseEntity<ApiResponse<ClassDetailResponse>> getClassDetails(@PathVariable Long classId) {
-        ClassDetailResponse response = academicAdminService.getClassDetails(classId);
-        return ResponseEntity.ok(ApiResponse.success("Class details retrieved successfully.", response));
+    @GetMapping("/programs/{programId}/levels")
+    public ResponseEntity<ApiResponse<List<AcademicLevelResponse>>> getLevelsForProgram(@PathVariable Long programId) {
+        List<AcademicLevelResponse> levels = academicAdminService.getLevelsForProgram(programId);
+        return ResponseEntity.ok(ApiResponse.success("Academic levels retrieved.", levels));
     }
 
-    @PostMapping("/classes/{classId}/students/{studentId}")
-    public ResponseEntity<ApiResponse<ClassStudentResponse>> addStudentToClass(
-            @PathVariable Long classId,
-            @PathVariable Long studentId
-    ) {
-        ClassStudentResponse response = academicAdminService.addStudentToClass(classId, studentId);
-        return ResponseEntity.ok(ApiResponse.success("Student added to class successfully.", response));
+    @GetMapping("/levels")
+    public ResponseEntity<ApiResponse<List<AcademicLevelResponse>>> getAllLevels() {
+        List<AcademicLevelResponse> levels = academicAdminService.getAllLevelsForInstitution();
+        return ResponseEntity.ok(ApiResponse.success("Academic levels retrieved.", levels));
     }
 
-    @DeleteMapping("/classes/{classId}/students/{studentId}")
-    public ResponseEntity<ApiResponse<Void>> removeStudentFromClass(
-            @PathVariable Long classId,
-            @PathVariable Long studentId
-    ) {
-        academicAdminService.removeStudentFromClass(classId, studentId);
-        return ResponseEntity.ok(ApiResponse.success("Student removed from class."));
+    @DeleteMapping("/levels/{levelId}")
+    public ResponseEntity<ApiResponse<Void>> deleteLevel(@PathVariable Long levelId) {
+        academicAdminService.deleteLevel(levelId);
+        return ResponseEntity.ok(ApiResponse.success("Academic level deleted successfully."));
     }
 
-    @PutMapping("/classes/{classId}/class-teacher/{teacherId}")
-    public ResponseEntity<ApiResponse<AcademicClassResponse>> assignClassTeacher(
-            @PathVariable Long classId,
-            @PathVariable Long teacherId
-    ) {
-        AcademicClassResponse response = academicAdminService.assignClassTeacher(classId, teacherId);
-        return ResponseEntity.ok(ApiResponse.success("Class teacher assigned successfully.", response));
-    }
-
-    @GetMapping("/unassigned-students")
-    public ResponseEntity<ApiResponse<List<ClassStudentResponse>>> getUnassignedStudents() {
-        List<ClassStudentResponse> unassigned = academicAdminService.getUnassignedStudents();
-        return ResponseEntity.ok(ApiResponse.success("Unassigned students retrieved.", unassigned));
-    }
-
-    @PutMapping("/classes/{classId}")
-    public ResponseEntity<ApiResponse<AcademicClassResponse>> updateAcademicClass(
-            @PathVariable Long classId,
-            @Valid @RequestBody CreateAcademicClassRequest request
-    ) {
-        AcademicClassResponse response = academicAdminService.updateAcademicClass(classId, request);
-        return ResponseEntity.ok(ApiResponse.success("Academic class updated successfully.", response));
-    }
-
-    @DeleteMapping("/classes/{classId}")
-    public ResponseEntity<ApiResponse<Void>> deleteAcademicClass(@PathVariable Long classId) {
-        academicAdminService.deleteAcademicClass(classId);
-        return ResponseEntity.ok(ApiResponse.success("Academic class deleted successfully."));
-    }
+    // --- SUBJECT ENDPOINTS ---
 
     @PostMapping("/subjects")
     public ResponseEntity<ApiResponse<SubjectResponse>> createSubject(
@@ -119,10 +101,14 @@ public class AcademicAdminController {
 
     @GetMapping("/subjects")
     public ResponseEntity<ApiResponse<List<SubjectResponse>>> getSubjects(
-            @RequestParam(required = false) String faculty,
-            @RequestParam(required = false) Integer semester
+            @RequestParam(required = false) Long levelId
     ) {
-        List<SubjectResponse> subjects = academicAdminService.getSubjects(faculty, semester);
+        List<SubjectResponse> subjects;
+        if (levelId != null) {
+            subjects = academicAdminService.getSubjectsForLevel(levelId);
+        } else {
+            subjects = academicAdminService.getAllSubjects();
+        }
         return ResponseEntity.ok(ApiResponse.success("Subjects retrieved.", subjects));
     }
 
@@ -139,5 +125,31 @@ public class AcademicAdminController {
     public ResponseEntity<ApiResponse<Void>> deleteSubject(@PathVariable Long subjectId) {
         academicAdminService.deleteSubject(subjectId);
         return ResponseEntity.ok(ApiResponse.success("Subject deleted successfully."));
+    }
+
+    // --- STUDENT LEVEL MAPPING ---
+
+    @PostMapping("/levels/{levelId}/students/{studentId}")
+    public ResponseEntity<ApiResponse<ClassStudentResponse>> addStudentToLevel(
+            @PathVariable Long levelId,
+            @PathVariable Long studentId
+    ) {
+        ClassStudentResponse response = academicAdminService.addStudentToLevel(levelId, studentId);
+        return ResponseEntity.ok(ApiResponse.success("Student assigned to academic level successfully.", response));
+    }
+
+    @DeleteMapping("/levels/{levelId}/students/{studentId}")
+    public ResponseEntity<ApiResponse<Void>> removeStudentFromLevel(
+            @PathVariable Long levelId,
+            @PathVariable Long studentId
+    ) {
+        academicAdminService.removeStudentFromLevel(levelId, studentId);
+        return ResponseEntity.ok(ApiResponse.success("Student removed from academic level."));
+    }
+
+    @GetMapping("/unassigned-students")
+    public ResponseEntity<ApiResponse<List<ClassStudentResponse>>> getUnassignedStudents() {
+        List<ClassStudentResponse> unassigned = academicAdminService.getUnassignedStudents();
+        return ResponseEntity.ok(ApiResponse.success("Unassigned students retrieved.", unassigned));
     }
 }

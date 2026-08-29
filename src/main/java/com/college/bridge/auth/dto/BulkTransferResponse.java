@@ -1,5 +1,6 @@
 package com.college.bridge.auth.dto;
 
+import com.college.bridge.academic.entity.AcademicLevelType;
 import lombok.*;
 
 @Data
@@ -9,16 +10,18 @@ import lombok.*;
 public class BulkTransferResponse {
     private boolean success;
     private int updatedStudents;
-    private TargetClassDto targetClass;
+    private TargetLevelDto targetLevel;
 
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class TargetClassDto {
-        private Long classId;
-        private String faculty;
-        private Integer semester;
-        private String displayName;
+    public static class TargetLevelDto {
+        private Long levelId;
+        private String name;
+        private Integer levelNumber;
+        private AcademicLevelType type;
+        private Long programId;
+        private String programName;
     }
 }

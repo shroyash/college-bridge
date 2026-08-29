@@ -130,9 +130,21 @@ public class SuperAdminInstitutionService {
             String contactPerson = submittedBy != null ? submittedBy.getName() : null;
             String email = submittedBy != null ? submittedBy.getEmail() : null;
 
+            List<InstitutionDocumentResponse> documents = institutionDocumentRepository
+                    .findByInstitution_InstitutionId(inst.getInstitutionId())
+                    .stream()
+                    .map(doc -> InstitutionDocumentResponse.builder()
+                            .documentId(doc.getDocumentId())
+                            .documentUrl(doc.getDocumentUrl())
+                            .documentType(doc.getDocumentType())
+                            .uploadedAt(doc.getUploadedAt())
+                            .build())
+                    .toList();
+
             return SuperAdminPendingInstitutionResponse.builder()
                     .institutionId(inst.getInstitutionId())
                     .institutionName(inst.getName())
+                    .code(inst.getCode())
                     .profileImage(inst.getProfileImage())
                     .location(inst.getLocation() != null ? inst.getLocation() : "Kathmandu")
                     .website(inst.getWebsite())
@@ -142,6 +154,7 @@ public class SuperAdminInstitutionService {
                     .totalStudents(students)
                     .totalTeachers(teachers)
                     .submittedAt(inst.getCreatedAt())
+                    .documents(documents)
                     .build();
         });
 

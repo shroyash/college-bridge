@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -16,6 +17,7 @@ public class SuperAdminPendingInstitutionResponse {
 
     private Long institutionId;
     private String institutionName;
+    private String code;
     private String profileImage;
     private String location;
     private String website;
@@ -25,4 +27,5 @@ public class SuperAdminPendingInstitutionResponse {
     private long totalStudents;
     private long totalTeachers;
     private LocalDateTime submittedAt;
+    private List<InstitutionDocumentResponse> documents;
 }

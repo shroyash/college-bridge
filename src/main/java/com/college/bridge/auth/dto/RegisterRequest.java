@@ -28,13 +28,6 @@ public class RegisterRequest {
     @Size(min = 6, max = 100, message = "Password must be at least 6 characters")
     private String password;
 
-    @NotBlank(message = "Faculty is required")
-    @Size(max = 20, message = "Faculty must not exceed 20 characters")
-    @Pattern(regexp = "^[A-Z0-9_]{2,20}$", message = "Faculty must be 2-20 uppercase alphanumeric characters or underscores")
-    private String faculty;
-
-    @NotNull(message = "Semester is required")
-    @Min(value = 1, message = "Semester must be at least 1")
-    @Max(value = 8, message = "Semester must not exceed 8")
-    private Integer semester;
+    @NotNull(message = "Academic level ID is required")
+    private Long levelId;
 }

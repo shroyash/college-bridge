@@ -16,9 +16,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.security.Principal;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -56,8 +56,9 @@ class AccountControllerTest {
     @MockBean
     private JwtAccessDeniedHandler accessDeniedHandler;
 
+    private Principal principal = () -> "student@college.edu";
+
     @Test
-    @WithMockUser(username = "student@college.edu")
     @DisplayName("GET /api/account/profile - Should return current user profile")
     void testGetProfileSuccess() throws Exception {
         UserProfileResponse response = UserProfileResponse.builder()
@@ -69,14 +70,13 @@ class AccountControllerTest {
 
         when(accountService.getProfile("student@college.edu")).thenReturn(response);
 
-        mockMvc.perform(get("/api/account/profile"))
+        mockMvc.perform(get("/api/account/profile").principal(principal))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.email").value("student@college.edu"));
     }
 
     @Test
-    @WithMockUser(username = "student@college.edu")
     @DisplayName("PUT /api/account/profile - Should update profile")
     void testUpdateProfileSuccess() throws Exception {
         UpdateProfileRequest request = new UpdateProfileRequest();
@@ -93,6 +93,7 @@ class AccountControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(put("/api/account/profile")
+                        .principal(principal)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -101,7 +102,6 @@ class AccountControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "student@college.edu")
     @DisplayName("POST /api/account/password/change - Should change password")
     void testChangePasswordSuccess() throws Exception {
         ChangePasswordRequest request = new ChangePasswordRequest();
@@ -111,6 +111,7 @@ class AccountControllerTest {
         doNothing().when(accountService).changePassword(eq("student@college.edu"), any(ChangePasswordRequest.class));
 
         mockMvc.perform(post("/api/account/password/change")
+                        .principal(principal)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -118,7 +119,6 @@ class AccountControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "student@college.edu")
     @DisplayName("POST /api/account/profile/image - Should upload profile image")
     void testUploadProfileImageSuccess() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
@@ -130,14 +130,13 @@ class AccountControllerTest {
 
         when(accountService.uploadProfileImage(eq("student@college.edu"), any())).thenReturn("https://storage/profile.jpg");
 
-        mockMvc.perform(multipart("/api/account/profile/image").file(file))
+        mockMvc.perform(multipart("/api/account/profile/image").file(file).principal(principal))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").value("https://storage/profile.jpg"));
     }
 
     @Test
-    @WithMockUser(username = "student@college.edu")
     @DisplayName("DELETE /api/account - Should delete own account with password")
     void testDeleteAccountSuccess() throws Exception {
         Map<String, String> body = Map.of("password", "Pass123!");
@@ -145,6 +144,7 @@ class AccountControllerTest {
         doNothing().when(accountService).deleteOwnAccount("student@college.edu", "Pass123!");
 
         mockMvc.perform(delete("/api/account")
+                        .principal(principal)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk())

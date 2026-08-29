@@ -352,6 +352,6 @@ public class InstitutionWorkflowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").exists())
-                .andExpect(jsonPath("$.data.role").value("SUPER_ADMIN"));
+                .andExpect(jsonPath("$.data.user.role").value("SUPER_ADMIN"));
     }
 }

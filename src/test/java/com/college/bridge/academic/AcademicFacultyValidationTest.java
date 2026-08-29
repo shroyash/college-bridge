@@ -1,7 +1,9 @@
 package com.college.bridge.academic;
 
+import com.college.bridge.academic.entity.AcademicLevelType;
+import com.college.bridge.academic.dto.AcademicLevelRequest;
+import com.college.bridge.academic.dto.AcademicProgramRequest;
 import com.college.bridge.academic.dto.BatchCreateSubjectRequest;
-import com.college.bridge.academic.dto.CreateAcademicClassRequest;
 import com.college.bridge.academic.dto.CreateSubjectRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -29,72 +31,54 @@ public class AcademicFacultyValidationTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"BIT", "BE_CIVIL", "BSW", "BCA", "BBA", "BSC_CSIT"})
-    @DisplayName("Should pass validation for valid dynamic faculties (BIT, BE_CIVIL, BSW, etc.)")
-    void testValidFaculties(String faculty) {
-        CreateAcademicClassRequest classReq = CreateAcademicClassRequest.builder()
-                .faculty(faculty)
-                .semester(1)
+    @DisplayName("Should pass validation for valid program codes")
+    void testValidPrograms(String code) {
+        AcademicProgramRequest programReq = AcademicProgramRequest.builder()
+                .name("Bachelor of " + code)
+                .code(code)
                 .build();
 
-        Set<ConstraintViolation<CreateAcademicClassRequest>> classViolations = validator.validate(classReq);
-        assertTrue(classViolations.isEmpty(), "Expected no violations for valid faculty: " + faculty);
+        Set<ConstraintViolation<AcademicProgramRequest>> programViolations = validator.validate(programReq);
+        assertTrue(programViolations.isEmpty(), "Expected no violations for valid program code: " + code);
+
+        AcademicLevelRequest levelReq = AcademicLevelRequest.builder()
+                .name("First Semester")
+                .levelNumber(1)
+                .type(AcademicLevelType.SEMESTER)
+                .build();
+
+        Set<ConstraintViolation<AcademicLevelRequest>> levelViolations = validator.validate(levelReq);
+        assertTrue(levelViolations.isEmpty(), "Expected no violations for level request");
 
         CreateSubjectRequest subjectReq = CreateSubjectRequest.builder()
                 .name("Introduction to Programming")
-                .faculty(faculty)
-                .semester(1)
+                .levelId(1L)
                 .creditHours(3)
                 .build();
 
         Set<ConstraintViolation<CreateSubjectRequest>> subjectViolations = validator.validate(subjectReq);
-        assertTrue(subjectViolations.isEmpty(), "Expected no violations for valid faculty: " + faculty);
+        assertTrue(subjectViolations.isEmpty(), "Expected no violations for subject request");
 
         BatchCreateSubjectRequest batchReq = BatchCreateSubjectRequest.builder()
-                .faculty(faculty)
-                .semester(1)
+                .levelId(1L)
                 .subjects(java.util.List.of(
                         BatchCreateSubjectRequest.SubjectItem.builder().name("Math I").creditHours(3).build()
                 ))
                 .build();
 
         Set<ConstraintViolation<BatchCreateSubjectRequest>> batchViolations = validator.validate(batchReq);
-        assertTrue(batchViolations.isEmpty(), "Expected no violations for valid faculty: " + faculty);
+        assertTrue(batchViolations.isEmpty(), "Expected no violations for batch subject request");
     }
 
     @Test
-    @DisplayName("Should fail validation for empty / blank faculty string")
-    void testEmptyFaculty() {
-        CreateAcademicClassRequest request = CreateAcademicClassRequest.builder()
-                .faculty("")
-                .semester(1)
+    @DisplayName("Should fail validation for empty program code")
+    void testEmptyProgramCode() {
+        AcademicProgramRequest request = AcademicProgramRequest.builder()
+                .name("Bachelor of Science")
+                .code("")
                 .build();
 
-        Set<ConstraintViolation<CreateAcademicClassRequest>> violations = validator.validate(request);
-        assertFalse(violations.isEmpty(), "Expected validation failure for empty faculty");
-    }
-
-    @Test
-    @DisplayName("Should fail validation for faculty with spaces or invalid characters")
-    void testInvalidCharacterFaculty() {
-        CreateAcademicClassRequest request = CreateAcademicClassRequest.builder()
-                .faculty("bit program") // lowercase and space
-                .semester(1)
-                .build();
-
-        Set<ConstraintViolation<CreateAcademicClassRequest>> violations = validator.validate(request);
-        assertFalse(violations.isEmpty(), "Expected validation failure for faculty with invalid characters");
-    }
-
-    @Test
-    @DisplayName("Should fail validation for faculty exceeding 20 characters")
-    void testTooLongFaculty() {
-        String longFaculty = "A".repeat(21); // 21 chars
-        CreateAcademicClassRequest request = CreateAcademicClassRequest.builder()
-                .faculty(longFaculty)
-                .semester(1)
-                .build();
-
-        Set<ConstraintViolation<CreateAcademicClassRequest>> violations = validator.validate(request);
-        assertFalse(violations.isEmpty(), "Expected validation failure for faculty > 20 characters");
+        Set<ConstraintViolation<AcademicProgramRequest>> violations = validator.validate(request);
+        assertFalse(violations.isEmpty(), "Expected validation failure for empty code");
     }
 }

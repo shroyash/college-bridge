@@ -1,51 +1,49 @@
 package com.college.bridge.academic.entity;
 
-import com.college.bridge.auth.entity.Teacher;
 import com.college.bridge.institution.entity.Institution;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(
-    name = "academic_classes",
+    name = "academic_programs",
     uniqueConstraints = @UniqueConstraint(
-        name = "uk_academic_classes_institution_faculty_semester",
-        columnNames = {"institution_id", "faculty", "semester"}
+        name = "uk_academic_programs_institution_code",
+        columnNames = {"institution_id", "code"}
     )
 )
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AcademicClass {
+public class AcademicProgram {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "class_id")
-    private Long classId;
+    @Column(name = "program_id")
+    private Long programId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "institution_id", nullable = false)
     private Institution institution;
 
-    @Column(name = "faculty", nullable = false, length = 20)
-    private String faculty;
+    @Column(name = "name", nullable = false, length = 100)
+    private String name;
 
-    @Column(name = "semester", nullable = false)
-    private Integer semester;
-
-    @Column(name = "display_name", nullable = false, length = 100)
-    private String displayName;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "class_teacher_id", nullable = true)
-    private Teacher classTeacher;
+    @Column(name = "code", nullable = false, length = 50)
+    private String code;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }

@@ -1,7 +1,8 @@
 package com.college.bridge.auth.service;
 
-import com.college.bridge.academic.entity.AcademicClass;
-import com.college.bridge.academic.repository.AcademicClassRepository;
+import com.college.bridge.academic.entity.AcademicLevel;
+import com.college.bridge.academic.repository.AcademicLevelRepository;
+import com.college.bridge.academic.repository.AcademicProgramRepository;
 import com.college.bridge.academic.repository.SubjectEnrollmentRepository;
 import com.college.bridge.auth.dto.BulkTransferRequest;
 import com.college.bridge.auth.dto.BulkTransferResponse;
@@ -33,24 +34,28 @@ public class StudentCohortService {
 
     private final StudentRepository studentRepository;
     private final UserRepository userRepository;
-    private final AcademicClassRepository academicClassRepository;
+    private final AcademicLevelRepository academicLevelRepository;
+    private final AcademicProgramRepository academicProgramRepository;
     private final SubjectEnrollmentRepository subjectEnrollmentRepository;
     private final UserMapper userMapper;
 
     @Transactional(readOnly = true)
-    public Page<UserProfileResponse> getStudentsFiltered(Principal principal, String faculty, Integer semester, String search, Pageable pageable) {
+    public Page<UserProfileResponse> getStudentsFiltered(Principal principal, Long programId, Long levelId, String search, Pageable pageable) {
         Long tenantId = getTenantId(principal);
         String searchPattern = (search != null && !search.isBlank()) ? search.trim() : null;
-        String facultyParam = (faculty != null && !faculty.isBlank()) ? faculty.trim() : null;
 
-        return studentRepository.findStudentsFiltered(tenantId, facultyParam, semester, searchPattern, pageable)
+        return studentRepository.findStudentsFiltered(tenantId, programId, levelId, searchPattern, pageable)
                 .map(student -> userMapper.toProfileResponse(student.getUser(), student));
     }
 
     @Transactional(readOnly = true)
     public StudentFilterOptionsResponse getStudentFilterOptions(Principal principal) {
         Long tenantId = getTenantId(principal);
-        List<String> faculties = academicClassRepository.findDistinctFacultiesByInstitutionId(tenantId);
+        List<String> faculties = academicProgramRepository.findByInstitution_InstitutionId(tenantId)
+                .stream()
+                .map(p -> p.getCode())
+                .toList();
+
         List<Integer> semesters = List.of(1, 2, 3, 4, 5, 6, 7, 8);
 
         return StudentFilterOptionsResponse.builder()
@@ -67,37 +72,37 @@ public class StudentCohortService {
             throw new BusinessRuleException("Student IDs list must not be empty.");
         }
 
-        AcademicClass targetClass = academicClassRepository
-                .findByClassIdAndInstitution_InstitutionId(request.getTargetClassId(), tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Target Academic Class not found for ID: " + request.getTargetClassId()));
+        AcademicLevel targetLevel = academicLevelRepository
+                .findByLevelIdAndProgram_Institution_InstitutionId(request.getTargetLevelId(), tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Target Academic Level not found for ID: " + request.getTargetLevelId()));
 
         long validStudents = studentRepository.countByStudentIdInAndTenantId(request.getStudentIds(), tenantId);
         if (validStudents != request.getStudentIds().size()) {
             throw new TenantMismatchException("One or more selected students do not belong to your institution.");
         }
 
-        int updatedCount = studentRepository.bulkUpdateAcademicClass(request.getStudentIds(), targetClass.getClassId(), tenantId);
+        int updatedCount = studentRepository.bulkUpdateAcademicLevel(request.getStudentIds(), targetLevel.getLevelId(), tenantId);
 
         subjectEnrollmentRepository.bulkDeleteByStudentIds(request.getStudentIds());
 
-        subjectEnrollmentRepository.bulkInsertEnrollmentsForTargetClass(
+        subjectEnrollmentRepository.bulkInsertEnrollmentsForTargetLevel(
                 request.getStudentIds(),
-                tenantId,
-                targetClass.getFaculty(),
-                targetClass.getSemester()
+                targetLevel.getLevelId()
         );
 
-        log.info("Bulk transferred {} students to AcademicClass {} (Faculty: {}, Sem: {}) for tenant {}.",
-                updatedCount, targetClass.getClassId(), targetClass.getFaculty(), targetClass.getSemester(), tenantId);
+        log.info("Bulk transferred {} students to AcademicLevel {} (Name: {}) for tenant {}.",
+                updatedCount, targetLevel.getLevelId(), targetLevel.getName(), tenantId);
 
         return BulkTransferResponse.builder()
                 .success(true)
                 .updatedStudents(updatedCount)
-                .targetClass(BulkTransferResponse.TargetClassDto.builder()
-                        .classId(targetClass.getClassId())
-                        .faculty(targetClass.getFaculty())
-                        .semester(targetClass.getSemester())
-                        .displayName(targetClass.getDisplayName())
+                .targetLevel(BulkTransferResponse.TargetLevelDto.builder()
+                        .levelId(targetLevel.getLevelId())
+                        .name(targetLevel.getName())
+                        .levelNumber(targetLevel.getLevelNumber())
+                        .type(targetLevel.getType())
+                        .programId(targetLevel.getProgram().getProgramId())
+                        .programName(targetLevel.getProgram().getName())
                         .build())
                 .build();
     }

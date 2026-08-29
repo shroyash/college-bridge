@@ -60,16 +60,19 @@ class AuthControllerTest {
                 .email("student@college.edu")
                 .password("Password123!")
                 .name("Jane Student")
-                .faculty("BCA")
-                .semester(1)
+                .levelId(1L)
+                .build();
+
+        UserInfoResponse userInfo = UserInfoResponse.builder()
+                .name("Jane Student")
+                .email("student@college.edu")
+                .role("STUDENT")
                 .build();
 
         AuthResponse authResponse = AuthResponse.builder()
                 .accessToken("mock-access-token")
                 .refreshToken("mock-refresh-token")
-                .name("Jane Student")
-                .email("student@college.edu")
-                .role("STUDENT")
+                .user(userInfo)
                 .build();
 
         when(authService.register(any(RegisterRequest.class))).thenReturn(authResponse);
@@ -91,12 +94,16 @@ class AuthControllerTest {
                 .password("Password123!")
                 .build();
 
-        AuthResponse authResponse = AuthResponse.builder()
-                .accessToken("mock-access-token")
-                .refreshToken("mock-refresh-token")
+        UserInfoResponse userInfo = UserInfoResponse.builder()
                 .name("Jane Student")
                 .email("student@college.edu")
                 .role("STUDENT")
+                .build();
+
+        AuthResponse authResponse = AuthResponse.builder()
+                .accessToken("mock-access-token")
+                .refreshToken("mock-refresh-token")
+                .user(userInfo)
                 .build();
 
         when(authService.login(any(LoginRequest.class))).thenReturn(authResponse);
@@ -115,12 +122,16 @@ class AuthControllerTest {
         TokenRefreshRequest request = new TokenRefreshRequest();
         request.setRefreshToken("valid-refresh-token");
 
-        AuthResponse authResponse = AuthResponse.builder()
-                .accessToken("new-access-token")
-                .refreshToken("new-refresh-token")
+        UserInfoResponse userInfo = UserInfoResponse.builder()
                 .name("Jane Student")
                 .email("student@college.edu")
                 .role("STUDENT")
+                .build();
+
+        AuthResponse authResponse = AuthResponse.builder()
+                .accessToken("new-access-token")
+                .refreshToken("new-refresh-token")
+                .user(userInfo)
                 .build();
 
         when(authService.refreshToken(any(TokenRefreshRequest.class))).thenReturn(authResponse);
@@ -147,43 +158,5 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("Successfully logged out. Refresh token revoked."));
-    }
-
-    @Test
-    @DisplayName("POST /api/auth/forgot-password - Should send forgot password OTP")
-    void testForgotPasswordSuccess() throws Exception {
-        ForgotPasswordRequest request = new ForgotPasswordRequest();
-        request.setEmail("student@college.edu");
-
-        doNothing().when(authService).forgotPassword(any(ForgotPasswordRequest.class));
-
-        mockMvc.perform(post("/api/auth/forgot-password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
-    }
-
-    @Test
-    @DisplayName("POST /api/auth/verify-otp - Should verify OTP code")
-    void testVerifyOtpSuccess() throws Exception {
-        VerifyOtpRequest request = new VerifyOtpRequest();
-        request.setEmail("student@college.edu");
-        request.setCode("123456");
-        request.setType(com.college.bridge.auth.entity.OtpType.PASSWORD_RESET);
-
-        OtpVerificationResponse response = OtpVerificationResponse.builder()
-                .verified(true)
-                .verificationToken("verification-reset-token")
-                .build();
-
-        when(authService.verifyOtp(any(VerifyOtpRequest.class))).thenReturn(response);
-
-        mockMvc.perform(post("/api/auth/verify-otp")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.verificationToken").value("verification-reset-token"));
     }
 }

@@ -1,8 +1,11 @@
 package com.college.bridge.academic;
 
-import com.college.bridge.academic.entity.AcademicClass;
+import com.college.bridge.academic.entity.AcademicLevel;
+import com.college.bridge.academic.entity.AcademicLevelType;
+import com.college.bridge.academic.entity.AcademicProgram;
 import com.college.bridge.academic.entity.Subject;
-import com.college.bridge.academic.repository.AcademicClassRepository;
+import com.college.bridge.academic.repository.AcademicLevelRepository;
+import com.college.bridge.academic.repository.AcademicProgramRepository;
 import com.college.bridge.academic.repository.SubjectRepository;
 import com.college.bridge.institution.entity.Institution;
 import com.college.bridge.institution.entity.InstitutionStatus;
@@ -17,14 +20,15 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Seeds academic master data (classes and subjects) for default institution on application startup.
+ * Seeds academic master data (programs, levels, and subjects) for default institution on application startup.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class AcademicDataInitializer implements CommandLineRunner {
 
-    private final AcademicClassRepository academicClassRepository;
+    private final AcademicProgramRepository programRepository;
+    private final AcademicLevelRepository levelRepository;
     private final SubjectRepository subjectRepository;
     private final InstitutionRepository institutionRepository;
 
@@ -57,35 +61,44 @@ public class AcademicDataInitializer implements CommandLineRunner {
                         .status(InstitutionStatus.ACTIVE)
                         .build()));
 
-        int classCount = 0;
+        int levelCount = 0;
         int subjectCount = 0;
 
-        for (Map.Entry<String, Map<Integer, List<String>>> facultyEntry : CURRICULUM.entrySet()) {
-            String faculty = facultyEntry.getKey();
+        for (Map.Entry<String, Map<Integer, List<String>>> programEntry : CURRICULUM.entrySet()) {
+            String programCode = programEntry.getKey();
 
-            for (Map.Entry<Integer, List<String>> semEntry : facultyEntry.getValue().entrySet()) {
-                int semester = semEntry.getKey();
+            AcademicProgram program = programRepository.findByInstitution_InstitutionIdAndCode(defaultInstitution.getInstitutionId(), programCode)
+                    .orElseGet(() -> programRepository.save(AcademicProgram.builder()
+                            .institution(defaultInstitution)
+                            .name("Bachelor of Computer Application (" + programCode + ")")
+                            .code(programCode)
+                            .build()));
+
+            for (Map.Entry<Integer, List<String>> semEntry : programEntry.getValue().entrySet()) {
+                int semesterNumber = semEntry.getKey();
                 List<String> subjects = semEntry.getValue();
 
-                if (!academicClassRepository.existsByInstitution_InstitutionIdAndFacultyAndSemester(defaultInstitution.getInstitutionId(), faculty, semester)) {
-                    String ordinal = semester < ORDINALS.length ? ORDINALS[semester] : semester + "th";
-                    String displayName = faculty + " " + ordinal + " Semester";
-                    academicClassRepository.save(AcademicClass.builder()
-                            .institution(defaultInstitution)
-                            .faculty(faculty)
-                            .semester(semester)
-                            .displayName(displayName)
-                            .build());
-                    classCount++;
-                }
+                String ordinal = semesterNumber < ORDINALS.length ? ORDINALS[semesterNumber] : semesterNumber + "th";
+                String levelName = ordinal + " Semester";
+
+                AcademicLevel level = levelRepository.findByProgram_ProgramIdAndLevelNumber(program.getProgramId(), semesterNumber)
+                        .orElseGet(() -> {
+                            AcademicLevel newLevel = levelRepository.save(AcademicLevel.builder()
+                                    .program(program)
+                                    .name(levelName)
+                                    .levelNumber(semesterNumber)
+                                    .type(AcademicLevelType.SEMESTER)
+                                    .build());
+                            return newLevel;
+                        });
+
+                levelCount++;
 
                 for (String subjectName : subjects) {
-                    if (!subjectRepository.existsByInstitution_InstitutionIdAndNameAndFacultyAndSemester(defaultInstitution.getInstitutionId(), subjectName, faculty, semester)) {
+                    if (!subjectRepository.existsByAcademicLevel_LevelIdAndName(level.getLevelId(), subjectName)) {
                         subjectRepository.save(Subject.builder()
-                                .institution(defaultInstitution)
+                                .academicLevel(level)
                                 .name(subjectName)
-                                .faculty(faculty)
-                                .semester(semester)
                                 .creditHours(3)
                                 .build());
                         subjectCount++;
@@ -94,6 +107,6 @@ public class AcademicDataInitializer implements CommandLineRunner {
             }
         }
 
-        log.info("Academic seed complete — {} classes, {} subjects created for institution {}.", classCount, subjectCount, defaultInstitution.getCode());
+        log.info("Academic seed complete — {} levels, {} subjects created for institution {}.", levelCount, subjectCount, defaultInstitution.getCode());
     }
 }

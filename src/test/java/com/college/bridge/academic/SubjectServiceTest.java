@@ -1,14 +1,14 @@
 package com.college.bridge.academic;
 
 import com.college.bridge.academic.dto.SubjectResponse;
-import com.college.bridge.academic.entity.AcademicClass;
+import com.college.bridge.academic.entity.AcademicLevel;
+import com.college.bridge.academic.entity.AcademicProgram;
 import com.college.bridge.academic.entity.Subject;
+import com.college.bridge.academic.entity.SubjectEnrollment;
+import com.college.bridge.academic.repository.SubjectEnrollmentRepository;
 import com.college.bridge.academic.repository.SubjectRepository;
 import com.college.bridge.academic.service.SubjectService;
 import com.college.bridge.auth.entity.Student;
-import com.college.bridge.auth.entity.User;
-import com.college.bridge.auth.repository.StudentRepository;
-import com.college.bridge.common.exception.ResourceNotFoundException;
 import com.college.bridge.common.tenant.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,7 +20,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -28,117 +27,70 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class SubjectServiceTest {
 
-        @Mock
-        private SubjectRepository subjectRepository;
+    @Mock
+    private SubjectRepository subjectRepository;
 
-        @Mock
-        private StudentRepository studentRepository;
+    @Mock
+    private SubjectEnrollmentRepository subjectEnrollmentRepository;
 
-        @InjectMocks
-        private SubjectService subjectService;
+    @InjectMocks
+    private SubjectService subjectService;
 
-        @BeforeEach
-        void setUp() {
-                TenantContext.set(100L);
-        }
+    @BeforeEach
+    void setUp() {
+        TenantContext.set(100L);
+    }
 
-        @AfterEach
-        void tearDown() {
-                TenantContext.clear();
-        }
+    @AfterEach
+    void tearDown() {
+        TenantContext.clear();
+    }
 
-        @Test
-        @DisplayName("Should return subjects for student found by studentId")
-        void testGetSubjectsForStudent_byStudentId() {
-                AcademicClass academicClass = AcademicClass.builder()
-                                .classId(10L)
-                                .faculty("BIT")
-                                .semester(1)
-                                .build();
+    @Test
+    @DisplayName("Should return subjects for student by studentId")
+    void testGetSubjectsForStudent_byStudentId() {
+        AcademicProgram program = AcademicProgram.builder()
+                .programId(1L)
+                .name("Bachelor of Computer Application")
+                .code("BCA")
+                .build();
 
-                User user = User.builder()
-                                .userId(5L)
-                                .email("student@test.com")
-                                .build();
+        AcademicLevel level = AcademicLevel.builder()
+                .levelId(10L)
+                .program(program)
+                .name("1st Semester")
+                .levelNumber(1)
+                .build();
 
-                Student student = Student.builder()
-                                .studentId(1L)
-                                .user(user)
-                                .academicClass(academicClass)
-                                .build();
+        Student student = Student.builder()
+                .studentId(1L)
+                .academicLevel(level)
+                .build();
 
-                Subject subject = Subject.builder()
-                                .subjectId(20L)
-                                .name("Java Programming")
-                                .faculty("BIT")
-                                .semester(1)
-                                .creditHours(3)
-                                .build();
+        Subject subject = Subject.builder()
+                .subjectId(20L)
+                .academicLevel(level)
+                .name("Java Programming")
+                .code("CACS201")
+                .creditHours(3)
+                .build();
 
-                when(studentRepository.findByStudentId(1L)).thenReturn(Optional.of(student));
-                when(subjectRepository.findByInstitution_InstitutionIdAndFacultyAndSemester(100L, "BIT", 1))
-                                .thenReturn(List.of(subject));
+        SubjectEnrollment enrollment = SubjectEnrollment.builder()
+                .enrollmentId(100L)
+                .student(student)
+                .subject(subject)
+                .build();
 
-                List<SubjectResponse> responses = subjectService.getSubjectsForStudent(1L);
+        when(subjectEnrollmentRepository.findByStudent_StudentId(1L)).thenReturn(List.of(enrollment));
 
-                assertNotNull(responses);
-                assertEquals(1, responses.size());
-                assertEquals("Java Programming", responses.get(0).getName());
-                assertEquals("BIT", responses.get(0).getFaculty());
-                assertEquals(1, responses.get(0).getSemester());
+        List<SubjectResponse> responses = subjectService.getSubjectsForStudent(1L);
 
-                verify(studentRepository, times(1)).findByStudentId(1L);
-        }
+        assertNotNull(responses);
+        assertEquals(1, responses.size());
+        assertEquals("Java Programming", responses.get(0).getName());
+        assertEquals("CACS201", responses.get(0).getCode());
+        assertEquals("1st Semester", responses.get(0).getLevelName());
 
-        @Test
-        @DisplayName("Should return subjects for student found by userId fallback")
-        void testGetSubjectsForStudent_byUserIdFallback() {
-                AcademicClass academicClass = AcademicClass.builder()
-                                .classId(10L)
-                                .faculty("BIT")
-                                .semester(2)
-                                .build();
-
-                User user = User.builder()
-                                .userId(5L)
-                                .email("student@test.com")
-                                .build();
-
-                Student student = Student.builder()
-                                .studentId(1L)
-                                .user(user)
-                                .academicClass(academicClass)
-                                .build();
-
-                Subject subject = Subject.builder()
-                                .subjectId(21L)
-                                .name("Data Structures")
-                                .faculty("BIT")
-                                .semester(2)
-                                .creditHours(3)
-                                .build();
-
-                when(studentRepository.findByStudentId(5L)).thenReturn(Optional.empty());
-                when(studentRepository.findByUser_UserId(5L)).thenReturn(Optional.of(student));
-                when(subjectRepository.findByInstitution_InstitutionIdAndFacultyAndSemester(100L, "BIT", 2))
-                                .thenReturn(List.of(subject));
-
-                List<SubjectResponse> responses = subjectService.getSubjectsForStudent(5L);
-
-                assertNotNull(responses);
-                assertEquals(1, responses.size());
-                assertEquals("Data Structures", responses.get(0).getName());
-
-                verify(studentRepository, times(1)).findByStudentId(5L);
-                verify(studentRepository, times(1)).findByUser_UserId(5L);
-        }
-
-        @Test
-        @DisplayName("Should throw ResourceNotFoundException when student profile is missing")
-        void testGetSubjectsForStudent_NotFound() {
-                when(studentRepository.findByStudentId(99L)).thenReturn(Optional.empty());
-                when(studentRepository.findByUser_UserId(99L)).thenReturn(Optional.empty());
-
-                assertThrows(ResourceNotFoundException.class, () -> subjectService.getSubjectsForStudent(99L));
-        }
+        verify(subjectEnrollmentRepository, times(1)).findByStudent_StudentId(1L);
+    }
 }

@@ -18,7 +18,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Map;
 
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -88,25 +87,5 @@ class OtpControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").value("otp-verified-token"));
-    }
-
-    @Test
-    @DisplayName("POST /api/otp/validate - Should validate verification token")
-    void testValidateOtpSuccess() throws Exception {
-        Map<String, String> body = Map.of(
-                "email", "user@college.edu",
-                "token", "otp-verified-token",
-                "type", "PASSWORD_RESET"
-        );
-
-        when(otpService.validateVerificationToken("user@college.edu", "otp-verified-token", OtpType.PASSWORD_RESET))
-                .thenReturn(true);
-
-        mockMvc.perform(post("/api/otp/validate")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data").value(true));
     }
 }

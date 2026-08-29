@@ -17,10 +17,13 @@ public interface UserMapper {
     UserProfileResponse toProfileResponse(User user, Student student, Teacher teacher);
 
     @Mapping(target = "studentId", source = "studentId")
-    @Mapping(target = "academicClassId", source = "academicClass.classId")
-    @Mapping(target = "faculty", source = "academicClass.faculty")
-    @Mapping(target = "semester", source = "academicClass.semester")
-    @Mapping(target = "displayName", source = "academicClass.displayName")
+    @Mapping(target = "levelId", source = "academicLevel.levelId")
+    @Mapping(target = "levelName", source = "academicLevel.name")
+    @Mapping(target = "levelNumber", source = "academicLevel.levelNumber")
+    @Mapping(target = "levelType", source = "academicLevel.type")
+    @Mapping(target = "programId", source = "academicLevel.program.programId")
+    @Mapping(target = "programName", source = "academicLevel.program.name")
+    @Mapping(target = "programCode", source = "academicLevel.program.code")
     UserProfileResponse.StudentProfileDetails mapStudentToDetails(Student student);
 
     default UserProfileResponse toProfileResponse(User user) {

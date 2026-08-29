@@ -1,7 +1,5 @@
 package com.college.bridge.academic.service;
 
-
-
 import com.college.bridge.academic.dto.AssignTeacherSubjectsRequest;
 import com.college.bridge.academic.dto.TeacherAssignmentResponse;
 import com.college.bridge.academic.entity.Subject;
@@ -17,7 +15,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -42,7 +39,6 @@ public class TeacherAssignmentService {
                 .orElseThrow(() ->
                         new EntityNotFoundException("Teacher not found."));
 
-
         List<Long> subjectIds = request.getSubjectIds()
                 .stream()
                 .distinct()
@@ -62,8 +58,8 @@ public class TeacherAssignmentService {
                 : null;
         if (teacherInstitutionId != null) {
             List<String> crossTenantSubjects = subjects.stream()
-                    .filter(s -> s.getInstitution() == null
-                            || !s.getInstitution().getInstitutionId().equals(teacherInstitutionId))
+                    .filter(s -> s.getAcademicLevel() == null || s.getAcademicLevel().getProgram() == null || s.getAcademicLevel().getProgram().getInstitution() == null
+                            || !s.getAcademicLevel().getProgram().getInstitution().getInstitutionId().equals(teacherInstitutionId))
                     .map(Subject::getName)
                     .toList();
             if (!crossTenantSubjects.isEmpty()) {
@@ -91,7 +87,6 @@ public class TeacherAssignmentService {
                             + String.join(", ", duplicateSubjects)
             );
         }
-
 
         List<TeacherAssignment> assignments = subjects.stream()
                 .map(subject -> mapper.toEntity(teacher, subject))
@@ -142,5 +137,4 @@ public class TeacherAssignmentService {
                 assignment
         );
     }
-
 }

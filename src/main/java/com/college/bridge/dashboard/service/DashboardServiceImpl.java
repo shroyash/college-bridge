@@ -1,6 +1,6 @@
 package com.college.bridge.dashboard.service;
 
-import com.college.bridge.academic.repository.AcademicClassRepository;
+import com.college.bridge.academic.repository.AcademicProgramRepository;
 import com.college.bridge.academic.repository.SubjectRepository;
 import com.college.bridge.auth.repository.StudentRepository;
 import com.college.bridge.auth.repository.TeacherRepository;
@@ -21,7 +21,7 @@ public class DashboardServiceImpl implements DashboardService {
 
     private final StudentRepository studentRepository;
     private final TeacherRepository teacherRepository;
-    private final AcademicClassRepository academicClassRepository;
+    private final AcademicProgramRepository academicProgramRepository;
     private final SubjectRepository subjectRepository;
 
     @Override
@@ -45,21 +45,21 @@ public class DashboardServiceImpl implements DashboardService {
                     .build());
 
             metrics.add(DashboardMetric.builder()
-                    .key("classes")
-                    .title("Total Classes")
-                    .value(academicClassRepository.countByInstitution_InstitutionId(tenantId))
+                    .key("programs")
+                    .title("Total Programs")
+                    .value(academicProgramRepository.countByInstitution_InstitutionId(tenantId))
                     .build());
 
             metrics.add(DashboardMetric.builder()
                     .key("subjects")
                     .title("Total Subjects")
-                    .value(subjectRepository.countByInstitution_InstitutionId(tenantId))
+                    .value(subjectRepository.countByAcademicLevel_Program_Institution_InstitutionId(tenantId))
                     .build());
         } else {
             // Fallback — global counts (for super admin context)
             metrics.add(DashboardMetric.builder().key("students").title("Total Students").value(studentRepository.count()).build());
             metrics.add(DashboardMetric.builder().key("teachers").title("Total Teachers").value(teacherRepository.count()).build());
-            metrics.add(DashboardMetric.builder().key("classes").title("Total Classes").value(academicClassRepository.count()).build());
+            metrics.add(DashboardMetric.builder().key("programs").title("Total Programs").value(academicProgramRepository.count()).build());
             metrics.add(DashboardMetric.builder().key("subjects").title("Total Subjects").value(subjectRepository.count()).build());
         }
 

@@ -1,6 +1,6 @@
 package com.college.bridge.notification.entity;
 
-import com.college.bridge.academic.entity.AcademicClass;
+import com.college.bridge.academic.entity.AcademicLevel;
 import com.college.bridge.academic.entity.Subject;
 import jakarta.persistence.*;
 import lombok.*;
@@ -23,8 +23,8 @@ public class NotificationTarget {
     private Notification notification;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "academic_class_id")
-    private AcademicClass academicClass;
+    @JoinColumn(name = "level_id")
+    private AcademicLevel academicLevel;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "subject_id")

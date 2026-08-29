@@ -18,10 +18,10 @@ import java.util.Optional;
 public interface StudentRepository extends JpaRepository<Student, Long> {
     Optional<Student> findByUser(User user);
 
-    @EntityGraph(attributePaths = {"academicClass", "user"})
+    @EntityGraph(attributePaths = {"academicLevel", "academicLevel.program", "user"})
     Optional<Student> findByUser_UserId(Long userId);
 
-    @EntityGraph(attributePaths = {"academicClass", "user"})
+    @EntityGraph(attributePaths = {"academicLevel", "academicLevel.program", "user"})
     Optional<Student> findByStudentId(Long studentId);
 
     List<Student> findByUser_UserIdIn(List<Long> userIds);
@@ -30,32 +30,32 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     long countByStudentIdInAndTenantId(@Param("studentIds") List<Long> studentIds, @Param("tenantId") Long tenantId);
 
     @Modifying
-    @Query("UPDATE Student s SET s.academicClass.classId = :targetClassId WHERE s.studentId IN :studentIds AND s.user.institution.institutionId = :tenantId")
-    int bulkUpdateAcademicClass(
+    @Query("UPDATE Student s SET s.academicLevel.levelId = :targetLevelId WHERE s.studentId IN :studentIds AND s.user.institution.institutionId = :tenantId")
+    int bulkUpdateAcademicLevel(
             @Param("studentIds") List<Long> studentIds,
-            @Param("targetClassId") Long targetClassId,
+            @Param("targetLevelId") Long targetLevelId,
             @Param("tenantId") Long tenantId
     );
 
-    @EntityGraph(attributePaths = {"academicClass", "user"})
-    List<Student> findByAcademicClass_ClassId(Long classId);
+    @EntityGraph(attributePaths = {"academicLevel", "academicLevel.program", "user"})
+    List<Student> findByAcademicLevel_LevelId(Long levelId);
 
     @EntityGraph(attributePaths = {"user"})
-    List<Student> findByUser_Institution_InstitutionIdAndAcademicClassIsNull(Long institutionId);
+    List<Student> findByUser_Institution_InstitutionIdAndAcademicLevelIsNull(Long institutionId);
 
-    long countByAcademicClass_ClassId(Long classId);
+    long countByAcademicLevel_LevelId(Long levelId);
 
     long countByUser_Institution_InstitutionId(Long institutionId);
 
-    @EntityGraph(attributePaths = {"academicClass", "user"})
+    @EntityGraph(attributePaths = {"academicLevel", "academicLevel.program", "user"})
     @Query("SELECT s FROM Student s WHERE s.user.institution.institutionId = :tenantId " +
-           "AND (:faculty IS NULL OR s.academicClass.faculty = :faculty) " +
-           "AND (:semester IS NULL OR s.academicClass.semester = :semester) " +
+           "AND (:programId IS NULL OR s.academicLevel.program.programId = :programId) " +
+           "AND (:levelId IS NULL OR s.academicLevel.levelId = :levelId) " +
            "AND (:search IS NULL OR LOWER(s.user.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(s.user.email) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Student> findStudentsFiltered(
             @Param("tenantId") Long tenantId,
-            @Param("faculty") String faculty,
-            @Param("semester") Integer semester,
+            @Param("programId") Long programId,
+            @Param("levelId") Long levelId,
             @Param("search") String search,
             Pageable pageable
     );

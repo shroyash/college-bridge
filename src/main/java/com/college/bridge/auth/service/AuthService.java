@@ -1,29 +1,33 @@
 package com.college.bridge.auth.service;
 
-import com.college.bridge.academic.entity.AcademicClass;
+import com.college.bridge.academic.entity.AcademicLevel;
 import com.college.bridge.academic.entity.Subject;
 import com.college.bridge.academic.entity.SubjectEnrollment;
-import com.college.bridge.academic.repository.AcademicClassRepository;
+import com.college.bridge.academic.repository.AcademicLevelRepository;
 import com.college.bridge.academic.repository.SubjectEnrollmentRepository;
 import com.college.bridge.academic.repository.SubjectRepository;
 import com.college.bridge.auth.dto.*;
 import com.college.bridge.auth.entity.*;
-import com.college.bridge.auth.exception.AccountSuspendedException;
-import com.college.bridge.auth.repository.*;
+import com.college.bridge.auth.exception.*;
+import com.college.bridge.auth.repository.RefreshTokenRepository;
+import com.college.bridge.auth.repository.StudentRepository;
+import com.college.bridge.auth.repository.TeacherRepository;
+import com.college.bridge.auth.repository.UserRepository;
 import com.college.bridge.auth.security.CustomUserDetailsService;
 import com.college.bridge.auth.security.JwtProperties;
 import com.college.bridge.auth.security.JwtService;
 import com.college.bridge.auth.security.UserPrincipal;
 import com.college.bridge.common.exception.*;
+import com.college.bridge.common.exception.DuplicateResourceException;
+import com.college.bridge.common.exception.ResourceNotFoundException;
 import com.college.bridge.institution.entity.Institution;
 import com.college.bridge.institution.entity.InstitutionStatus;
 import com.college.bridge.institution.repository.InstitutionRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,51 +36,28 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 @Slf4j
 @Transactional
 public class AuthService {
 
     private final UserRepository userRepository;
     private final StudentRepository studentRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
-    private final AcademicClassRepository academicClassRepository;
+    private final TeacherRepository teacherRepository;
+    private final AcademicLevelRepository academicLevelRepository;
     private final SubjectRepository subjectRepository;
     private final SubjectEnrollmentRepository subjectEnrollmentRepository;
     private final InstitutionRepository institutionRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
     private final CustomUserDetailsService userDetailsService;
     private final AuthenticationManager authenticationManager;
 
-    public AuthService(
-            UserRepository userRepository,
-            StudentRepository studentRepository,
-            RefreshTokenRepository refreshTokenRepository,
-            AcademicClassRepository academicClassRepository,
-            SubjectRepository subjectRepository,
-            SubjectEnrollmentRepository subjectEnrollmentRepository,
-            InstitutionRepository institutionRepository,
-            PasswordEncoder passwordEncoder,
-            JwtService jwtService,
-            JwtProperties jwtProperties,
-            CustomUserDetailsService userDetailsService,
-            AuthenticationManager authenticationManager) {
-        this.userRepository = userRepository;
-        this.studentRepository = studentRepository;
-        this.refreshTokenRepository = refreshTokenRepository;
-        this.academicClassRepository = academicClassRepository;
-        this.subjectRepository = subjectRepository;
-        this.subjectEnrollmentRepository = subjectEnrollmentRepository;
-        this.institutionRepository = institutionRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.jwtService = jwtService;
-        this.jwtProperties = jwtProperties;
-        this.userDetailsService = userDetailsService;
-        this.authenticationManager = authenticationManager;
-    }
-
     public AuthResponse register(RegisterRequest request) {
+        log.info("Attempting registration for email: {} in institution code: {}",
+                request.getEmail(), request.getInstitutionCode());
 
         Institution institution = institutionRepository.findByCode(request.getInstitutionCode())
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -88,13 +69,11 @@ public class AuthService {
                     + request.getInstitutionCode() + ": " + request.getEmail());
         }
 
-        AcademicClass academicClass = academicClassRepository
-                .findByInstitution_InstitutionIdAndFacultyAndSemester(institution.getInstitutionId(),
-                        request.getFaculty(), request.getSemester())
+        AcademicLevel academicLevel = academicLevelRepository
+                .findByLevelIdAndProgram_Institution_InstitutionId(request.getLevelId(), institution.getInstitutionId())
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "No academic class found for faculty " + request.getFaculty()
-                                + " semester " + request.getSemester() + " in institution "
-                                + request.getInstitutionCode()));
+                        "No academic level found with ID " + request.getLevelId()
+                                + " in institution " + request.getInstitutionCode()));
 
         User user = User.builder()
                 .institution(institution)
@@ -108,13 +87,12 @@ public class AuthService {
 
         Student student = Student.builder()
                 .user(savedUser)
-                .academicClass(academicClass)
+                .academicLevel(academicLevel)
                 .build();
         Student savedStudent = studentRepository.save(student);
 
-        // Auto-enroll in all subjects for this faculty + semester in this institution
-        List<Subject> subjects = subjectRepository.findByInstitution_InstitutionIdAndFacultyAndSemester(
-                institution.getInstitutionId(), request.getFaculty(), request.getSemester());
+        // Auto-enroll in all subjects for this level
+        List<Subject> subjects = subjectRepository.findByAcademicLevel_LevelId(academicLevel.getLevelId());
 
         List<SubjectEnrollment> enrollments = subjects.stream()
                 .map(subject -> SubjectEnrollment.builder()
@@ -158,21 +136,19 @@ public class AuthService {
             username = request.getEmail().trim();
         }
 
-        Authentication authentication;
-        try {
-            authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(username, request.getPassword())
-            );
-        } catch (AuthenticationException e) {
-            throw new BadCredentialsException("Invalid email or password.");
-        }
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(username, request.getPassword()));
 
-        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
-        User user = principal.getUser();
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        User user = userRepository.findById(userPrincipal.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         validateAccountStatus(user);
 
-        String accessToken = jwtService.generateAccessToken(principal);
+        String accessToken = jwtService.generateAccessToken(userPrincipal);
+
+        refreshTokenRepository.revokeAllByUser(user);
+
         RefreshToken refreshToken = createRefreshToken(user);
 
         Institution inst = user.getInstitution();
@@ -203,7 +179,6 @@ public class AuthService {
                 throw new AccountSuspendedException("User account is suspended.");
             }
         } else {
-            // Check institution status first
             Institution institution = user.getInstitution();
             if (institution == null || institution.getStatus() == InstitutionStatus.PENDING) {
                 throw new InstitutionPendingException("Institution registration is awaiting approval.");
@@ -218,7 +193,6 @@ public class AuthService {
                 throw new InstitutionSuspendedException("Institution status is invalid.");
             }
 
-            // Only check user status after institution is ACTIVE
             if (user.getStatus() == UserStatus.PENDING_VERIFICATION) {
                 throw new AccountPendingVerificationException("User account is awaiting verification.");
             } else if (user.getStatus() == UserStatus.SUSPENDED) {
@@ -281,33 +255,27 @@ public class AuthService {
 
         return AuthResponse.builder()
                 .accessToken(accessToken)
-                .refreshToken(newRefreshTokenStr)
+                .refreshToken(newRefreshToken.getToken())
                 .user(userResponse)
                 .build();
     }
 
     public void logout(String refreshTokenStr) {
-        if (refreshTokenStr == null || refreshTokenStr.trim().isEmpty()) {
-            return;
+        if (refreshTokenStr != null && !refreshTokenStr.isBlank()) {
+            refreshTokenRepository.findByToken(refreshTokenStr).ifPresent(rt -> {
+                rt.setRevoked(true);
+                refreshTokenRepository.save(rt);
+            });
         }
-
-        refreshTokenRepository.findByToken(refreshTokenStr).ifPresent(token -> {
-            token.setRevoked(true);
-            refreshTokenRepository.save(token);
-            log.info("User session revoked. Token deactivated.");
-        });
     }
 
     private RefreshToken createRefreshToken(User user) {
-        LocalDateTime expiry = LocalDateTime.now().plusNanos(jwtProperties.getRefreshTokenExpiration() * 1_000_000L);
-
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(user)
                 .token(jwtService.generateRefreshTokenString())
-                .expiryDate(expiry)
+                .expiryDate(LocalDateTime.now().plusNanos(jwtProperties.getRefreshTokenExpiration() * 1_000_000L))
                 .revoked(false)
                 .build();
-
         return refreshTokenRepository.save(refreshToken);
     }
 }
