@@ -68,6 +68,20 @@ public class AcademicAdminService {
     }
 
     @Transactional(readOnly = true)
+    public List<AcademicProgramResponse> getProgramsByInstitutionCode(String institutionCode) {
+        if (institutionCode == null || institutionCode.trim().isEmpty()) {
+            throw new IllegalArgumentException("Institution code must not be empty.");
+        }
+        Institution institution = institutionRepository.findByCode(institutionCode.trim().toUpperCase())
+                .orElseThrow(() -> new ResourceNotFoundException("Institution not found with code: " + institutionCode));
+
+        return programRepository.findByInstitution_InstitutionId(institution.getInstitutionId())
+                .stream()
+                .map(AcademicProgramResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public AcademicProgramResponse getProgramById(Long programId) {
         Long tenantId = requireTenantId();
         AcademicProgram program = programRepository.findByProgramIdAndInstitution_InstitutionId(programId, tenantId)
@@ -112,6 +126,17 @@ public class AcademicAdminService {
     public List<AcademicLevelResponse> getLevelsForProgram(Long programId) {
         Long tenantId = requireTenantId();
         programRepository.findByProgramIdAndInstitution_InstitutionId(programId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Academic program not found with ID: " + programId));
+
+        return levelRepository.findByProgram_ProgramId(programId)
+                .stream()
+                .map(AcademicLevelResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AcademicLevelResponse> getPublicLevelsForProgram(Long programId) {
+        programRepository.findById(programId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic program not found with ID: " + programId));
 
         return levelRepository.findByProgram_ProgramId(programId)

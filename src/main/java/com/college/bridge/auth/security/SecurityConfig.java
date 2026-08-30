@@ -55,13 +55,14 @@ public class SecurityConfig {
                         // Allow CORS preflight requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Public auth endpoints
+                        // Public auth and lookup endpoints
                         .requestMatchers(
                                 "/api/auth/register",
                                 "/api/auth/login",
                                 "/api/auth/refresh",
                                 "/api/auth/password/**",
-                                "/api/auth/register-institution"
+                                "/api/auth/register-institution",
+                                "/api/public/**"
                         ).permitAll()
 
                         // OTP standalone controller — also public
