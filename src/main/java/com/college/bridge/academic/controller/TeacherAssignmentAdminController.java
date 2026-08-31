@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/admin/teachers/{teacherId}/subject-assignments")
+@RequestMapping("/api/admin/teachers/{teacherId}/subject-assignments")
 @RequiredArgsConstructor
 public class TeacherAssignmentAdminController {
 

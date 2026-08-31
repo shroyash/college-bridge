@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/teacher/academic")
+@RequestMapping("/api/teacher/academic")
 @PreAuthorize("hasRole('TEACHER')")
 @RequiredArgsConstructor
 public class TeacherAcademicController {
@@ -31,16 +31,5 @@ public class TeacherAcademicController {
         }
         List<SubjectResponse> subjects = teacherAcademicService.getTeacherAssignedSubjects(principal.getTeacherId());
         return ResponseEntity.ok(ApiResponse.success("Teacher assigned subjects retrieved.", subjects));
-    }
-
-    @GetMapping("/my-classes")
-    public ResponseEntity<ApiResponse<List<AcademicLevelResponse>>> getMyClasses(
-            @AuthenticationPrincipal UserPrincipal principal
-    ) {
-        if (principal == null || principal.getTeacherId() == null) {
-            throw new AccessDeniedException("Only logged in teachers can access their academic levels.");
-        }
-        List<AcademicLevelResponse> levels = teacherAcademicService.getTeacherClasses(principal.getTeacherId());
-        return ResponseEntity.ok(ApiResponse.success("Teacher academic levels retrieved.", levels));
     }
 }

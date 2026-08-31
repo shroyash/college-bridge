@@ -30,8 +30,12 @@ public class TeacherAcademicService {
         Teacher teacher = teacherRepository.findById(teacherId)
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher not found with ID: " + teacherId));
 
-        return teacherAssignmentRepository.findByTeacherTeacherId(teacher.getTeacherId())
-                .stream()
+        Long tenantId = com.college.bridge.common.tenant.TenantContext.get();
+        List<TeacherAssignment> assignments = (tenantId != null)
+                ? teacherAssignmentRepository.findByTeacher_TeacherIdAndSubject_AcademicLevel_Program_Institution_InstitutionId(teacher.getTeacherId(), tenantId)
+                : teacherAssignmentRepository.findByTeacherTeacherId(teacher.getTeacherId());
+
+        return assignments.stream()
                 .map(ta -> SubjectResponse.from(ta.getSubject()))
                 .toList();
     }
@@ -41,7 +45,10 @@ public class TeacherAcademicService {
         Teacher teacher = teacherRepository.findById(teacherId)
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher not found with ID: " + teacherId));
 
-        List<TeacherAssignment> assignments = teacherAssignmentRepository.findByTeacherTeacherId(teacher.getTeacherId());
+        Long tenantId = com.college.bridge.common.tenant.TenantContext.get();
+        List<TeacherAssignment> assignments = (tenantId != null)
+                ? teacherAssignmentRepository.findByTeacher_TeacherIdAndSubject_AcademicLevel_Program_Institution_InstitutionId(teacher.getTeacherId(), tenantId)
+                : teacherAssignmentRepository.findByTeacherTeacherId(teacher.getTeacherId());
 
         List<AcademicLevel> levels = assignments.stream()
                 .map(ta -> ta.getSubject().getAcademicLevel())

@@ -5,16 +5,11 @@ import com.college.bridge.academic.dto.SubjectDetailResponse;
 import com.college.bridge.academic.dto.SubjectResponse;
 import com.college.bridge.academic.entity.Subject;
 import com.college.bridge.academic.entity.TeacherAssignment;
+import com.college.bridge.academic.mapper.SubjectMapper;
 import com.college.bridge.academic.repository.SubjectEnrollmentRepository;
 import com.college.bridge.academic.repository.SubjectRepository;
 import com.college.bridge.academic.repository.TeacherAssignmentRepository;
-import com.college.bridge.auth.entity.Student;
-import com.college.bridge.auth.entity.Teacher;
-import com.college.bridge.auth.entity.User;
 import com.college.bridge.auth.entity.UserRole;
-import com.college.bridge.auth.repository.StudentRepository;
-import com.college.bridge.auth.repository.TeacherRepository;
-import com.college.bridge.auth.repository.UserRepository;
 import com.college.bridge.auth.security.UserPrincipal;
 import com.college.bridge.common.exception.ResourceNotFoundException;
 import com.college.bridge.common.exception.TenantMismatchException;
@@ -30,154 +25,293 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@Transactional(noRollbackFor = { TenantMismatchException.class, ResourceNotFoundException.class, AccessDeniedException.class })
 public class SubjectService {
 
     private final SubjectRepository subjectRepository;
-    private final StudentRepository studentRepository;
-    private final TeacherRepository teacherRepository;
     private final SubjectEnrollmentRepository subjectEnrollmentRepository;
     private final TeacherAssignmentRepository teacherAssignmentRepository;
-    private final UserRepository userRepository;
+    private final SubjectMapper subjectMapper;
 
-    @Transactional(readOnly = true, noRollbackFor = { TenantMismatchException.class, ResourceNotFoundException.class })
+
+    @Transactional(readOnly = true)
     public SubjectResponse getSubjectById(Long subjectId) {
-        Subject subject = subjectRepository.findById(subjectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Subject", subjectId));
 
-        Long currentTenantId = TenantContext.get();
-        if (subject.getAcademicLevel() == null || subject.getAcademicLevel().getProgram() == null
-                || subject.getAcademicLevel().getProgram().getInstitution() == null
-                || (currentTenantId != null && !subject.getAcademicLevel().getProgram().getInstitution().getInstitutionId().equals(currentTenantId))) {
-            throw new TenantMismatchException("Subject not found or does not belong to current institution");
-        }
+        Long tenantId = requireTenant();
 
-        return SubjectResponse.from(subject);
+        Subject subject = subjectRepository
+                .findBySubjectIdAndAcademicLevel_Program_Institution_InstitutionId(
+                        subjectId,
+                        tenantId
+                )
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Subject",
+                                subjectId
+                        )
+                );
+
+        return subjectMapper.toResponse(subject);
     }
 
-    @Transactional(readOnly = true, noRollbackFor = { TenantMismatchException.class, ResourceNotFoundException.class })
-    public List<SubjectResponse> getSubjectsByLevel(Long levelId) {
-        return subjectRepository.findByAcademicLevel_LevelId(levelId)
+
+    @Transactional(readOnly = true)
+    public List<SubjectResponse> getSubjectsByLevel(
+            Long levelId) {
+
+        Long tenantId = requireTenant();
+
+        return subjectRepository
+                .findByAcademicLevel_LevelIdAndAcademicLevel_Program_Institution_InstitutionId(
+                        levelId,
+                        tenantId
+                )
                 .stream()
-                .map(SubjectResponse::from)
+                .map(subjectMapper::toResponse)
                 .toList();
     }
 
-    @Transactional(readOnly = true, noRollbackFor = { TenantMismatchException.class, ResourceNotFoundException.class })
+
+    @Transactional(readOnly = true)
     public List<SubjectResponse> getAllSubjects() {
-        Long tenantId = TenantContext.get();
-        if (tenantId == null) {
+
+        Long tenantId = requireTenant();
+
+        return subjectRepository
+                .findByAcademicLevel_Program_Institution_InstitutionId(
+                        tenantId
+                )
+                .stream()
+                .map(subjectMapper::toResponse)
+                .toList();
+    }
+
+
+    @Transactional(readOnly = true)
+    public List<SubjectResponse> searchSubjects(
+            String name) {
+
+        Long tenantId = requireTenant();
+
+        if (name == null || name.isBlank()) {
             return List.of();
         }
 
-        return subjectRepository.findByAcademicLevel_Program_Institution_InstitutionId(tenantId)
+        return subjectRepository
+                .findByAcademicLevel_Program_Institution_InstitutionIdAndNameContainingIgnoreCase(
+                        tenantId,
+                        name.trim()
+                )
                 .stream()
-                .map(SubjectResponse::from)
+                .map(subjectMapper::toResponse)
                 .toList();
     }
 
-    @Transactional(readOnly = true, noRollbackFor = { TenantMismatchException.class, ResourceNotFoundException.class })
-    public List<SubjectResponse> searchSubjects(String name) {
-        Long tenantId = TenantContext.get();
-        if (tenantId == null) {
-            return List.of();
+
+
+    @Transactional(readOnly = true)
+    public List<SubjectResponse> getMySubjects(UserPrincipal principal) {
+        if (principal == null) {
+            throw new AccessDeniedException("Authentication required");
         }
 
-        return subjectRepository.findByAcademicLevel_Program_Institution_InstitutionIdAndNameContainingIgnoreCase(tenantId, name)
-                .stream()
-                .map(SubjectResponse::from)
-                .toList();
+        if (principal.getTeacherId() != null) {
+            Long tenantId = requireTenant();
+            return teacherAssignmentRepository
+                    .findByTeacher_TeacherIdAndSubject_AcademicLevel_Program_Institution_InstitutionId(
+                            principal.getTeacherId(),
+                            tenantId
+                    )
+                    .stream()
+                    .map(ta -> {
+                        String tName = (ta.getTeacher() != null && ta.getTeacher().getUser() != null)
+                                ? ta.getTeacher().getUser().getFullName()
+                                : null;
+                        return subjectMapper.toResponse(ta.getSubject(), tName);
+                    })
+                    .toList();
+        }
+
+        if (principal.getStudentId() != null) {
+            return getSubjectsForStudent(principal.getStudentId());
+        }
+
+        throw new AccessDeniedException(
+                "Only logged in students or teachers can access their subjects."
+        );
     }
 
-    @Transactional(readOnly = true, noRollbackFor = { TenantMismatchException.class, ResourceNotFoundException.class })
-    public List<SubjectResponse> getSubjectsForStudent(Long studentId) {
-        return subjectEnrollmentRepository.findByStudent_StudentId(studentId)
-                .stream()
-                .map(se -> SubjectResponse.from(se.getSubject()))
-                .toList();
-    }
 
-    @Transactional(readOnly = true, noRollbackFor = { TenantMismatchException.class, ResourceNotFoundException.class, AccessDeniedException.class })
-    public SubjectDetailResponse getSubjectDetails(Long subjectId, UserPrincipal principal) {
-        Subject subject = subjectRepository.findById(subjectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Subject", subjectId));
+    @Transactional(readOnly = true)
+    public List<SubjectResponse> getSubjectsForStudent(
+            Long studentId) {
 
-        Long tenantId = TenantContext.get();
-        Long subjectInstitutionId = subject.getAcademicLevel().getProgram().getInstitution().getInstitutionId();
+        Long tenantId = requireTenant();
 
-        if (tenantId != null && !tenantId.equals(subjectInstitutionId)) {
-            throw new TenantMismatchException("Access denied: Subject belongs to a different institution");
+        if (studentId == null) {
+            throw new AccessDeniedException(
+                    "Student information not available"
+            );
         }
 
-        // Authorization checks based on Role
-        User user = userRepository.findById(principal.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        if (user.getRole() == UserRole.STUDENT) {
-            Student student = studentRepository.findByUser(user)
-                    .orElseThrow(() -> new ResourceNotFoundException("Student profile not found"));
-            boolean enrolled = subjectEnrollmentRepository.existsByStudent_StudentIdAndSubject_SubjectId(student.getStudentId(), subjectId);
-            if (!enrolled) {
-                throw new AccessDeniedException("Access denied: You are not enrolled in this subject");
-            }
-        } else if (user.getRole() == UserRole.TEACHER) {
-            Teacher teacher = teacherRepository.findByUser(user)
-                    .orElseThrow(() -> new ResourceNotFoundException("Teacher profile not found"));
-            boolean assigned = teacherAssignmentRepository.existsByTeacher_TeacherIdAndSubject_SubjectId(teacher.getTeacherId(), subjectId);
-            if (!assigned) {
-                throw new AccessDeniedException("Access denied: You are not assigned to teach this subject");
-            }
-        }
-
-        // Construct DTO
-        List<ClassStudentResponse> enrolledStudents = subjectEnrollmentRepository.findBySubject_SubjectId(subjectId)
+        return subjectEnrollmentRepository
+                .findByStudent_StudentIdAndStudent_User_Institution_InstitutionId(
+                        studentId,
+                        tenantId
+                )
                 .stream()
-                .map(se -> {
-                    Student s = se.getStudent();
-                    return ClassStudentResponse.builder()
-                            .studentId(s.getStudentId())
-                            .userId(s.getUser() != null ? s.getUser().getUserId() : null)
-                            .fullName(s.getUser() != null ? s.getUser().getFullName() : "Unknown")
-                            .email(s.getUser() != null ? s.getUser().getEmail() : "")
-                            .status(s.getUser() != null && s.getUser().getStatus() != null ? s.getUser().getStatus().name() : "ACTIVE")
-                            .build();
+                .map(enrollment -> {
+                    Subject subject = enrollment.getSubject();
+                    TeacherAssignment assignment = teacherAssignmentRepository
+                            .findFirstBySubject_SubjectId(subject.getSubjectId())
+                            .orElse(null);
+                    String tName = (assignment != null && assignment.getTeacher() != null && assignment.getTeacher().getUser() != null)
+                            ? assignment.getTeacher().getUser().getFullName()
+                            : null;
+                    return subjectMapper.toResponse(subject, tName);
                 })
                 .toList();
+    }
 
-        Teacher assignedTeacher = subject.getAssignments().stream()
-                .findFirst()
-                .map(TeacherAssignment::getTeacher)
-                .orElse(null);
 
-        SubjectDetailResponse.TeacherInfoDto teacherDto = null;
-        if (assignedTeacher != null) {
-            teacherDto = SubjectDetailResponse.TeacherInfoDto.builder()
-                    .teacherId(assignedTeacher.getTeacherId())
-                    .userId(assignedTeacher.getUser() != null ? assignedTeacher.getUser().getUserId() : null)
-                    .name(assignedTeacher.getUser() != null ? assignedTeacher.getUser().getFullName() : "Unknown")
-                    .email(assignedTeacher.getUser() != null ? assignedTeacher.getUser().getEmail() : "")
-                    .build();
+
+    @Transactional(readOnly = true)
+    public SubjectDetailResponse getSubjectDetails(
+            Long subjectId,
+            UserPrincipal principal) {
+
+        Long tenantId = requireTenant();
+
+        if (principal == null) {
+            throw new AccessDeniedException(
+                    "Authentication required"
+            );
         }
 
-        return SubjectDetailResponse.builder()
-                .subjectId(subject.getSubjectId())
-                .subjectName(subject.getName())
-                .code(subject.getCode())
-                .creditHours(subject.getCreditHours())
-                .academicLevel(SubjectDetailResponse.AcademicLevelInfoDto.builder()
-                        .levelId(subject.getAcademicLevel().getLevelId())
-                        .name(subject.getAcademicLevel().getName())
-                        .levelNumber(subject.getAcademicLevel().getLevelNumber())
-                        .type(subject.getAcademicLevel().getType())
-                        .build())
-                .academicProgram(SubjectDetailResponse.AcademicProgramInfoDto.builder()
-                        .programId(subject.getAcademicLevel().getProgram().getProgramId())
-                        .name(subject.getAcademicLevel().getProgram().getName())
-                        .code(subject.getAcademicLevel().getProgram().getCode())
-                        .build())
-                .teacher(teacherDto)
-                .studentCount(enrolledStudents.size())
-                .students(enrolledStudents)
-                .build();
+        Subject subject = subjectRepository
+                .findSubjectDetails(
+                        subjectId,
+                        tenantId
+                )
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Subject",
+                                subjectId
+                        )
+                );
+
+
+        validateSubjectAccess(
+                subjectId,
+                tenantId,
+                principal
+        );
+
+        List<ClassStudentResponse> students =
+                subjectEnrollmentRepository
+                        .findBySubject_SubjectId(subjectId)
+                        .stream()
+                        .map(enrollment ->
+                                subjectMapper.toClassStudentResponse(
+                                        enrollment.getStudent()
+                                )
+                        )
+                        .toList();
+
+
+        TeacherAssignment assignment =
+                teacherAssignmentRepository
+                        .findFirstBySubject_SubjectId(subjectId)
+                        .orElse(null);
+
+
+        var teacher = assignment != null
+                ? assignment.getTeacher()
+                : null;
+
+        return subjectMapper.toDetailResponse(
+                subject,
+                teacher,
+                students
+        );
+    }
+
+    private void validateSubjectAccess(
+            Long subjectId,
+            Long tenantId,
+            UserPrincipal principal) {
+
+        UserRole role = principal.getRole();
+
+        if (role == null) {
+            throw new AccessDeniedException(
+                    "User role not available"
+            );
+        }
+
+        if (role == UserRole.STUDENT) {
+
+            boolean enrolled =
+                    subjectEnrollmentRepository
+                            .existsEnrollmentForUser(
+                                    subjectId,
+                                    principal.getUserId(),
+                                    tenantId
+                            );
+
+            if (!enrolled) {
+                throw new AccessDeniedException(
+                        "Access denied: You are not enrolled in this subject"
+                );
+            }
+
+            return;
+        }
+
+        if (role == UserRole.TEACHER) {
+
+            boolean assigned =
+                    teacherAssignmentRepository
+                            .existsAssignmentForUser(
+                                    subjectId,
+                                    principal.getUserId(),
+                                    tenantId
+                            );
+
+            if (!assigned) {
+                throw new AccessDeniedException(
+                        "Access denied: You are not assigned to this subject"
+                );
+            }
+
+            return;
+        }
+
+        if (role == UserRole.ADMIN) {
+            return;
+        }
+
+        throw new AccessDeniedException(
+                "You are not authorized to access this subject"
+        );
+    }
+
+
+
+    private Long requireTenant() {
+
+        Long tenantId = TenantContext.get();
+
+        if (tenantId == null) {
+
+            log.warn(
+                    "Tenant context is missing while accessing subject"
+            );
+
+            throw new TenantMismatchException(
+                    "Tenant context not available"
+            );
+        }
+
+        return tenantId;
     }
 }

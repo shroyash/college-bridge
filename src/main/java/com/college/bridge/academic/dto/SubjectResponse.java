@@ -16,8 +16,13 @@ public class SubjectResponse {
     String code;
     Integer creditHours;
     String fcmTopicId;
+    String teacherName;
 
     public static SubjectResponse from(Subject subject) {
+        return from(subject, null);
+    }
+
+    public static SubjectResponse from(Subject subject, String teacherName) {
         Long levelId = subject.getAcademicLevel() != null ? subject.getAcademicLevel().getLevelId() : null;
         String levelName = subject.getAcademicLevel() != null ? subject.getAcademicLevel().getName() : null;
         Long programId = (subject.getAcademicLevel() != null && subject.getAcademicLevel().getProgram() != null)
@@ -35,6 +40,7 @@ public class SubjectResponse {
                 .code(subject.getCode())
                 .creditHours(subject.getCreditHours())
                 .fcmTopicId(subject.getFcmTopicId())
+                .teacherName(teacherName)
                 .build();
     }
 }
