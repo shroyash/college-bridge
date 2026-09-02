@@ -7,25 +7,26 @@ import com.college.bridge.auth.repository.UserRepository;
 import com.college.bridge.common.exception.BusinessRuleException;
 import com.college.bridge.common.exception.ResourceNotFoundException;
 import com.college.bridge.common.response.PageResponse;
-import com.college.bridge.institution.dto.*;
+import com.college.bridge.institution.dto.InstitutionDocumentResponse;
+import com.college.bridge.institution.dto.SuperAdminInstitutionResponse;
+import com.college.bridge.institution.dto.SuperAdminPendingInstitutionResponse;
 import com.college.bridge.institution.entity.Institution;
 import com.college.bridge.institution.entity.InstitutionStatus;
 import com.college.bridge.institution.repository.InstitutionDocumentRepository;
 import com.college.bridge.institution.repository.InstitutionRepository;
-import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -36,267 +37,531 @@ public class SuperAdminInstitutionService {
     private final InstitutionDocumentRepository institutionDocumentRepository;
     private final UserRepository userRepository;
 
+
     @Transactional(readOnly = true)
     public PageResponse<SuperAdminInstitutionResponse> getAllInstitutions(
             Pageable pageable,
             String search,
             InstitutionStatus status
     ) {
-        Specification<Institution> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
 
-            if (search != null && !search.trim().isEmpty()) {
-                String searchPattern = "%" + search.trim().toLowerCase() + "%";
-                Predicate nameLike = cb.like(cb.lower(root.get("name")), searchPattern);
-                Predicate codeLike = cb.like(cb.lower(root.get("code")), searchPattern);
-                predicates.add(cb.or(nameLike, codeLike));
-            }
+        Page<Institution> institutionPage = institutionRepository.searchAll(
+                status,
+                normalize(search),
+                pageable
+        );
 
-            if (status != null) {
-                predicates.add(cb.equal(root.get("status"), status));
-            }
+        List<Long> institutionIds = extractInstitutionIds(institutionPage.getContent());
 
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
+        Map<Long, Map<UserRole, Long>> roleCounts =
+                fetchUserCountsMap(institutionIds);
 
-        Page<Institution> page = institutionRepository.findAll(spec, pageable);
-        Map<Long, Map<UserRole, Long>> countsMap = fetchUserCountsMap();
-        Map<Long, Map<UserStatus, Long>> statusCountsMap = fetchUserStatusCountsMap();
+        Map<Long, Map<UserStatus, Long>> statusCounts =
+                fetchUserStatusCountsMap(institutionIds);
 
-        Page<SuperAdminInstitutionResponse> dtoPage = page.map(inst -> {
-            Map<UserRole, Long> roleCounts = countsMap.getOrDefault(inst.getInstitutionId(), Map.of());
-            Map<UserStatus, Long> statusCounts = statusCountsMap.getOrDefault(inst.getInstitutionId(), Map.of());
+        Page<SuperAdminInstitutionResponse> responsePage =
+                institutionPage.map(institution ->
+                        mapToSuperAdminInstitutionResponse(
+                                institution,
+                                roleCounts,
+                                statusCounts
+                        )
+                );
 
-            long students = roleCounts.getOrDefault(UserRole.STUDENT, 0L);
-            long teachers = roleCounts.getOrDefault(UserRole.TEACHER, 0L);
-            long admins = roleCounts.getOrDefault(UserRole.ADMIN, 0L);
-
-            long active = statusCounts.getOrDefault(UserStatus.ACTIVE, 0L);
-            long suspended = statusCounts.getOrDefault(UserStatus.SUSPENDED, 0L);
-
-            User submittedBy = inst.getSubmittedBy();
-
-            return SuperAdminInstitutionResponse.builder()
-                    .institutionId(inst.getInstitutionId())
-                    .institutionName(inst.getName())
-                    .code(inst.getCode())
-                    .profileImage(inst.getProfileImage())
-                    .location(inst.getLocation() != null ? inst.getLocation() : "Kathmandu")
-                    .website(inst.getWebsite())
-                    .contactEmail(submittedBy != null ? submittedBy.getEmail() : null)
-                    .contactPhone(null)
-                    .address(inst.getLocation())
-                    .status(inst.getStatus())
-                    .totalStudents(students)
-                    .totalTeachers(teachers)
-                    .totalAdmins(admins)
-                    .activeUsers(active)
-                    .suspendedUsers(suspended)
-                    .createdAt(inst.getCreatedAt())
-                    .build();
-        });
-
-        return PageResponse.from(dtoPage);
+        return PageResponse.from(responsePage);
     }
+
 
     @Transactional(readOnly = true)
-    public PageResponse<SuperAdminPendingInstitutionResponse> getPendingInstitutionsPaginated(
-            Pageable pageable,
-            String search
-    ) {
-        Specification<Institution> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.equal(root.get("status"), InstitutionStatus.PENDING));
+    public List<SuperAdminPendingInstitutionResponse> getPendingInstitutions(String search) {
 
-            if (search != null && !search.trim().isEmpty()) {
-                String searchPattern = "%" + search.trim().toLowerCase() + "%";
-                Predicate nameLike = cb.like(cb.lower(root.get("name")), searchPattern);
-                Predicate codeLike = cb.like(cb.lower(root.get("code")), searchPattern);
-                predicates.add(cb.or(nameLike, codeLike));
-            }
+        List<Institution> institutions = StringUtils.hasText(search)
+                ? institutionRepository.findByStatusAndSearch(InstitutionStatus.PENDING, search.trim())
+                : institutionRepository.findByStatus(InstitutionStatus.PENDING);
 
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
+        List<Long> institutionIds = extractInstitutionIds(institutions);
 
-        Page<Institution> page = institutionRepository.findAll(spec, pageable);
-        Map<Long, Map<UserRole, Long>> countsMap = fetchUserCountsMap();
+        Map<Long, Map<UserRole, Long>> roleCounts =
+                fetchUserCountsMap(institutionIds);
 
-        Page<SuperAdminPendingInstitutionResponse> dtoPage = page.map(inst -> {
-            Map<UserRole, Long> roleCounts = countsMap.getOrDefault(inst.getInstitutionId(), Map.of());
-            long students = roleCounts.getOrDefault(UserRole.STUDENT, 0L);
-            long teachers = roleCounts.getOrDefault(UserRole.TEACHER, 0L);
+        Map<Long, List<InstitutionDocumentResponse>> documentsMap =
+                fetchDocumentsMap(institutionIds);
 
-            User submittedBy = inst.getSubmittedBy();
-            String contactPerson = submittedBy != null ? submittedBy.getName() : null;
-            String email = submittedBy != null ? submittedBy.getEmail() : null;
-
-            List<InstitutionDocumentResponse> documents = institutionDocumentRepository
-                    .findByInstitution_InstitutionId(inst.getInstitutionId())
-                    .stream()
-                    .map(doc -> InstitutionDocumentResponse.builder()
-                            .documentId(doc.getDocumentId())
-                            .documentUrl(doc.getDocumentUrl())
-                            .documentType(doc.getDocumentType())
-                            .uploadedAt(doc.getUploadedAt())
-                            .build())
-                    .toList();
-
-            return SuperAdminPendingInstitutionResponse.builder()
-                    .institutionId(inst.getInstitutionId())
-                    .institutionName(inst.getName())
-                    .code(inst.getCode())
-                    .profileImage(inst.getProfileImage())
-                    .location(inst.getLocation() != null ? inst.getLocation() : "Kathmandu")
-                    .website(inst.getWebsite())
-                    .contactPerson(contactPerson)
-                    .email(email)
-                    .status(inst.getStatus())
-                    .totalStudents(students)
-                    .totalTeachers(teachers)
-                    .submittedAt(inst.getCreatedAt())
-                    .documents(documents)
-                    .build();
-        });
-
-        return PageResponse.from(dtoPage);
+        return institutions.stream()
+                .map(institution -> mapToPendingInstitutionResponse(
+                        institution,
+                        roleCounts,
+                        documentsMap
+                ))
+                .toList();
     }
 
-    private Map<Long, Map<UserRole, Long>> fetchUserCountsMap() {
-        List<Object[]> rawCounts = userRepository.countUsersGroupByInstitutionAndRole();
-        Map<Long, Map<UserRole, Long>> countsMap = new HashMap<>();
 
-        for (Object[] row : rawCounts) {
-            Long instId = (Long) row[0];
-            UserRole role = (UserRole) row[1];
-            Long count = (Long) row[2];
-
-            countsMap.computeIfAbsent(instId, k -> new HashMap<>()).put(role, count);
-        }
-
-        return countsMap;
-    }
-
-    private Map<Long, Map<UserStatus, Long>> fetchUserStatusCountsMap() {
-        List<Object[]> rawCounts = userRepository.countUsersGroupByInstitutionAndStatus();
-        Map<Long, Map<UserStatus, Long>> statusCountsMap = new HashMap<>();
-
-        for (Object[] row : rawCounts) {
-            Long instId = (Long) row[0];
-            UserStatus status = (UserStatus) row[1];
-            Long count = (Long) row[2];
-
-            statusCountsMap.computeIfAbsent(instId, k -> new HashMap<>()).put(status, count);
-        }
-
-        return statusCountsMap;
-    }
-
-    @Transactional(readOnly = true)
-    public List<PendingInstitutionResponse> getPendingInstitutions() {
-        List<Institution> pendingInstitutions = institutionRepository.findByStatus(InstitutionStatus.PENDING);
-
-        return pendingInstitutions.stream().map(inst -> {
-            List<InstitutionDocumentResponse> docs = institutionDocumentRepository
-                    .findByInstitution_InstitutionId(inst.getInstitutionId())
-                    .stream()
-                    .map(doc -> InstitutionDocumentResponse.builder()
-                            .documentId(doc.getDocumentId())
-                            .documentUrl(doc.getDocumentUrl())
-                            .documentType(doc.getDocumentType())
-                            .uploadedAt(doc.getUploadedAt())
-                            .build())
-                    .toList();
-
-            User submittedBy = inst.getSubmittedBy();
-
-            return PendingInstitutionResponse.builder()
-                    .institutionId(inst.getInstitutionId())
-                    .name(inst.getName())
-                    .code(inst.getCode())
-                    .status(inst.getStatus())
-                    .submittedByUserId(submittedBy != null ? submittedBy.getUserId() : null)
-                    .submittedByAdminName(submittedBy != null ? submittedBy.getName() : null)
-                    .submittedByAdminEmail(submittedBy != null ? submittedBy.getEmail() : null)
-                    .createdAt(inst.getCreatedAt())
-                    .documents(docs)
-                    .build();
-        }).toList();
-    }
 
     @Transactional
-    public void approveInstitution(Long institutionId, Long superAdminUserId) {
-        Institution institution = institutionRepository.findById(institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Institution not found with id: " + institutionId));
+    public void approveInstitution(
+            Long institutionId,
+            Long superAdminUserId
+    ) {
 
-        if (institution.getStatus() != InstitutionStatus.PENDING) {
-            throw new BusinessRuleException("Only PENDING institutions can be approved. Current status: " + institution.getStatus());
-        }
+        Institution institution =
+                getInstitution(institutionId);
 
-        User reviewer = userRepository.findById(superAdminUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("Super admin user not found with id: " + superAdminUserId));
+        validatePendingInstitution(institution);
+
+        User reviewer =
+                getUser(superAdminUserId);
 
         institution.setStatus(InstitutionStatus.ACTIVE);
         institution.setReviewedBy(reviewer);
         institution.setReviewedAt(LocalDateTime.now());
+
         institutionRepository.save(institution);
 
-        User submittingAdmin = institution.getSubmittedBy();
-        if (submittingAdmin == null) {
-            submittingAdmin = userRepository.findByInstitution_InstitutionIdAndRole(institutionId, UserRole.ADMIN)
-                    .stream().findFirst().orElse(null);
-        }
+        activateSubmittingAdmin(institution);
 
-        if (submittingAdmin != null) {
-            submittingAdmin.setStatus(UserStatus.ACTIVE);
-            userRepository.save(submittingAdmin);
-            log.info("Approved institution '{}' (id={}) and activated admin user '{}' (userId={}).",
-                    institution.getName(), institutionId, submittingAdmin.getEmail(), submittingAdmin.getUserId());
-        } else {
-            log.warn("Approved institution '{}' (id={}) but no submitting admin user was found to activate.",
-                    institution.getName(), institutionId);
-        }
+        log.info(
+                "Institution approved. institutionId={}, name={}",
+                institutionId,
+                institution.getName()
+        );
     }
+
 
     @Transactional
-    public void rejectInstitution(Long institutionId, String rejectionReason, Long superAdminUserId) {
-        Institution institution = institutionRepository.findById(institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Institution not found with id: " + institutionId));
+    public void rejectInstitution(
+            Long institutionId,
+            String rejectionReason,
+            Long superAdminUserId
+    ) {
 
-        if (institution.getStatus() != InstitutionStatus.PENDING) {
-            throw new BusinessRuleException("Only PENDING institutions can be rejected. Current status: " + institution.getStatus());
+        if (!StringUtils.hasText(rejectionReason)) {
+            throw new BusinessRuleException(
+                    "Rejection reason is required."
+            );
         }
 
-        User reviewer = userRepository.findById(superAdminUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("Super admin user not found with id: " + superAdminUserId));
+        Institution institution =
+                getInstitution(institutionId);
+
+        validatePendingInstitution(institution);
+
+        User reviewer =
+                getUser(superAdminUserId);
 
         institution.setStatus(InstitutionStatus.REJECTED);
-        institution.setRejectionReason(rejectionReason);
+        institution.setRejectionReason(
+                rejectionReason.trim()
+        );
         institution.setReviewedBy(reviewer);
         institution.setReviewedAt(LocalDateTime.now());
+
         institutionRepository.save(institution);
 
-        log.info("Rejected institution '{}' (id={}). Reason: {}", institution.getName(), institutionId, rejectionReason);
+        log.info(
+                "Institution rejected. institutionId={}, name={}",
+                institutionId,
+                institution.getName()
+        );
     }
+
+    // =========================================================
+    // SUSPEND
+    // =========================================================
 
     @Transactional
     public void suspendInstitution(Long institutionId) {
-        Institution institution = institutionRepository.findById(institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Institution not found with id: " + institutionId));
 
-        institution.setStatus(InstitutionStatus.SUSPENDED);
+        Institution institution =
+                getInstitution(institutionId);
+
+        if (institution.getStatus() == InstitutionStatus.SUSPENDED) {
+            throw new BusinessRuleException(
+                    "Institution is already suspended."
+            );
+        }
+
+        institution.setStatus(
+                InstitutionStatus.SUSPENDED
+        );
+
         institutionRepository.save(institution);
 
-        log.info("Suspended institution '{}' (id={}). Individual user status untouched.", institution.getName(), institutionId);
+        log.info(
+                "Institution suspended. institutionId={}, name={}",
+                institutionId,
+                institution.getName()
+        );
     }
+
+
 
     @Transactional
     public void reactivateInstitution(Long institutionId) {
-        Institution institution = institutionRepository.findById(institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Institution not found with id: " + institutionId));
 
-        institution.setStatus(InstitutionStatus.ACTIVE);
+        Institution institution =
+                getInstitution(institutionId);
+
+        if (institution.getStatus() == InstitutionStatus.ACTIVE) {
+            throw new BusinessRuleException(
+                    "Institution is already active."
+            );
+        }
+
+        institution.setStatus(
+                InstitutionStatus.ACTIVE
+        );
+
         institutionRepository.save(institution);
 
-        log.info("Reactivated institution '{}' (id={}). Individual user status untouched.", institution.getName(), institutionId);
+        log.info(
+                "Institution reactivated. institutionId={}, name={}",
+                institutionId,
+                institution.getName()
+        );
+    }
+
+
+
+    private String normalize(String search) {
+        return StringUtils.hasText(search) ? search.trim() : null;
+    }
+
+    private List<Long> extractInstitutionIds(List<Institution> institutions) {
+        return institutions.stream()
+                .map(Institution::getInstitutionId)
+                .toList();
+    }
+
+
+
+    private Map<Long, Map<UserRole, Long>>
+    fetchUserCountsMap(List<Long> institutionIds) {
+
+        if (institutionIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Object[]> rows =
+                userRepository
+                        .countUsersGroupByInstitutionAndRole(institutionIds);
+
+        Map<Long, Map<UserRole, Long>> result =
+                new HashMap<>();
+
+        for (Object[] row : rows) {
+
+            Long institutionId =
+                    (Long) row[0];
+
+            UserRole role =
+                    (UserRole) row[1];
+
+            Long count =
+                    (Long) row[2];
+
+            result.computeIfAbsent(
+                    institutionId,
+                    ignored -> new HashMap<>()
+            ).put(role, count);
+        }
+
+        return result;
+    }
+
+    private Map<Long, Map<UserStatus, Long>>
+    fetchUserStatusCountsMap(List<Long> institutionIds) {
+
+        if (institutionIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Object[]> rows =
+                userRepository
+                        .countUsersGroupByInstitutionAndStatus(institutionIds);
+
+        Map<Long, Map<UserStatus, Long>> result =
+                new HashMap<>();
+
+        for (Object[] row : rows) {
+
+            Long institutionId =
+                    (Long) row[0];
+
+            UserStatus status =
+                    (UserStatus) row[1];
+
+            Long count =
+                    (Long) row[2];
+
+            result.computeIfAbsent(
+                    institutionId,
+                    ignored -> new HashMap<>()
+            ).put(status, count);
+        }
+
+        return result;
+    }
+
+    // =========================================================
+    // DOCUMENTS — batched, no per-institution query
+    // =========================================================
+
+    private Map<Long, List<InstitutionDocumentResponse>>
+    fetchDocumentsMap(List<Long> institutionIds) {
+
+        if (institutionIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return institutionDocumentRepository
+                .findByInstitution_InstitutionIdIn(institutionIds)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        document -> document.getInstitution().getInstitutionId(),
+                        Collectors.mapping(document ->
+                                        InstitutionDocumentResponse.builder()
+                                                .documentId(document.getDocumentId())
+                                                .documentUrl(document.getDocumentUrl())
+                                                .documentType(document.getDocumentType())
+                                                .uploadedAt(document.getUploadedAt())
+                                                .build(),
+                                Collectors.toList()
+                        )
+                ));
+    }
+
+    // =========================================================
+    // MAPPERS
+    // =========================================================
+
+    private SuperAdminInstitutionResponse
+    mapToSuperAdminInstitutionResponse(
+            Institution institution,
+            Map<Long, Map<UserRole, Long>> roleCounts,
+            Map<Long, Map<UserStatus, Long>> statusCounts
+    ) {
+
+        Long institutionId =
+                institution.getInstitutionId();
+
+        Map<UserRole, Long> roles =
+                roleCounts.getOrDefault(
+                        institutionId,
+                        Map.of()
+                );
+
+        Map<UserStatus, Long> statuses =
+                statusCounts.getOrDefault(
+                        institutionId,
+                        Map.of()
+                );
+
+        User submittedBy =
+                institution.getSubmittedBy();
+
+        return SuperAdminInstitutionResponse.builder()
+                .institutionId(institutionId)
+                .institutionName(institution.getName())
+                .code(institution.getCode())
+                .profileImage(institution.getProfileImage())
+                .location(institution.getLocation())
+                .website(institution.getWebsite())
+                .contactEmail(
+                        submittedBy != null
+                                ? submittedBy.getEmail()
+                                : null
+                )
+                .contactPhone(null)
+                .address(institution.getLocation())
+                .status(institution.getStatus())
+                .totalStudents(
+                        roles.getOrDefault(
+                                UserRole.STUDENT,
+                                0L
+                        )
+                )
+                .totalTeachers(
+                        roles.getOrDefault(
+                                UserRole.TEACHER,
+                                0L
+                        )
+                )
+                .totalAdmins(
+                        roles.getOrDefault(
+                                UserRole.ADMIN,
+                                0L
+                        )
+                )
+                .activeUsers(
+                        statuses.getOrDefault(
+                                UserStatus.ACTIVE,
+                                0L
+                        )
+                )
+                .suspendedUsers(
+                        statuses.getOrDefault(
+                                UserStatus.SUSPENDED,
+                                0L
+                        )
+                )
+                .createdAt(
+                        institution.getCreatedAt()
+                )
+                .build();
+    }
+
+    private SuperAdminPendingInstitutionResponse
+    mapToPendingInstitutionResponse(
+            Institution institution,
+            Map<Long, Map<UserRole, Long>> roleCounts,
+            Map<Long, List<InstitutionDocumentResponse>> documentsMap
+    ) {
+
+        Map<UserRole, Long> roles =
+                roleCounts.getOrDefault(
+                        institution.getInstitutionId(),
+                        Map.of()
+                );
+
+        User submittedBy =
+                institution.getSubmittedBy();
+
+        List<InstitutionDocumentResponse> documents =
+                documentsMap.getOrDefault(
+                        institution.getInstitutionId(),
+                        List.of()
+                );
+
+        return SuperAdminPendingInstitutionResponse.builder()
+                .institutionId(
+                        institution.getInstitutionId()
+                )
+                .institutionName(
+                        institution.getName()
+                )
+                .code(
+                        institution.getCode()
+                )
+                .profileImage(
+                        institution.getProfileImage()
+                )
+                .location(
+                        institution.getLocation()
+                )
+                .website(
+                        institution.getWebsite()
+                )
+                .contactPerson(
+                        submittedBy != null
+                                ? submittedBy.getName()
+                                : null
+                )
+                .email(
+                        submittedBy != null
+                                ? submittedBy.getEmail()
+                                : null
+                )
+                .status(
+                        institution.getStatus()
+                )
+                .totalStudents(
+                        roles.getOrDefault(
+                                UserRole.STUDENT,
+                                0L
+                        )
+                )
+                .totalTeachers(
+                        roles.getOrDefault(
+                                UserRole.TEACHER,
+                                0L
+                        )
+                )
+                .submittedAt(
+                        institution.getCreatedAt()
+                )
+                .documents(documents)
+                .build();
+    }
+
+
+    // HELPERS
+
+    private Institution getInstitution(
+            Long institutionId
+    ) {
+
+        return institutionRepository
+                .findById(institutionId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Institution not found with id: "
+                                        + institutionId
+                        )
+                );
+    }
+
+    private User getUser(Long userId) {
+
+        return userRepository
+                .findById(userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "User not found with id: "
+                                        + userId
+                        )
+                );
+    }
+
+    private void validatePendingInstitution(
+            Institution institution
+    ) {
+
+        if (institution.getStatus()
+                != InstitutionStatus.PENDING) {
+
+            throw new BusinessRuleException(
+                    "Only PENDING institutions can be processed. "
+                            + "Current status: "
+                            + institution.getStatus()
+            );
+        }
+    }
+
+    private void activateSubmittingAdmin(
+            Institution institution
+    ) {
+
+        User submittingAdmin =
+                institution.getSubmittedBy();
+
+        if (submittingAdmin == null) {
+
+            submittingAdmin =
+                    userRepository
+                            .findByInstitution_InstitutionIdAndRole(
+                                    institution.getInstitutionId(),
+                                    UserRole.ADMIN
+                            )
+                            .stream()
+                            .findFirst()
+                            .orElse(null);
+        }
+
+        if (submittingAdmin == null) {
+
+            log.warn(
+                    "Institution approved but no admin found. institutionId={}",
+                    institution.getInstitutionId()
+            );
+
+            return;
+        }
+
+        submittingAdmin.setStatus(
+                UserStatus.ACTIVE
+        );
+
+        userRepository.save(submittingAdmin);
     }
 }

@@ -5,8 +5,10 @@ import com.college.bridge.academic.entity.AcademicLevel;
 import com.college.bridge.academic.entity.AcademicProgram;
 import com.college.bridge.academic.entity.Subject;
 import com.college.bridge.academic.entity.SubjectEnrollment;
+import com.college.bridge.academic.mapper.SubjectMapper;
 import com.college.bridge.academic.repository.SubjectEnrollmentRepository;
 import com.college.bridge.academic.repository.SubjectRepository;
+import com.college.bridge.academic.repository.TeacherAssignmentRepository;
 import com.college.bridge.academic.service.SubjectService;
 import com.college.bridge.auth.entity.Student;
 import com.college.bridge.common.tenant.TenantContext;
@@ -20,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -32,6 +35,12 @@ public class SubjectServiceTest {
 
     @Mock
     private SubjectEnrollmentRepository subjectEnrollmentRepository;
+
+    @Mock
+    private TeacherAssignmentRepository teacherAssignmentRepository;
+
+    @Mock
+    private SubjectMapper subjectMapper;
 
     @InjectMocks
     private SubjectService subjectService;
@@ -81,7 +90,20 @@ public class SubjectServiceTest {
                 .subject(subject)
                 .build();
 
-        when(subjectEnrollmentRepository.findByStudent_StudentId(1L)).thenReturn(List.of(enrollment));
+        SubjectResponse expectedResponse = SubjectResponse.builder()
+                .subjectId(20L)
+                .name("Java Programming")
+                .code("CACS201")
+                .creditHours(3)
+                .levelId(10L)
+                .levelName("1st Semester")
+                .programId(1L)
+                .programName("Bachelor of Computer Application")
+                .build();
+
+        when(subjectEnrollmentRepository.findByStudent_StudentIdAndStudent_User_Institution_InstitutionId(1L, 100L)).thenReturn(List.of(enrollment));
+        when(teacherAssignmentRepository.findFirstBySubject_SubjectId(20L)).thenReturn(Optional.empty());
+        when(subjectMapper.toResponse(subject, null)).thenReturn(expectedResponse);
 
         List<SubjectResponse> responses = subjectService.getSubjectsForStudent(1L);
 
@@ -91,6 +113,6 @@ public class SubjectServiceTest {
         assertEquals("CACS201", responses.get(0).getCode());
         assertEquals("1st Semester", responses.get(0).getLevelName());
 
-        verify(subjectEnrollmentRepository, times(1)).findByStudent_StudentId(1L);
+        verify(subjectEnrollmentRepository, times(1)).findByStudent_StudentIdAndStudent_User_Institution_InstitutionId(1L, 100L);
     }
 }

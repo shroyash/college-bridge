@@ -39,7 +39,7 @@ public class SubjectService {
         Long tenantId = requireTenant();
 
         Subject subject = subjectRepository
-                .findBySubjectIdAndAcademicLevel_Program_Institution_InstitutionId(
+                .findBySubjectIdAndAcademicLevel_Program_Institution_InstitutionIdAndDeletedFalseAndAcademicLevel_DeletedFalseAndAcademicLevel_Program_DeletedFalse(
                         subjectId,
                         tenantId
                 )
@@ -61,7 +61,7 @@ public class SubjectService {
         Long tenantId = requireTenant();
 
         return subjectRepository
-                .findByAcademicLevel_LevelIdAndAcademicLevel_Program_Institution_InstitutionId(
+                .findByAcademicLevel_LevelIdAndAcademicLevel_Program_Institution_InstitutionIdAndDeletedFalseAndAcademicLevel_DeletedFalseAndAcademicLevel_Program_DeletedFalse(
                         levelId,
                         tenantId
                 )
@@ -77,7 +77,7 @@ public class SubjectService {
         Long tenantId = requireTenant();
 
         return subjectRepository
-                .findByAcademicLevel_Program_Institution_InstitutionId(
+                .findByAcademicLevel_Program_Institution_InstitutionIdAndDeletedFalseAndAcademicLevel_DeletedFalseAndAcademicLevel_Program_DeletedFalse(
                         tenantId
                 )
                 .stream()
@@ -97,7 +97,7 @@ public class SubjectService {
         }
 
         return subjectRepository
-                .findByAcademicLevel_Program_Institution_InstitutionIdAndNameContainingIgnoreCase(
+                .findByAcademicLevel_Program_Institution_InstitutionIdAndNameContainingIgnoreCaseAndDeletedFalseAndAcademicLevel_DeletedFalseAndAcademicLevel_Program_DeletedFalse(
                         tenantId,
                         name.trim()
                 )

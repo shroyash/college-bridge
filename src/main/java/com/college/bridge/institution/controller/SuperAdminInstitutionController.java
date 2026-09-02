@@ -16,6 +16,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/super-admin/institutions")
 @RequiredArgsConstructor
@@ -30,16 +32,17 @@ public class SuperAdminInstitutionController {
             @RequestParam(required = false) InstitutionStatus status,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        PageResponse<SuperAdminInstitutionResponse> page = superAdminInstitutionService.getAllInstitutions(pageable, search, status);
+        PageResponse<SuperAdminInstitutionResponse> page =
+                superAdminInstitutionService.getAllInstitutions(pageable, search, status);
         return ResponseEntity.ok(ApiResponse.success("Institutions retrieved successfully.", page));
     }
 
     @GetMapping("/pending")
-    public ResponseEntity<ApiResponse<PageResponse<SuperAdminPendingInstitutionResponse>>> getPendingInstitutions(
-            @RequestParam(required = false) String search,
-            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    public ResponseEntity<ApiResponse<List<SuperAdminPendingInstitutionResponse>>> getPendingInstitutions(
+            @RequestParam(required = false) String search
     ) {
-        PageResponse<SuperAdminPendingInstitutionResponse> pending = superAdminInstitutionService.getPendingInstitutionsPaginated(pageable, search);
+        List<SuperAdminPendingInstitutionResponse> pending =
+                superAdminInstitutionService.getPendingInstitutions(search);
         return ResponseEntity.ok(ApiResponse.success("Pending institutions retrieved successfully.", pending));
     }
 

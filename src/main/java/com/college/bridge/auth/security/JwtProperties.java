@@ -5,6 +5,8 @@ import org.springframework.context.annotation.Configuration;
 
 import lombok.Data;
 
+import java.time.Duration;
+
 @Configuration
 @ConfigurationProperties(prefix = "app.jwt")
 @Data
@@ -14,9 +16,6 @@ public class JwtProperties {
     private String privateKeyPath = "classpath:keys/private_key.pem";
     private String publicKeyPath = "classpath:keys/public_key.pem";
 
-    // Access token expiry in milliseconds (default 15 minutes)
-    private long accessTokenExpiration = 15 * 60 * 1000L;
-
-    // Refresh token expiry in milliseconds (default 7 days)
-    private long refreshTokenExpiration = 7 * 24 * 60 * 60 * 1000L;
+    private Duration accessTokenExpiration = Duration.ofMinutes(15);
+    private Duration refreshTokenExpiration = Duration.ofDays(7);
 }

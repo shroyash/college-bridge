@@ -10,4 +10,5 @@ import java.util.List;
 public interface InstitutionDocumentRepository extends JpaRepository<InstitutionDocument, Long> {
 
     List<InstitutionDocument> findByInstitution_InstitutionId(Long institutionId);
+    List<InstitutionDocument> findByInstitution_InstitutionIdIn(List<Long> institutionIds);
 }

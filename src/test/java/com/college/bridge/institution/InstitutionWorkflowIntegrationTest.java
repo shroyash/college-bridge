@@ -151,7 +151,6 @@ public class InstitutionWorkflowIntegrationTest {
                 .build());
 
         LoginRequest loginReq = LoginRequest.builder()
-                .institutionCode(inst.getCode())
                 .email(admin.getEmail())
                 .password("ValidPass123!")
                 .build();
@@ -201,7 +200,6 @@ public class InstitutionWorkflowIntegrationTest {
 
         // Login should now succeed
         LoginRequest loginReq = LoginRequest.builder()
-                .institutionCode(inst.getCode())
                 .email(admin.getEmail())
                 .password("ValidPass123!")
                 .build();
@@ -250,7 +248,6 @@ public class InstitutionWorkflowIntegrationTest {
 
         // Attempt login -> Expect 403 with rejection reason
         LoginRequest loginReq = LoginRequest.builder()
-                .institutionCode(inst.getCode())
                 .email(admin.getEmail())
                 .password("ValidPass123!")
                 .build();
@@ -295,7 +292,6 @@ public class InstitutionWorkflowIntegrationTest {
 
         // Login attempt fails with institution suspended message
         LoginRequest loginReq = LoginRequest.builder()
-                .institutionCode(inst.getCode())
                 .email(user.getEmail())
                 .password("ValidPass123!")
                 .build();
@@ -326,7 +322,6 @@ public class InstitutionWorkflowIntegrationTest {
                 .build());
 
         LoginRequest loginReq = LoginRequest.builder()
-                .institutionCode(inst.getCode())
                 .email(user.getEmail())
                 .password("ValidPass123!")
                 .build();

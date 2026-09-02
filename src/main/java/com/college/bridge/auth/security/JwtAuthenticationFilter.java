@@ -3,7 +3,7 @@ package com.college.bridge.auth.security;
 import com.college.bridge.auth.entity.User;
 import com.college.bridge.auth.entity.UserRole;
 import com.college.bridge.auth.entity.UserStatus;
-import com.college.bridge.auth.service.UserTokenRevocationService;
+import com.college.bridge.auth.service.TokenRevocationService;
 import com.college.bridge.common.tenant.TenantContext;
 import com.college.bridge.institution.entity.InstitutionStatus;
 import io.jsonwebtoken.Claims;
@@ -21,12 +21,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Date;
-
-import com.college.bridge.auth.service.TokenRevocationService;
+import java.util.Objects;
 
 @Component
 @Slf4j
@@ -67,20 +65,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String jwt = authHeader.substring(7);
 
         try {
+
             Claims claims = jwtService.parseClaims(jwt);
+
             String userEmail = claims.getSubject();
             Long userId = claims.get("userId", Long.class);
             Long institutionId = claims.get("institutionId", Long.class);
-            Instant issuedAt = claims.getIssuedAt().toInstant();
+
+            Date issuedAtDate = claims.getIssuedAt();
             Date expiration = claims.getExpiration();
+
 
             if (userEmail == null
                     || userId == null
-                    || issuedAt == null
+                    || issuedAtDate == null
                     || expiration == null) {
+
+                log.debug("JWT is missing required claims");
                 filterChain.doFilter(request, response);
                 return;
             }
+
+            Instant issuedAt = issuedAtDate.toInstant();
+
 
             if (expiration.before(new Date())) {
                 log.debug("JWT token has expired");
@@ -88,52 +95,122 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // Populate request-scoped TenantContext after token validation
-            if (institutionId != null) {
-                TenantContext.set(institutionId);
-            }
-
+            // 3. Only authenticate if SecurityContext is empty
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails;
-                if (institutionId != null) {
-                    userDetails = userDetailsService.loadUserByInstitutionIdAndEmail(institutionId, userEmail);
-                } else {
-                    userDetails = userDetailsService.loadUserByUsername(userEmail);
+
+                UserDetails userDetails =
+                        userDetailsService.loadUserByUsername(userEmail);
+
+                if (!(userDetails instanceof UserPrincipal principal)) {
+                    log.warn("Invalid UserPrincipal for email: {}", userEmail);
+                    filterChain.doFilter(request, response);
+                    return;
                 }
 
-                if (userDetails instanceof UserPrincipal principal) {
-                    User user = principal.getUser();
-                    if (user.getRole() != UserRole.SUPER_ADMIN) {
-                        if (user.getInstitution() == null
-                                || user.getInstitution().getStatus() != InstitutionStatus.ACTIVE
-                                || user.getStatus() != UserStatus.ACTIVE) {
-                            log.warn("Rejected JWT request for user ID: {} - Institution status: {}, User status: {}",
-                                    user.getUserId(),
-                                    user.getInstitution() != null ? user.getInstitution().getStatus() : "null",
-                                    user.getStatus());
-                            TenantContext.clear();
-                            filterChain.doFilter(request, response);
-                            return;
-                        }
+                User user = principal.getUser();
+
+                if (!Objects.equals(userId, principal.getUserId())) {
+
+                    log.warn(
+                            "JWT userId mismatch. JWT: {}, DB: {}",
+                            userId,
+                            principal.getUserId()
+                    );
+
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+
+                if (!userEmail.equalsIgnoreCase(userDetails.getUsername())) {
+
+                    log.warn(
+                            "JWT email does not match database user. JWT: {}, DB: {}",
+                            userEmail,
+                            userDetails.getUsername()
+                    );
+
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+
+                Long databaseInstitutionId = principal.getInstitutionId();
+
+                /*
+                 * SUPER_ADMIN may not belong to an institution.
+                 * Therefore institutionId can be null for SUPER_ADMIN.
+                 */
+                if (user.getRole() != UserRole.SUPER_ADMIN) {
+
+                    if (institutionId == null) {
+
+                        log.warn(
+                                "JWT missing institutionId for user ID: {}",
+                                userId
+                        );
+
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
+
+                    if (!Objects.equals(
+                            institutionId,
+                            databaseInstitutionId
+                    )) {
+
+                        log.warn(
+                                "JWT institution mismatch. JWT: {}, DB: {}",
+                                institutionId,
+                                databaseInstitutionId
+                        );
+
+                        filterChain.doFilter(request, response);
+                        return;
                     }
                 }
 
+                if (user.getRole() != UserRole.SUPER_ADMIN) {
 
-                boolean tokenRevoked = userTokenRevocationService.isTokenRevoked(
-                        userId,
-                        issuedAt
-                );
+                    if (user.getInstitution() == null
+                            || user.getInstitution().getStatus()
+                            != InstitutionStatus.ACTIVE
+                            || user.getStatus() != UserStatus.ACTIVE) {
+
+                        log.warn(
+                                "Rejected JWT request for user ID: {} - " +
+                                        "Institution status: {}, User status: {}",
+                                user.getUserId(),
+                                user.getInstitution() != null
+                                        ? user.getInstitution().getStatus()
+                                        : "null",
+                                user.getStatus()
+                        );
+
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
+                }
+
+                boolean tokenRevoked =
+                        userTokenRevocationService.isTokenRevoked(
+                                userId,
+                                issuedAt
+                        );
 
                 if (tokenRevoked) {
-                    log.warn("Rejected revoked token for user ID: {}", userId);
+
+                    log.warn(
+                            "Rejected revoked token for user ID: {}",
+                            userId
+                    );
+
                     filterChain.doFilter(request, response);
                     return;
                 }
 
-                if (!userEmail.equals(userDetails.getUsername())) {
-                    log.warn("JWT username does not match user details");
-                    filterChain.doFilter(request, response);
-                    return;
+                if (institutionId != null) {
+                    TenantContext.set(institutionId);
                 }
 
                 UsernamePasswordAuthenticationToken authToken =
@@ -147,31 +224,39 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new WebAuthenticationDetailsSource()
                                 .buildDetails(request)
                 );
+
                 SecurityContextHolder
                         .getContext()
                         .setAuthentication(authToken);
 
-                log.info("JWT authenticated user: {}", userDetails.getUsername());
-                log.info("JWT user authorities: {}", userDetails.getAuthorities());
-                log.info("SecurityContext authorities: {}",
-                        SecurityContextHolder.getContext()
-                                .getAuthentication()
-                                .getAuthorities());
             }
 
             filterChain.doFilter(request, response);
 
         } catch (ExpiredJwtException e) {
+
             log.debug("JWT token has expired");
             filterChain.doFilter(request, response);
+
         } catch (JwtException | IllegalArgumentException e) {
-            log.debug("Invalid JWT token: {}", e.getMessage());
+
+            log.debug(
+                    "Invalid JWT token: {}",
+                    e.getMessage()
+            );
+
             filterChain.doFilter(request, response);
+
         } catch (Exception e) {
-            log.error("Could not establish security context: {}", e.getMessage());
+
+            log.error(
+                    "Could not establish security context: {}",
+                    e.getMessage()
+            );
+
             filterChain.doFilter(request, response);
+
         } finally {
-            // Always clear ThreadLocal TenantContext in a finally block
             TenantContext.clear();
         }
     }

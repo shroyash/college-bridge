@@ -24,6 +24,13 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     @EntityGraph(attributePaths = {"academicLevel", "academicLevel.program", "user"})
     Optional<Student> findByStudentId(Long studentId);
 
+    @EntityGraph(attributePaths = {"academicLevel", "academicLevel.program", "user"})
+    Optional<Student> findByStudentIdAndUser_Institution_InstitutionId(Long studentId, Long institutionId);
+
+    @Modifying
+    @Query("UPDATE Student s SET s.academicLevel = null WHERE s.academicLevel.levelId = :levelId")
+    int clearAcademicLevel(@Param("levelId") Long levelId);
+
     List<Student> findByUser_UserIdIn(List<Long> userIds);
 
     @Query("SELECT COUNT(s) FROM Student s WHERE s.studentId IN :studentIds AND s.user.institution.institutionId = :tenantId")

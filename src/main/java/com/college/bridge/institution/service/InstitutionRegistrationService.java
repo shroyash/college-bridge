@@ -96,8 +96,6 @@ public class InstitutionRegistrationService {
             institutionDocumentRepository.save(document);
         }
 
-        log.info("Institution '{}' ({}) registered by admin '{}'. Status: PENDING.",
-                savedInstitution.getName(), savedInstitution.getCode(), savedAdminUser.getEmail());
 
         return InstitutionRegistrationResponse.builder()
                 .institutionId(savedInstitution.getInstitutionId())

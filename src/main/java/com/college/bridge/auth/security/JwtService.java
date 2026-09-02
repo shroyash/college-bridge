@@ -53,7 +53,7 @@ public class JwtService {
                 .toList();
 
         Instant now = Instant.now();
-        Instant expiration = now.plusMillis(
+        Instant expiration = now.plus(
                 jwtProperties.getAccessTokenExpiration()
         );
 
@@ -74,7 +74,7 @@ public class JwtService {
     public String generateRefreshTokenString() {
 
         Instant now = Instant.now();
-        Instant expiration = now.plusMillis(
+        Instant expiration = now.plus(
                 jwtProperties.getRefreshTokenExpiration()
         );
 

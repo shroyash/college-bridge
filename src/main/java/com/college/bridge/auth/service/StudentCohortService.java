@@ -51,7 +51,7 @@ public class StudentCohortService {
     @Transactional(readOnly = true)
     public StudentFilterOptionsResponse getStudentFilterOptions(Principal principal) {
         Long tenantId = getTenantId(principal);
-        List<String> faculties = academicProgramRepository.findByInstitution_InstitutionId(tenantId)
+        List<String> faculties = academicProgramRepository.findByInstitution_InstitutionIdAndDeletedFalse(tenantId)
                 .stream()
                 .map(p -> p.getCode())
                 .toList();
@@ -73,7 +73,7 @@ public class StudentCohortService {
         }
 
         AcademicLevel targetLevel = academicLevelRepository
-                .findByLevelIdAndProgram_Institution_InstitutionId(request.getTargetLevelId(), tenantId)
+                .findByLevelIdAndProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(request.getTargetLevelId(), tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Target Academic Level not found for ID: " + request.getTargetLevelId()));
 
         long validStudents = studentRepository.countByStudentIdInAndTenantId(request.getStudentIds(), tenantId);
@@ -105,6 +105,55 @@ public class StudentCohortService {
                         .programName(targetLevel.getProgram().getName())
                         .build())
                 .build();
+    }
+
+    @Transactional
+    public com.college.bridge.academic.dto.ClassStudentResponse addStudentToLevel(Long levelId, Long studentId) {
+        Long tenantId = getTenantId(null);
+        AcademicLevel level = academicLevelRepository.findByLevelIdAndProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(levelId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Academic level not found with ID: " + levelId));
+
+        com.college.bridge.auth.entity.Student student = studentRepository.findByStudentIdAndUser_Institution_InstitutionId(studentId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found or access denied: " + studentId));
+
+        student.setAcademicLevel(level);
+        com.college.bridge.auth.entity.Student saved = studentRepository.save(student);
+
+        return com.college.bridge.academic.dto.ClassStudentResponse.builder()
+                .studentId(saved.getStudentId())
+                .userId(saved.getUser() != null ? saved.getUser().getUserId() : null)
+                .fullName(saved.getUser() != null ? saved.getUser().getFullName() : "Unknown")
+                .email(saved.getUser() != null ? saved.getUser().getEmail() : "")
+                .status(saved.getUser() != null && saved.getUser().getStatus() != null ? saved.getUser().getStatus().name() : "ACTIVE")
+                .build();
+    }
+
+    @Transactional
+    public void removeStudentFromLevel(Long levelId, Long studentId) {
+        Long tenantId = getTenantId(null);
+        academicLevelRepository.findByLevelIdAndProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(levelId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Academic level not found with ID: " + levelId));
+
+        com.college.bridge.auth.entity.Student student = studentRepository.findByStudentIdAndUser_Institution_InstitutionId(studentId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found or access denied: " + studentId));
+
+        if (student.getAcademicLevel() != null && student.getAcademicLevel().getLevelId().equals(levelId)) {
+            student.setAcademicLevel(null);
+            studentRepository.save(student);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<com.college.bridge.academic.dto.ClassStudentResponse> getUnassignedStudents() {
+        Long tenantId = getTenantId(null);
+        List<com.college.bridge.auth.entity.Student> unassigned = studentRepository.findByUser_Institution_InstitutionIdAndAcademicLevelIsNull(tenantId);
+        return unassigned.stream().map(s -> com.college.bridge.academic.dto.ClassStudentResponse.builder()
+                .studentId(s.getStudentId())
+                .userId(s.getUser() != null ? s.getUser().getUserId() : null)
+                .fullName(s.getUser() != null ? s.getUser().getFullName() : "Unknown")
+                .email(s.getUser() != null ? s.getUser().getEmail() : "")
+                .status(s.getUser() != null && s.getUser().getStatus() != null ? s.getUser().getStatus().name() : "ACTIVE")
+                .build()).toList();
     }
 
     private Long getTenantId(Principal principal) {

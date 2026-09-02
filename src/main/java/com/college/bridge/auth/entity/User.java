@@ -42,7 +42,7 @@ public class User {
         return name;
     }
 
-    @Column(name = "email", nullable = false, length = 150)
+    @Column(nullable = false, unique = true, length = 255)
     private String email;
 
     @com.fasterxml.jackson.annotation.JsonIgnore

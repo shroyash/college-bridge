@@ -1,9 +1,9 @@
 package com.college.bridge.institution.service;
 
 import com.college.bridge.academic.repository.AcademicLevelRepository;
-import com.college.bridge.auth.entity.User;
 import com.college.bridge.auth.entity.UserRole;
 import com.college.bridge.auth.repository.UserRepository;
+import com.college.bridge.auth.security.UserPrincipal;
 import com.college.bridge.common.exception.ResourceNotFoundException;
 import com.college.bridge.common.tenant.TenantContext;
 import com.college.bridge.institution.dto.InstitutionProfileResponse;
@@ -11,17 +11,11 @@ import com.college.bridge.institution.dto.UpdateInstitutionProfileRequest;
 import com.college.bridge.institution.entity.Institution;
 import com.college.bridge.institution.repository.InstitutionRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.Principal;
-import java.time.LocalDateTime;
-import java.util.Optional;
-
 @Service
 @RequiredArgsConstructor
-@Slf4j
 @Transactional
 public class InstitutionAdminService {
 
@@ -30,80 +24,184 @@ public class InstitutionAdminService {
     private final AcademicLevelRepository academicLevelRepository;
 
     @Transactional(readOnly = true)
-    public InstitutionProfileResponse getInstitutionProfile(Principal principal) {
-        User adminUser = getAdminUser(principal);
-        Institution inst = getInstitutionForUser(adminUser);
+    public InstitutionProfileResponse getInstitutionProfile(
+            UserPrincipal principal
+    ) {
 
-        Long instId = inst.getInstitutionId();
-        long studentCount = instId != null ? userRepository.findByInstitution_InstitutionIdAndRole(instId, UserRole.STUDENT).size() : 0;
-        long teacherCount = instId != null ? userRepository.findByInstitution_InstitutionIdAndRole(instId, UserRole.TEACHER).size() : 0;
-        long classCount = instId != null ? academicLevelRepository.findByProgram_Institution_InstitutionId(instId).size() : 0;
+        validatePrincipal(principal);
 
-        return mapToResponse(inst, studentCount, teacherCount, classCount);
+        Long institutionId = TenantContext.get();
+
+        Institution institution = institutionRepository.findByInstitutionId(
+                institutionId
+        ).orElseThrow(() ->
+                new ResourceNotFoundException(
+                        "Institution not found with ID: " + institutionId
+                )
+        );
+
+        long studentCount =
+                userRepository.countByInstitution_InstitutionIdAndRole(
+                        institutionId,
+                        UserRole.STUDENT
+                );
+
+        long teacherCount =
+                userRepository.countByInstitution_InstitutionIdAndRole(
+                        institutionId,
+                        UserRole.TEACHER
+                );
+
+        long classCount =
+                academicLevelRepository
+                        .countByProgram_Institution_InstitutionId(
+                                institutionId
+                        );
+
+        return mapToResponse(
+                institution,
+                studentCount,
+                teacherCount,
+                classCount
+        );
     }
 
-    public InstitutionProfileResponse updateInstitutionProfile(Principal principal, UpdateInstitutionProfileRequest request) {
-        User adminUser = getAdminUser(principal);
-        Institution inst = getInstitutionForUser(adminUser);
+    public InstitutionProfileResponse updateInstitutionProfile(
+            UserPrincipal principal,
+            UpdateInstitutionProfileRequest request
+    ) {
 
-        if (request.getName() != null && !request.getName().isBlank()) {
-            inst.setName(request.getName().trim());
+        validatePrincipal(principal);
+
+        Long institutionId = TenantContext.get();
+
+        Institution institution = institutionRepository.findByInstitutionId(
+                institutionId
+        ).orElseThrow(() ->
+                new ResourceNotFoundException(
+                        "Institution not found with ID: " + institutionId
+                )
+        );
+
+        if (request.getName() != null
+                && !request.getName().isBlank()) {
+
+            institution.setName(
+                    request.getName().trim()
+            );
         }
+
         if (request.getLocation() != null) {
-            inst.setLocation(request.getLocation().trim());
+            institution.setLocation(
+                    request.getLocation().trim()
+            );
         }
+
         if (request.getWebsite() != null) {
-            inst.setWebsite(request.getWebsite().trim());
+            institution.setWebsite(
+                    request.getWebsite().trim()
+            );
         }
 
-        Institution saved = institutionRepository.save(inst);
+        Institution savedInstitution =
+                institutionRepository.save(institution);
 
-        Long instId = saved.getInstitutionId();
-        long studentCount = instId != null ? userRepository.findByInstitution_InstitutionIdAndRole(instId, UserRole.STUDENT).size() : 0;
-        long teacherCount = instId != null ? userRepository.findByInstitution_InstitutionIdAndRole(instId, UserRole.TEACHER).size() : 0;
-        long classCount = instId != null ? academicLevelRepository.findByProgram_Institution_InstitutionId(instId).size() : 0;
+        long studentCount =
+                userRepository.countByInstitution_InstitutionIdAndRole(
+                        institutionId,
+                        UserRole.STUDENT
+                );
 
-        return mapToResponse(saved, studentCount, teacherCount, classCount);
+        long teacherCount =
+                userRepository.countByInstitution_InstitutionIdAndRole(
+                        institutionId,
+                        UserRole.TEACHER
+                );
+
+        long classCount =
+                academicLevelRepository
+                        .countByProgram_Institution_InstitutionId(
+                                institutionId
+                        );
+
+        return mapToResponse(
+                savedInstitution,
+                studentCount,
+                teacherCount,
+                classCount
+        );
     }
 
-    private User getAdminUser(Principal principal) {
-        if (principal == null || principal.getName() == null) {
-            throw new ResourceNotFoundException("Authentication principal is missing.");
+    private void validatePrincipal(UserPrincipal principal) {
+
+        if (principal == null) {
+            throw new ResourceNotFoundException(
+                    "Authenticated user information is missing."
+            );
         }
-        String email = principal.getName();
+
+        if (principal.getInstitutionId() == null) {
+            throw new ResourceNotFoundException(
+                    "User is not associated with an institution."
+            );
+        }
+
+        if (principal.getRole() != UserRole.ADMIN
+                && principal.getRole() != UserRole.SUPER_ADMIN) {
+
+            throw new ResourceNotFoundException(
+                    "User is not authorized to manage an institution."
+            );
+        }
+
         Long tenantId = TenantContext.get();
-        if (tenantId != null) {
-            Optional<User> tenantUser = userRepository.findByInstitution_InstitutionIdAndEmail(tenantId, email);
-            if (tenantUser.isPresent()) {
-                return tenantUser.get();
-            }
+
+        if (!principal.getInstitutionId().equals(tenantId)) {
+            throw new ResourceNotFoundException(
+                    "User does not belong to the current institution."
+            );
         }
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
     }
 
-    private Institution getInstitutionForUser(User user) {
-        if (user.getInstitution() != null) {
-            return user.getInstitution();
-        }
-        Long tenantId = TenantContext.get();
-        if (tenantId != null) {
-            return institutionRepository.findById(tenantId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Institution not found for ID: " + tenantId));
-        }
-        return institutionRepository.findAll().stream().findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("No institution found in system."));
-    }
+    private InstitutionProfileResponse mapToResponse(
+            Institution institution,
+            long studentCount,
+            long teacherCount,
+            long classCount
+    ) {
 
-    private InstitutionProfileResponse mapToResponse(Institution inst, long studentCount, long teacherCount, long classCount) {
         return InstitutionProfileResponse.builder()
-                .institutionId(inst.getInstitutionId())
-                .name(inst.getName() != null ? inst.getName() : "")
-                .code(inst.getCode() != null ? inst.getCode() : "")
-                .status(inst.getStatus() != null ? inst.getStatus().name() : "ACTIVE")
-                .location(inst.getLocation() != null ? inst.getLocation() : "")
-                .website(inst.getWebsite() != null ? inst.getWebsite() : "")
-                .createdAt(inst.getCreatedAt() != null ? inst.getCreatedAt() : LocalDateTime.now())
+                .institutionId(
+                        institution.getInstitutionId()
+                )
+                .name(
+                        institution.getName() != null
+                                ? institution.getName()
+                                : ""
+                )
+                .code(
+                        institution.getCode() != null
+                                ? institution.getCode()
+                                : ""
+                )
+                .status(
+                        institution.getStatus() != null
+                                ? institution.getStatus().name()
+                                : "ACTIVE"
+                )
+                .location(
+                        institution.getLocation() != null
+                                ? institution.getLocation()
+                                : ""
+                )
+                .website(
+                        institution.getWebsite() != null
+                                ? institution.getWebsite()
+                                : ""
+                )
+                .createdAt(
+                        institution.getCreatedAt()
+                )
                 .totalStudents(studentCount)
                 .totalTeachers(teacherCount)
                 .totalClasses(classCount)

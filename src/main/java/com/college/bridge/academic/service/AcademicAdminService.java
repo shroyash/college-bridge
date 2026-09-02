@@ -6,8 +6,6 @@ import com.college.bridge.academic.repository.AcademicLevelRepository;
 import com.college.bridge.academic.repository.AcademicProgramRepository;
 import com.college.bridge.academic.repository.SubjectRepository;
 import com.college.bridge.academic.repository.TeacherAssignmentRepository;
-import com.college.bridge.auth.entity.Student;
-import com.college.bridge.auth.entity.Teacher;
 import com.college.bridge.auth.repository.StudentRepository;
 import com.college.bridge.common.exception.DuplicateResourceException;
 import com.college.bridge.common.exception.ResourceNotFoundException;
@@ -20,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,7 +42,7 @@ public class AcademicAdminService {
         Institution institution = getInstitution(tenantId);
 
         String code = request.getCode().trim().toUpperCase();
-        if (programRepository.existsByInstitution_InstitutionIdAndCode(tenantId, code)) {
+        if (programRepository.existsByInstitution_InstitutionIdAndCodeAndDeletedFalse(tenantId, code)) {
             throw new DuplicateResourceException("Academic program with code '" + code + "' already exists.");
         }
 
@@ -54,14 +53,13 @@ public class AcademicAdminService {
                 .build();
 
         AcademicProgram saved = programRepository.save(program);
-        log.info("Created AcademicProgram ID: {} ({}) for tenant: {}", saved.getProgramId(), saved.getCode(), tenantId);
         return AcademicProgramResponse.from(saved);
     }
 
     @Transactional(readOnly = true)
     public List<AcademicProgramResponse> getPrograms() {
         Long tenantId = requireTenantId();
-        return programRepository.findByInstitution_InstitutionId(tenantId)
+        return programRepository.findByInstitution_InstitutionIdAndDeletedFalse(tenantId)
                 .stream()
                 .map(AcademicProgramResponse::from)
                 .toList();
@@ -75,7 +73,7 @@ public class AcademicAdminService {
         Institution institution = institutionRepository.findByCode(institutionCode.trim().toUpperCase())
                 .orElseThrow(() -> new ResourceNotFoundException("Institution not found with code: " + institutionCode));
 
-        return programRepository.findByInstitution_InstitutionId(institution.getInstitutionId())
+        return programRepository.findByInstitution_InstitutionIdAndDeletedFalse(institution.getInstitutionId())
                 .stream()
                 .map(AcademicProgramResponse::from)
                 .toList();
@@ -84,7 +82,7 @@ public class AcademicAdminService {
     @Transactional(readOnly = true)
     public AcademicProgramResponse getProgramById(Long programId) {
         Long tenantId = requireTenantId();
-        AcademicProgram program = programRepository.findByProgramIdAndInstitution_InstitutionId(programId, tenantId)
+        AcademicProgram program = programRepository.findByProgramIdAndInstitution_InstitutionIdAndDeletedFalse(programId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic program not found with ID: " + programId));
         return AcademicProgramResponse.from(program);
     }
@@ -92,10 +90,13 @@ public class AcademicAdminService {
     @Transactional
     public void deleteProgram(Long programId) {
         Long tenantId = requireTenantId();
-        AcademicProgram program = programRepository.findByProgramIdAndInstitution_InstitutionId(programId, tenantId)
+        AcademicProgram program = programRepository.findByProgramIdAndInstitution_InstitutionIdAndDeletedFalse(programId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic program not found with ID: " + programId));
-        programRepository.delete(program);
-        log.info("Deleted AcademicProgram ID: {} for tenant: {}", programId, tenantId);
+
+        program.setDeleted(true);
+        program.setDeletedAt(LocalDateTime.now());
+        programRepository.save(program);
+        log.info("Soft deleted AcademicProgram ID: {} for tenant: {}", programId, tenantId);
     }
 
     // --- LEVEL MANAGEMENT ---
@@ -103,10 +104,10 @@ public class AcademicAdminService {
     @Transactional
     public AcademicLevelResponse createLevel(Long programId, AcademicLevelRequest request) {
         Long tenantId = requireTenantId();
-        AcademicProgram program = programRepository.findByProgramIdAndInstitution_InstitutionId(programId, tenantId)
+        AcademicProgram program = programRepository.findByProgramIdAndInstitution_InstitutionIdAndDeletedFalse(programId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic program not found with ID: " + programId));
 
-        if (levelRepository.existsByProgram_ProgramIdAndLevelNumber(programId, request.getLevelNumber())) {
+        if (levelRepository.existsByProgram_ProgramIdAndLevelNumberAndDeletedFalse(programId, request.getLevelNumber())) {
             throw new DuplicateResourceException("Academic level number " + request.getLevelNumber() + " already exists for program " + program.getCode());
         }
 
@@ -125,10 +126,10 @@ public class AcademicAdminService {
     @Transactional(readOnly = true)
     public List<AcademicLevelResponse> getLevelsForProgram(Long programId) {
         Long tenantId = requireTenantId();
-        programRepository.findByProgramIdAndInstitution_InstitutionId(programId, tenantId)
+        programRepository.findByProgramIdAndInstitution_InstitutionIdAndDeletedFalse(programId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic program not found with ID: " + programId));
 
-        return levelRepository.findByProgram_ProgramId(programId)
+        return levelRepository.findByProgram_ProgramIdAndDeletedFalse(programId)
                 .stream()
                 .map(AcademicLevelResponse::from)
                 .toList();
@@ -136,10 +137,10 @@ public class AcademicAdminService {
 
     @Transactional(readOnly = true)
     public List<AcademicLevelResponse> getPublicLevelsForProgram(Long programId) {
-        programRepository.findById(programId)
+        programRepository.findByProgramIdAndDeletedFalse(programId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic program not found with ID: " + programId));
 
-        return levelRepository.findByProgram_ProgramId(programId)
+        return levelRepository.findByProgram_ProgramIdAndDeletedFalse(programId)
                 .stream()
                 .map(AcademicLevelResponse::from)
                 .toList();
@@ -148,7 +149,7 @@ public class AcademicAdminService {
     @Transactional(readOnly = true)
     public List<AcademicLevelResponse> getAllLevelsForInstitution() {
         Long tenantId = requireTenantId();
-        return levelRepository.findByProgram_Institution_InstitutionId(tenantId)
+        return levelRepository.findByProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(tenantId)
                 .stream()
                 .map(AcademicLevelResponse::from)
                 .toList();
@@ -157,17 +158,16 @@ public class AcademicAdminService {
     @Transactional
     public void deleteLevel(Long levelId) {
         Long tenantId = requireTenantId();
-        AcademicLevel level = levelRepository.findByLevelIdAndProgram_Institution_InstitutionId(levelId, tenantId)
+        AcademicLevel level = levelRepository.findByLevelIdAndProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(levelId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic level not found with ID: " + levelId));
 
-        List<Student> students = studentRepository.findByAcademicLevel_LevelId(levelId);
-        for (Student s : students) {
-            s.setAcademicLevel(null);
-            studentRepository.save(s);
-        }
+        int clearedCount = studentRepository.clearAcademicLevel(levelId);
+        log.info("Bulk cleared academic level association for {} students.", clearedCount);
 
-        levelRepository.delete(level);
-        log.info("Deleted AcademicLevel ID: {} for tenant: {}", levelId, tenantId);
+        level.setDeleted(true);
+        level.setDeletedAt(LocalDateTime.now());
+        levelRepository.save(level);
+        log.info("Soft deleted AcademicLevel ID: {} for tenant: {}", levelId, tenantId);
     }
 
     // --- SUBJECT MANAGEMENT ---
@@ -175,10 +175,10 @@ public class AcademicAdminService {
     @Transactional
     public SubjectResponse createSubject(CreateSubjectRequest request) {
         Long tenantId = requireTenantId();
-        AcademicLevel level = levelRepository.findByLevelIdAndProgram_Institution_InstitutionId(request.getLevelId(), tenantId)
+        AcademicLevel level = levelRepository.findByLevelIdAndProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(request.getLevelId(), tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic level not found with ID: " + request.getLevelId()));
 
-        if (subjectRepository.existsByAcademicLevel_LevelIdAndName(level.getLevelId(), request.getName().trim())) {
+        if (subjectRepository.existsByAcademicLevel_LevelIdAndNameAndDeletedFalse(level.getLevelId(), request.getName().trim())) {
             throw new DuplicateResourceException("Subject '" + request.getName() + "' already exists for level " + level.getName());
         }
 
@@ -198,12 +198,12 @@ public class AcademicAdminService {
     @Transactional
     public List<SubjectResponse> batchCreateSubjects(BatchCreateSubjectRequest request) {
         Long tenantId = requireTenantId();
-        AcademicLevel level = levelRepository.findByLevelIdAndProgram_Institution_InstitutionId(request.getLevelId(), tenantId)
+        AcademicLevel level = levelRepository.findByLevelIdAndProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(request.getLevelId(), tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic level not found with ID: " + request.getLevelId()));
 
         List<SubjectResponse> createdSubjects = new ArrayList<>();
         for (BatchCreateSubjectRequest.SubjectItem item : request.getSubjects()) {
-            if (subjectRepository.existsByAcademicLevel_LevelIdAndName(level.getLevelId(), item.getName().trim())) {
+            if (subjectRepository.existsByAcademicLevel_LevelIdAndNameAndDeletedFalse(level.getLevelId(), item.getName().trim())) {
                 log.warn("Skipping duplicate subject creation: '{}' for level {}", item.getName(), level.getLevelId());
                 continue;
             }
@@ -225,10 +225,10 @@ public class AcademicAdminService {
     @Transactional(readOnly = true)
     public List<SubjectResponse> getSubjectsForLevel(Long levelId) {
         Long tenantId = requireTenantId();
-        levelRepository.findByLevelIdAndProgram_Institution_InstitutionId(levelId, tenantId)
+        levelRepository.findByLevelIdAndProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(levelId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic level not found with ID: " + levelId));
 
-        return subjectRepository.findByAcademicLevel_LevelId(levelId)
+        return subjectRepository.findByAcademicLevel_LevelIdAndDeletedFalse(levelId)
                 .stream()
                 .map(SubjectResponse::from)
                 .toList();
@@ -237,7 +237,7 @@ public class AcademicAdminService {
     @Transactional(readOnly = true)
     public List<SubjectResponse> getAllSubjects() {
         Long tenantId = requireTenantId();
-        return subjectRepository.findByAcademicLevel_Program_Institution_InstitutionId(tenantId)
+        return subjectRepository.findByAcademicLevel_Program_Institution_InstitutionIdAndDeletedFalseAndAcademicLevel_DeletedFalseAndAcademicLevel_Program_DeletedFalse(tenantId)
                 .stream()
                 .map(SubjectResponse::from)
                 .toList();
@@ -246,11 +246,11 @@ public class AcademicAdminService {
     @Transactional
     public SubjectResponse updateSubject(Long subjectId, CreateSubjectRequest request) {
         Long tenantId = requireTenantId();
-        Subject subject = subjectRepository.findBySubjectIdAndAcademicLevel_Program_Institution_InstitutionId(subjectId, tenantId)
+        Subject subject = subjectRepository.findBySubjectIdAndAcademicLevel_Program_Institution_InstitutionIdAndDeletedFalseAndAcademicLevel_DeletedFalseAndAcademicLevel_Program_DeletedFalse(subjectId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found with ID: " + subjectId));
 
         if (request.getLevelId() != null && !request.getLevelId().equals(subject.getAcademicLevel().getLevelId())) {
-            AcademicLevel newLevel = levelRepository.findByLevelIdAndProgram_Institution_InstitutionId(request.getLevelId(), tenantId)
+            AcademicLevel newLevel = levelRepository.findByLevelIdAndProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(request.getLevelId(), tenantId)
                     .orElseThrow(() -> new ResourceNotFoundException("Academic level not found with ID: " + request.getLevelId()));
             subject.setAcademicLevel(newLevel);
         }
@@ -273,64 +273,13 @@ public class AcademicAdminService {
     @Transactional
     public void deleteSubject(Long subjectId) {
         Long tenantId = requireTenantId();
-        Subject subject = subjectRepository.findBySubjectIdAndAcademicLevel_Program_Institution_InstitutionId(subjectId, tenantId)
+        Subject subject = subjectRepository.findBySubjectIdAndAcademicLevel_Program_Institution_InstitutionIdAndDeletedFalseAndAcademicLevel_DeletedFalseAndAcademicLevel_Program_DeletedFalse(subjectId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found with ID: " + subjectId));
 
-        subjectRepository.delete(subject);
-        log.info("Deleted subject ID: {} for tenant: {}", subjectId, tenantId);
-    }
-
-    // --- STUDENT LEVEL MAPPING ---
-
-    @Transactional
-    public ClassStudentResponse addStudentToLevel(Long levelId, Long studentId) {
-        Long tenantId = requireTenantId();
-        AcademicLevel level = levelRepository.findByLevelIdAndProgram_Institution_InstitutionId(levelId, tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Academic level not found with ID: " + levelId));
-
-        Student student = studentRepository.findById(studentId)
-                .filter(s -> s.getUser() != null && s.getUser().getInstitution() != null && s.getUser().getInstitution().getInstitutionId().equals(tenantId))
-                .orElseThrow(() -> new ResourceNotFoundException("Student not found or access denied: " + studentId));
-
-        student.setAcademicLevel(level);
-        Student saved = studentRepository.save(student);
-
-        return ClassStudentResponse.builder()
-                .studentId(saved.getStudentId())
-                .userId(saved.getUser().getUserId())
-                .fullName(saved.getUser().getFullName())
-                .email(saved.getUser().getEmail())
-                .status(saved.getUser().getStatus() != null ? saved.getUser().getStatus().name() : "ACTIVE")
-                .build();
-    }
-
-    @Transactional
-    public void removeStudentFromLevel(Long levelId, Long studentId) {
-        Long tenantId = requireTenantId();
-        levelRepository.findByLevelIdAndProgram_Institution_InstitutionId(levelId, tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Academic level not found with ID: " + levelId));
-
-        Student student = studentRepository.findById(studentId)
-                .filter(s -> s.getUser() != null && s.getUser().getInstitution() != null && s.getUser().getInstitution().getInstitutionId().equals(tenantId))
-                .orElseThrow(() -> new ResourceNotFoundException("Student not found or access denied: " + studentId));
-
-        if (student.getAcademicLevel() != null && student.getAcademicLevel().getLevelId().equals(levelId)) {
-            student.setAcademicLevel(null);
-            studentRepository.save(student);
-        }
-    }
-
-    @Transactional(readOnly = true)
-    public List<ClassStudentResponse> getUnassignedStudents() {
-        Long tenantId = requireTenantId();
-        List<Student> unassigned = studentRepository.findByUser_Institution_InstitutionIdAndAcademicLevelIsNull(tenantId);
-        return unassigned.stream().map(s -> ClassStudentResponse.builder()
-                .studentId(s.getStudentId())
-                .userId(s.getUser() != null ? s.getUser().getUserId() : null)
-                .fullName(s.getUser() != null ? s.getUser().getFullName() : "Unknown")
-                .email(s.getUser() != null ? s.getUser().getEmail() : "")
-                .status(s.getUser() != null && s.getUser().getStatus() != null ? s.getUser().getStatus().name() : "ACTIVE")
-                .build()).toList();
+        subject.setDeleted(true);
+        subject.setDeletedAt(LocalDateTime.now());
+        subjectRepository.save(subject);
+        log.info("Soft deleted Subject ID: {} for tenant: {}", subjectId, tenantId);
     }
 
     private Long requireTenantId() {

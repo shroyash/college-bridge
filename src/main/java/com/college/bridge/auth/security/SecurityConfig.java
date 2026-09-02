@@ -52,10 +52,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Allow CORS preflight requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        // Public auth and lookup endpoints
                         .requestMatchers(
                                 "/api/auth/register",
                                 "/api/auth/login",
@@ -65,24 +62,18 @@ public class SecurityConfig {
                                 "/api/public/**"
                         ).permitAll()
 
-                        // OTP standalone controller — also public
                         .requestMatchers("/api/otp/**").permitAll()
 
-                        // Super Admin endpoints
                         .requestMatchers("/api/super-admin/**").hasRole("SUPER_ADMIN")
 
-                        // Admin-only endpoints
+
                         .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
                         .requestMatchers("/api/files/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
 
-                        // Account endpoints — any authenticated user
                         .requestMatchers("/api/account/**").authenticated()
 
-
-                        // Class endpoints — teachers and students can view their own
                         .requestMatchers(HttpMethod.GET, "/api/classes/my-classes").authenticated()
 
-                        // Everything else requires authentication
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions

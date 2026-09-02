@@ -13,6 +13,7 @@ import com.college.bridge.auth.dto.UserProfileResponse;
 import com.college.bridge.auth.entity.OtpType;
 import com.college.bridge.auth.entity.Student;
 import com.college.bridge.auth.entity.User;
+import com.college.bridge.auth.entity.UserRole;
 import com.college.bridge.auth.exception.EmailAlreadyExistsException;
 import com.college.bridge.auth.exception.InvalidPasswordException;
 import com.college.bridge.auth.exception.UserNotFoundException;
@@ -38,28 +39,41 @@ public class AccountService {
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
 
-    private User findUserByEmail(String email) {
-        Long tenantId = com.college.bridge.common.tenant.TenantContext.get();
-        return (tenantId != null ? userRepository.findByInstitution_InstitutionIdAndEmail(tenantId, email) : userRepository.findByEmail(email))
-                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
+
+    private User findUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new UserNotFoundException(
+                                "User not found with id: " + userId
+                        )
+                );
     }
 
+
     @Transactional(readOnly = true)
-    public UserProfileResponse getProfile(String email) {
-        User user = findUserByEmail(email);
+    public UserProfileResponse getProfile(Long userId) {
+
+        User user = findUser(userId);
 
         Student student = null;
-        if (com.college.bridge.auth.entity.UserRole.STUDENT.equals(user.getRole())) {
-            student = studentRepository.findByUser(user).orElse(null);
+
+        if (user.getRole() == UserRole.STUDENT) {
+            student = studentRepository.findByUser(user)
+                    .orElse(null);
         }
 
         return userMapper.toProfileResponse(user, student);
     }
 
-    public UserProfileResponse updateProfile(String email, UpdateProfileRequest request) {
-        User user = findUserByEmail(email);
+
+    public UserProfileResponse updateProfile(
+            Long userId,
+            UpdateProfileRequest request) {
+
+        User user = findUser(userId);
 
         user.setName(request.getName());
+
         if (request.getFcmToken() != null) {
             user.setFcmToken(request.getFcmToken());
         }
@@ -67,88 +81,157 @@ public class AccountService {
         User updatedUser = userRepository.save(user);
 
         Student student = null;
-        if (com.college.bridge.auth.entity.UserRole.STUDENT.equals(updatedUser.getRole())) {
-            student = studentRepository.findByUser(updatedUser).orElse(null);
+
+        if (updatedUser.getRole() == UserRole.STUDENT) {
+            student = studentRepository.findByUser(updatedUser)
+                    .orElse(null);
         }
 
-        log.info("Profile updated for user: {}", email);
-        return userMapper.toProfileResponse(updatedUser, student);
+        return userMapper.toProfileResponse(
+                updatedUser,
+                student
+        );
     }
 
-    public void changePassword(String email, ChangePasswordRequest request) {
-        User user = findUserByEmail(email);
 
-        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
-            throw new InvalidPasswordException("Current password does not match.");
+    public void changePassword(
+            Long userId,
+            ChangePasswordRequest request) {
+
+        User user = findUser(userId);
+
+        if (!passwordEncoder.matches(
+                request.getCurrentPassword(),
+                user.getPasswordHash())) {
+
+            throw new InvalidPasswordException(
+                    "Current password does not match."
+            );
         }
 
-        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setPasswordHash(
+                passwordEncoder.encode(
+                        request.getNewPassword()
+                )
+        );
+
         userRepository.save(user);
 
         refreshTokenRepository.revokeAllByUser(user);
-        log.info("Password changed and active sessions revoked for user: {}", email);
     }
 
-    public void initiateEmailChange(String currentEmail, InitiateEmailChangeRequest request) {
-        User user = findUserByEmail(currentEmail);
 
-        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
-            throw new InvalidPasswordException("Current password does not match.");
+    public void initiateEmailChange(
+            Long userId,
+            InitiateEmailChangeRequest request) {
+
+        User user = findUser(userId);
+
+        if (!passwordEncoder.matches(
+                request.getCurrentPassword(),
+                user.getPasswordHash())) {
+
+            throw new InvalidPasswordException(
+                    "Current password does not match."
+            );
         }
 
-        Long tenantId = com.college.bridge.common.tenant.TenantContext.get();
-        boolean exists = (tenantId != null) 
-                ? userRepository.existsByInstitution_InstitutionIdAndEmail(tenantId, request.getNewEmail())
-                : userRepository.existsByEmail(request.getNewEmail());
-        if (exists) {
-            throw new EmailAlreadyExistsException("The new email is already registered.");
+        if (userRepository.existsByEmail(request.getNewEmail())) {
+            throw new EmailAlreadyExistsException(
+                    "The new email is already registered."
+            );
         }
 
-        otpService.sendOtp(request.getNewEmail(), OtpType.EMAIL_CHANGE);
-        log.info("Initiated email change. OTP sent to: {}", request.getNewEmail());
+        otpService.sendOtp(
+                request.getNewEmail(),
+                OtpType.EMAIL_CHANGE
+        );
+
+        log.info(
+                "Email change initiated for userId={}",
+                userId
+        );
     }
 
-    public void confirmEmailChange(String currentEmail, ConfirmEmailChangeRequest request) {
-        User user = findUserByEmail(currentEmail);
 
-        Long tenantId = com.college.bridge.common.tenant.TenantContext.get();
-        boolean exists = (tenantId != null) 
-                ? userRepository.existsByInstitution_InstitutionIdAndEmail(tenantId, request.getNewEmail())
-                : userRepository.existsByEmail(request.getNewEmail());
-        if (exists) {
-            throw new EmailAlreadyExistsException("The new email is already registered.");
+    public void confirmEmailChange(
+            Long userId,
+            ConfirmEmailChangeRequest request) {
+
+        User user = findUser(userId);
+
+        if (userRepository.existsByEmail(request.getNewEmail())) {
+            throw new EmailAlreadyExistsException(
+                    "The new email is already registered."
+            );
         }
 
-        otpService.verifyOtp(request.getNewEmail(), request.getCode(), OtpType.EMAIL_CHANGE);
+        otpService.verifyOtp(
+                request.getNewEmail(),
+                request.getCode(),
+                OtpType.EMAIL_CHANGE
+        );
+
+        String oldEmail = user.getEmail();
 
         user.setEmail(request.getNewEmail());
+
         userRepository.save(user);
 
         refreshTokenRepository.revokeAllByUser(user);
-        log.info("Email updated from {} to {}", currentEmail, request.getNewEmail());
+
+        log.info(
+                "Email updated for userId={} from {}",
+                userId,
+                oldEmail
+        );
     }
 
-    public String uploadProfileImage(String email, MultipartFile file) {
-        User user = findUserByEmail(email);
 
-        String imageUrl = fileStorageService.storeFile(file);
+    public String uploadProfileImage(
+            Long userId,
+            MultipartFile file) {
+
+        User user = findUser(userId);
+
+        String imageUrl =
+                fileStorageService.storeFile(file);
+
         user.setImageUrl(imageUrl);
+
         userRepository.save(user);
 
-        log.info("Profile image uploaded for user: {}. URL: {}", email, imageUrl);
+        log.info(
+                "Profile image uploaded for userId={}",
+                userId
+        );
+
         return imageUrl;
     }
 
-    public void deleteOwnAccount(String email, String password) {
-        User user = findUserByEmail(email);
 
-        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-            throw new InvalidPasswordException("Password verification failed. Cannot delete account.");
+    public void deleteOwnAccount(
+            Long userId,
+            String password) {
+
+        User user = findUser(userId);
+
+        if (!passwordEncoder.matches(
+                password,
+                user.getPasswordHash())) {
+
+            throw new InvalidPasswordException(
+                    "Password verification failed. Cannot delete account."
+            );
         }
 
         refreshTokenRepository.revokeAllByUser(user);
 
         userRepository.delete(user);
-        log.info("Account soft-deleted: {}", email);
+
+        log.info(
+                "Account deleted for userId={}",
+                userId
+        );
     }
 }

@@ -7,16 +7,14 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin/academic")
-@PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
-public class AcademicAdminController {
+public class AcademicStructureController {
 
     private final AcademicAdminService academicAdminService;
 
@@ -125,31 +123,5 @@ public class AcademicAdminController {
     public ResponseEntity<ApiResponse<Void>> deleteSubject(@PathVariable Long subjectId) {
         academicAdminService.deleteSubject(subjectId);
         return ResponseEntity.ok(ApiResponse.success("Subject deleted successfully."));
-    }
-
-    // --- STUDENT LEVEL MAPPING ---
-
-    @PostMapping("/levels/{levelId}/students/{studentId}")
-    public ResponseEntity<ApiResponse<ClassStudentResponse>> addStudentToLevel(
-            @PathVariable Long levelId,
-            @PathVariable Long studentId
-    ) {
-        ClassStudentResponse response = academicAdminService.addStudentToLevel(levelId, studentId);
-        return ResponseEntity.ok(ApiResponse.success("Student assigned to academic level successfully.", response));
-    }
-
-    @DeleteMapping("/levels/{levelId}/students/{studentId}")
-    public ResponseEntity<ApiResponse<Void>> removeStudentFromLevel(
-            @PathVariable Long levelId,
-            @PathVariable Long studentId
-    ) {
-        academicAdminService.removeStudentFromLevel(levelId, studentId);
-        return ResponseEntity.ok(ApiResponse.success("Student removed from academic level."));
-    }
-
-    @GetMapping("/unassigned-students")
-    public ResponseEntity<ApiResponse<List<ClassStudentResponse>>> getUnassignedStudents() {
-        List<ClassStudentResponse> unassigned = academicAdminService.getUnassignedStudents();
-        return ResponseEntity.ok(ApiResponse.success("Unassigned students retrieved.", unassigned));
     }
 }

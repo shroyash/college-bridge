@@ -56,8 +56,6 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
 
     public AuthResponse register(RegisterRequest request) {
-        log.info("Attempting registration for email: {} in institution code: {}",
-                request.getEmail(), request.getInstitutionCode());
 
         Institution institution = institutionRepository.findByCode(request.getInstitutionCode())
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -70,7 +68,7 @@ public class AuthService {
         }
 
         AcademicLevel academicLevel = academicLevelRepository
-                .findByLevelIdAndProgram_Institution_InstitutionId(request.getLevelId(), institution.getInstitutionId())
+                .findByLevelIdAndProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(request.getLevelId(), institution.getInstitutionId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No academic level found with ID " + request.getLevelId()
                                 + " in institution " + request.getInstitutionCode()));
@@ -92,7 +90,7 @@ public class AuthService {
         Student savedStudent = studentRepository.save(student);
 
         // Auto-enroll in all subjects for this level
-        List<Subject> subjects = subjectRepository.findByAcademicLevel_LevelId(academicLevel.getLevelId());
+        List<Subject> subjects = subjectRepository.findByAcademicLevel_LevelIdAndDeletedFalse(academicLevel.getLevelId());
 
         List<SubjectEnrollment> enrollments = subjects.stream()
                 .map(subject -> SubjectEnrollment.builder()
@@ -129,15 +127,11 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        String username;
-        if (request.getInstitutionCode() != null && !request.getInstitutionCode().trim().isEmpty()) {
-            username = request.getInstitutionCode().trim() + ":" + request.getEmail().trim();
-        } else {
-            username = request.getEmail().trim();
-        }
+
+        String email = request.getEmail().trim().toLowerCase();
 
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(username, request.getPassword()));
+                new UsernamePasswordAuthenticationToken(email, request.getPassword()));
 
         UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         User user = userRepository.findById(userPrincipal.getUserId())
@@ -230,7 +224,7 @@ public class AuthService {
         RefreshToken newRefreshToken = RefreshToken.builder()
                 .user(user)
                 .token(newRefreshTokenStr)
-                .expiryDate(LocalDateTime.now().plusNanos(jwtProperties.getRefreshTokenExpiration() * 1_000_000L))
+                .expiryDate(LocalDateTime.now().plus(jwtProperties.getRefreshTokenExpiration()))
                 .revoked(false)
                 .build();
         refreshTokenRepository.save(newRefreshToken);
@@ -273,7 +267,7 @@ public class AuthService {
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(user)
                 .token(jwtService.generateRefreshTokenString())
-                .expiryDate(LocalDateTime.now().plusNanos(jwtProperties.getRefreshTokenExpiration() * 1_000_000L))
+                .expiryDate(LocalDateTime.now().plus(jwtProperties.getRefreshTokenExpiration()))
                 .revoked(false)
                 .build();
         return refreshTokenRepository.save(refreshToken);
