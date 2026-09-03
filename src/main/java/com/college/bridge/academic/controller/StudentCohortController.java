@@ -6,7 +6,7 @@ import com.college.bridge.auth.dto.BulkTransferResponse;
 import com.college.bridge.auth.dto.StudentFilterOptionsResponse;
 import com.college.bridge.auth.dto.UserProfileResponse;
 import com.college.bridge.auth.security.UserPrincipal;
-import com.college.bridge.auth.service.StudentCohortService;
+import com.college.bridge.academic.service.StudentCohortService;
 import com.college.bridge.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

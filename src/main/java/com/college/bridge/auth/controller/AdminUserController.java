@@ -74,11 +74,4 @@ public class AdminUserController {
         return ResponseEntity.ok(ApiResponse.success("User role updated."));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteUser(
-            @PathVariable Long id
-    ) {
-        adminUserService.deleteUser(id);
-        return ResponseEntity.ok(ApiResponse.success("User deleted."));
-    }
 }

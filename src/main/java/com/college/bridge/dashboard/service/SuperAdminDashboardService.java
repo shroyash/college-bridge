@@ -2,6 +2,7 @@ package com.college.bridge.dashboard.service;
 
 import com.college.bridge.auth.entity.UserRole;
 import com.college.bridge.auth.repository.UserRepository;
+import com.college.bridge.dashboard.dto.SuperAdminDashboardResponse;
 import com.college.bridge.institution.entity.InstitutionStatus;
 import com.college.bridge.institution.repository.InstitutionRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,42 +17,27 @@ public class SuperAdminDashboardService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
-    public long getTotalInstitutions() {
-        return institutionRepository.count();
-    }
+    public SuperAdminDashboardResponse getDashboard() {
 
-    @Transactional(readOnly = true)
-    public long getPendingInstitutions() {
-        return institutionRepository.countByStatus(InstitutionStatus.PENDING);
-    }
+        SuperAdminDashboardResponse.InstitutionStats institutionStats =
+                SuperAdminDashboardResponse.InstitutionStats.builder()
+                        .total(institutionRepository.count())
+                        .pending(institutionRepository.countByStatus(InstitutionStatus.PENDING))
+                        .active(institutionRepository.countByStatus(InstitutionStatus.ACTIVE))
+                        .suspended(institutionRepository.countByStatus(InstitutionStatus.SUSPENDED))
+                        .build();
 
-    @Transactional(readOnly = true)
-    public long getActiveInstitutions() {
-        return institutionRepository.countByStatus(InstitutionStatus.ACTIVE);
-    }
+        SuperAdminDashboardResponse.UserStats userStats =
+                SuperAdminDashboardResponse.UserStats.builder()
+                        .total(userRepository.count())
+                        .students(userRepository.countByRole(UserRole.STUDENT))
+                        .teachers(userRepository.countByRole(UserRole.TEACHER))
+                        .admins(userRepository.countByRole(UserRole.ADMIN))
+                        .build();
 
-    @Transactional(readOnly = true)
-    public long getSuspendedInstitutions() {
-        return institutionRepository.countByStatus(InstitutionStatus.SUSPENDED);
-    }
-
-    @Transactional(readOnly = true)
-    public long getTotalUsers() {
-        return userRepository.count();
-    }
-
-    @Transactional(readOnly = true)
-    public long getTotalStudents() {
-        return userRepository.countByRole(UserRole.STUDENT);
-    }
-
-    @Transactional(readOnly = true)
-    public long getTotalTeachers() {
-        return userRepository.countByRole(UserRole.TEACHER);
-    }
-
-    @Transactional(readOnly = true)
-    public long getTotalAdmins() {
-        return userRepository.countByRole(UserRole.ADMIN);
+        return SuperAdminDashboardResponse.builder()
+                .institutions(institutionStats)
+                .users(userStats)
+                .build();
     }
 }

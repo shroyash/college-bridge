@@ -1,15 +1,16 @@
 package com.college.bridge.academic.controller;
 
-
 import com.college.bridge.academic.dto.AssignTeacherSubjectsRequest;
 import com.college.bridge.academic.dto.TeacherAssignmentResponse;
 import com.college.bridge.academic.service.TeacherAssignmentService;
 import com.college.bridge.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
+
 
 @RestController
 @RequestMapping("/api/admin/teachers/{teacherId}/subject-assignments")
@@ -20,73 +21,51 @@ public class TeacherAssignmentAdminController {
 
 
     @PostMapping
-    public ApiResponse<List<TeacherAssignmentResponse>> assignSubjects(
-
+    public ResponseEntity<ApiResponse<List<TeacherAssignmentResponse>>> assignSubjects(
             @PathVariable Long teacherId,
+            @Valid @RequestBody AssignTeacherSubjectsRequest request) {
 
-            @Valid
-            @RequestBody
-            AssignTeacherSubjectsRequest request
-    ) {
-
-        return ApiResponse.success(
-                "Subjects assigned successfully.",
-                teacherAssignmentService.assignSubjects(
-                        teacherId,
-                        request
-                )
-        );
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(
+                        "Subjects assigned successfully.",
+                        teacherAssignmentService.assignSubjects(teacherId, request)
+                ));
     }
 
 
     @GetMapping
-    public ApiResponse<List<TeacherAssignmentResponse>> getAssignments(
+    public ResponseEntity<ApiResponse<List<TeacherAssignmentResponse>>> getAssignments(
+            @PathVariable Long teacherId) {
 
-            @PathVariable Long teacherId
-    ) {
-
-        return ApiResponse.success(
-                "Teacher assignments retrieved successfully.",
-                teacherAssignmentService.getAssignments(
-                        teacherId
-                )
-        );
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Teacher assignments retrieved successfully.",
+                        teacherAssignmentService.getAssignments(teacherId)
+                ));
     }
 
 
     @PutMapping
-    public ApiResponse<List<TeacherAssignmentResponse>> replaceAssignments(
-
+    public ResponseEntity<ApiResponse<List<TeacherAssignmentResponse>>> replaceAssignments(
             @PathVariable Long teacherId,
+            @Valid @RequestBody AssignTeacherSubjectsRequest request) {
 
-            @Valid
-            @RequestBody
-            AssignTeacherSubjectsRequest request
-    ) {
-
-        return ApiResponse.success(
-                "Teacher assignments updated successfully.",
-                teacherAssignmentService.replaceAssignments(
-                        teacherId,
-                        request
-                )
-        );
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Teacher assignments updated successfully.",
+                        teacherAssignmentService.replaceAssignments(teacherId, request)
+                ));
     }
 
 
     @DeleteMapping("/{assignmentId}")
-    public ApiResponse<Void> deleteAssignment(
+    public ResponseEntity<ApiResponse<Void>> deleteAssignment(
+            @PathVariable Long assignmentId) {
 
-            @PathVariable Long assignmentId
-    ) {
+        teacherAssignmentService.deleteAssignment(assignmentId);
 
-        teacherAssignmentService.deleteAssignment(
-                assignmentId
-        );
-
-        return ApiResponse.success(
-                "Teacher assignment deleted successfully."
+        return ResponseEntity.ok(
+                ApiResponse.success("Teacher assignment deleted successfully.")
         );
     }
-
 }

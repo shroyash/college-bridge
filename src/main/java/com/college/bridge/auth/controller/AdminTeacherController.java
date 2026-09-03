@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/admin/teachers")
 @RequiredArgsConstructor
-public class TeacherAdminController {
+public class AdminTeacherController {
 
     private final TeacherService teacherService;
 
@@ -27,27 +27,21 @@ public class TeacherAdminController {
         return ApiResponse.success("Teacher created successfully.", response);
     }
 
-//    @GetMapping("/{teacherId}")
-//    public ApiResponse<TeacherResponse> getTeacher(@PathVariable Long teacherId) {
-//        TeacherResponse response = teacherService.getTeacher(teacherId);
-//        return ApiResponse.success("Teacher retrieved successfully.", response);
-//    }
+    @GetMapping("/{teacherId}")
+    public ApiResponse<TeacherResponse> getTeacher(@PathVariable Long teacherId) {
+        TeacherResponse response = teacherService.getTeacher(teacherId);
+        return ApiResponse.success("Teacher retrieved successfully.", response);
+    }
 
-//    @GetMapping
-//    public ApiResponse<Page<TeacherResponse>> getTeachers(Pageable pageable) {
-//        Page<TeacherResponse> response = teacherService.getTeachers(pageable);
-//        return ApiResponse.success("Teachers retrieved successfully.", response);
-//    }
+    @GetMapping
+    public ApiResponse<Page<TeacherResponse>> getTeachers(Pageable pageable) {
+        Page<TeacherResponse> response = teacherService.getTeachers(pageable);
+        return ApiResponse.success("Teachers retrieved successfully.", response);
+    }
 
     @PutMapping("/{teacherId}")
     public ApiResponse<TeacherResponse> updateTeacher(@PathVariable Long teacherId, @Valid @RequestBody UpdateTeacherRequest request) {
         TeacherResponse response = teacherService.updateTeacher(teacherId, request);
         return ApiResponse.success("Teacher updated successfully.", response);
-    }
-
-    @DeleteMapping("/{teacherId}")
-    public ApiResponse<Void> deleteTeacher(@PathVariable Long teacherId) {
-        teacherService.deleteTeacher(teacherId);
-        return ApiResponse.success("Teacher deleted successfully.");
     }
 }

@@ -58,23 +58,6 @@ public interface SubjectEnrollmentRepository extends JpaRepository<SubjectEnroll
             @Param("tenantId") Long tenantId
     );
 
-    @Query("""
-    SELECT COUNT(ta) > 0
-    FROM TeacherAssignment ta
-    JOIN ta.teacher t
-    JOIN t.user u
-    JOIN ta.subject s
-    JOIN s.academicLevel al
-    JOIN al.program p
-    WHERE ta.subject.subjectId = :subjectId
-      AND u.userId = :userId
-      AND p.institution.institutionId = :tenantId
-""")
-    boolean existsAssignmentForUser(
-            @Param("subjectId") Long subjectId,
-            @Param("userId") Long userId,
-            @Param("tenantId") Long tenantId
-    );
 
     @Query("""
     SELECT

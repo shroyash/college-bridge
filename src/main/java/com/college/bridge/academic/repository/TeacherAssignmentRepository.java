@@ -10,18 +10,21 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface TeacherAssignmentRepository extends JpaRepository<TeacherAssignment, Long> {
 
+
     @EntityGraph(attributePaths = {"subject", "subject.academicLevel", "subject.academicLevel.program"})
-    List<TeacherAssignment> findByTeacherTeacherId(Long teacherId);
+    List<TeacherAssignment> findByTeacher_TeacherIdAndSubject_AcademicLevel_Program_Institution_InstitutionId(
+            Long teacherId,
+            Long tenantId
+    );
+
 
     @EntityGraph(attributePaths = {"subject", "subject.academicLevel", "subject.academicLevel.program"})
     List<TeacherAssignment> findByTeacher_TeacherId(Long teacherId);
-
-    @EntityGraph(attributePaths = {"subject", "subject.academicLevel", "subject.academicLevel.program"})
-    List<TeacherAssignment> findByTeacher_TeacherIdAndSubject_AcademicLevel_Program_Institution_InstitutionId(Long teacherId, Long tenantId);
 
     boolean existsByTeacherAndSubject(Teacher teacher, Subject subject);
 
@@ -42,11 +45,10 @@ public interface TeacherAssignmentRepository extends JpaRepository<TeacherAssign
     JOIN t.user u
     WHERE ta.subject.subjectId = :subjectId
 """)
-    Optional<TeacherInfoProjection> findTeacherInfo(
-            @Param("subjectId") Long subjectId
-    );
+    Optional<TeacherInfoProjection> findTeacherInfo(@Param("subjectId") Long subjectId);
 
     Optional<TeacherAssignment> findFirstBySubject_SubjectId(Long subjectId);
+
 
     @Query("""
     SELECT COUNT(ta) > 0
@@ -63,6 +65,29 @@ public interface TeacherAssignmentRepository extends JpaRepository<TeacherAssign
     boolean existsAssignmentForUser(
             @Param("subjectId") Long subjectId,
             @Param("userId") Long userId,
+            @Param("tenantId") Long tenantId
+    );
+
+
+    @Query("""
+    SELECT ta FROM TeacherAssignment ta
+    JOIN FETCH ta.teacher t
+    JOIN FETCH t.user u
+    WHERE ta.subject.subjectId IN :subjectIds
+""")
+    List<TeacherAssignment> findBySubjectIds(@Param("subjectIds") List<Long> subjectIds);
+
+
+    @Query("""
+    SELECT ta FROM TeacherAssignment ta
+    JOIN ta.subject s
+    JOIN s.academicLevel al
+    JOIN al.program p
+    WHERE ta.assignmentId = :assignmentId
+      AND p.institution.institutionId = :tenantId
+""")
+    Optional<TeacherAssignment> findByAssignmentIdAndTenant(
+            @Param("assignmentId") Long assignmentId,
             @Param("tenantId") Long tenantId
     );
 }

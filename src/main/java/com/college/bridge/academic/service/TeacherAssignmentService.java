@@ -10,8 +10,12 @@ import com.college.bridge.academic.repository.SubjectRepository;
 import com.college.bridge.academic.repository.TeacherAssignmentRepository;
 import com.college.bridge.auth.entity.Teacher;
 import com.college.bridge.auth.repository.TeacherRepository;
-import jakarta.persistence.EntityNotFoundException;
+import com.college.bridge.common.exception.ResourceNotFoundException;
+import com.college.bridge.common.exception.TenantMismatchException;
+import com.college.bridge.common.tenant.TenantContext;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +25,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Slf4j
 public class TeacherAssignmentService {
 
     private final TeacherRepository teacherRepository;
@@ -29,62 +33,46 @@ public class TeacherAssignmentService {
     private final TeacherAssignmentRepository teacherAssignmentRepository;
     private final TeacherAssignmentMapper mapper;
 
+
     @Transactional
     public List<TeacherAssignmentResponse> assignSubjects(
             Long teacherId,
             AssignTeacherSubjectsRequest request
     ) {
+        Long tenantId = requireTenantId();
 
         Teacher teacher = teacherRepository.findById(teacherId)
-                .orElseThrow(() ->
-                        new EntityNotFoundException("Teacher not found."));
+                .orElseThrow(() -> new ResourceNotFoundException("Teacher not found with ID: " + teacherId));
+
+        validateTeacherBelongsToTenant(teacher, tenantId);
 
         List<Long> subjectIds = request.getSubjectIds()
                 .stream()
                 .distinct()
                 .toList();
 
-        List<Subject> subjects = subjectRepository.findAllById(subjectIds);
+        List<Subject> subjects = subjectRepository.findBySubjectIdsAndTenant(subjectIds, tenantId);
 
         if (subjects.size() != subjectIds.size()) {
-            throw new EntityNotFoundException(
-                    "One or more selected subjects do not exist."
+            throw new ResourceNotFoundException(
+                    "One or more selected subjects do not exist within your institution."
             );
         }
 
-        // Institution tenant isolation — subjects must belong to the teacher's institution
-        Long teacherInstitutionId = teacher.getUser() != null && teacher.getUser().getInstitution() != null
-                ? teacher.getUser().getInstitution().getInstitutionId()
-                : null;
-        if (teacherInstitutionId != null) {
-            List<String> crossTenantSubjects = subjects.stream()
-                    .filter(s -> s.getAcademicLevel() == null || s.getAcademicLevel().getProgram() == null || s.getAcademicLevel().getProgram().getInstitution() == null
-                            || !s.getAcademicLevel().getProgram().getInstitution().getInstitutionId().equals(teacherInstitutionId))
-                    .map(Subject::getName)
-                    .toList();
-            if (!crossTenantSubjects.isEmpty()) {
-                throw new EntityNotFoundException(
-                        "Subjects do not belong to this institution: " + String.join(", ", crossTenantSubjects)
-                );
-            }
-        }
-
-        List<TeacherAssignment> existingAssignments =
-                teacherAssignmentRepository.findByTeacherTeacherId(teacherId);
-
-        Set<Long> assignedSubjectIds = existingAssignments.stream()
-                .map(assignment -> assignment.getSubject().getSubjectId())
+        Set<Long> assignedSubjectIds = teacherAssignmentRepository
+                .findByTeacher_TeacherId(teacherId)
+                .stream()
+                .map(a -> a.getSubject().getSubjectId())
                 .collect(Collectors.toSet());
 
         List<String> duplicateSubjects = subjects.stream()
-                .filter(subject -> assignedSubjectIds.contains(subject.getSubjectId()))
+                .filter(s -> assignedSubjectIds.contains(s.getSubjectId()))
                 .map(Subject::getName)
                 .toList();
 
         if (!duplicateSubjects.isEmpty()) {
             throw new TeacherAssignmentAlreadyExistsException(
-                    "Teacher is already assigned to: "
-                            + String.join(", ", duplicateSubjects)
+                    "Teacher is already assigned to: " + String.join(", ", duplicateSubjects)
             );
         }
 
@@ -99,42 +87,68 @@ public class TeacherAssignmentService {
                 .toList();
     }
 
+
     @Transactional(readOnly = true)
-    public List<TeacherAssignmentResponse> getAssignments(
-            Long teacherId
-    ) {
+    public List<TeacherAssignmentResponse> getAssignments(Long teacherId) {
+        Long tenantId = requireTenantId();
+
+        Teacher teacher = teacherRepository.findById(teacherId)
+                .orElseThrow(() -> new ResourceNotFoundException("Teacher not found with ID: " + teacherId));
+
+        validateTeacherBelongsToTenant(teacher, tenantId);
 
         return teacherAssignmentRepository
-                .findByTeacherTeacherId(teacherId)
+                .findByTeacher_TeacherIdAndSubject_AcademicLevel_Program_Institution_InstitutionId(teacherId, tenantId)
                 .stream()
                 .map(mapper::toResponse)
                 .toList();
     }
 
+
+    @Transactional
     public List<TeacherAssignmentResponse> replaceAssignments(
             Long teacherId,
             AssignTeacherSubjectsRequest request
     ) {
+        Long tenantId = requireTenantId();
+        Teacher teacher = teacherRepository.findById(teacherId)
+                .orElseThrow(() -> new ResourceNotFoundException("Teacher not found with ID: " + teacherId));
+        validateTeacherBelongsToTenant(teacher, tenantId);
 
-        teacherAssignmentRepository.deleteByTeacherTeacherId(
-                teacherId
-        );
+        teacherAssignmentRepository.deleteByTeacherTeacherId(teacherId);
 
-        return assignSubjects(
-                teacherId,
-                request
-        );
+        return assignSubjects(teacherId, request);
     }
 
+
+    @Transactional
     public void deleteAssignment(Long assignmentId) {
+        Long tenantId = requireTenantId();
 
-        TeacherAssignment assignment =
-                teacherAssignmentRepository.findById(assignmentId)
-                        .orElseThrow(() ->
-                                new EntityNotFoundException("Assignment not found."));
+        TeacherAssignment assignment = teacherAssignmentRepository
+                .findByAssignmentIdAndTenant(assignmentId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Assignment not found with ID: " + assignmentId));
 
-        teacherAssignmentRepository.delete(
-                assignment
-        );
+        teacherAssignmentRepository.delete(assignment);
+    }
+
+    // ── Private Helpers ───────────────────────────────────────────────────────
+
+    private Long requireTenantId() {
+        Long tenantId = TenantContext.get();
+        if (tenantId == null) {
+            throw new TenantMismatchException("Tenant context is missing.");
+        }
+        return tenantId;
+    }
+
+
+    private void validateTeacherBelongsToTenant(Teacher teacher, Long tenantId) {
+        Long teacherTenantId = (teacher.getUser() != null && teacher.getUser().getInstitution() != null)
+                ? teacher.getUser().getInstitution().getInstitutionId()
+                : null;
+        if (teacherTenantId == null || !teacherTenantId.equals(tenantId)) {
+            throw new AccessDeniedException("Teacher does not belong to your institution.");
+        }
     }
 }

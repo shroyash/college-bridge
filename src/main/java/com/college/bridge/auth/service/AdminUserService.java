@@ -162,23 +162,6 @@ public class AdminUserService {
         log.info("User ID: {} role updated from {} to {} by admin: {}", userId, oldRole, request.getRole(), adminEmail);
     }
 
-    public void deleteUser(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
-
-        validateTenantAccess(user);
-
-        if (UserRole.ADMIN.equals(user.getRole())) {
-            long adminCount = userRepository.countByRoleAndStatus(UserRole.ADMIN, UserStatus.ACTIVE);
-            if (adminCount <= 1) {
-                throw new BusinessRuleException("Cannot delete the only remaining active Administrator.");
-            }
-        }
-
-        refreshTokenRepository.revokeAllByUser(user);
-        userRepository.delete(user);
-        log.info("User ID: {} soft-deleted by Admin.", userId);
-    }
 
     private void validateTenantAccess(User targetUser) {
         Long currentTenant = com.college.bridge.common.tenant.TenantContext.get();

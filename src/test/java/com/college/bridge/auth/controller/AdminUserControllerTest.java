@@ -45,7 +45,7 @@ class AdminUserControllerTest {
     private AdminUserService adminUserService;
 
     @MockBean
-    private com.college.bridge.auth.service.StudentCohortService studentCohortService;
+    private com.college.bridge.academic.service.StudentCohortService studentCohortService;
 
     @MockBean
     private JwtService jwtService;

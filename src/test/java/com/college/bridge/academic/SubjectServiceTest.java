@@ -102,7 +102,7 @@ public class SubjectServiceTest {
                 .build();
 
         when(subjectEnrollmentRepository.findByStudent_StudentIdAndStudent_User_Institution_InstitutionId(1L, 100L)).thenReturn(List.of(enrollment));
-        when(teacherAssignmentRepository.findFirstBySubject_SubjectId(20L)).thenReturn(Optional.empty());
+        when(teacherAssignmentRepository.findBySubjectIds(List.of(20L))).thenReturn(List.of());
         when(subjectMapper.toResponse(subject, null)).thenReturn(expectedResponse);
 
         List<SubjectResponse> responses = subjectService.getSubjectsForStudent(1L);

@@ -166,7 +166,7 @@ public class MultiTenancyIntegrationTest {
                         .header("Authorization", "Bearer " + tokenAdminA)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Physics Inst A"));
+                .andExpect(jsonPath("$.data.name").value("Physics Inst A"));
 
         // Fetch cross-tenant subject -> 404 NOT FOUND
         mockMvc.perform(get("/api/academic/subjects/{id}", subjectB.getSubjectId())
@@ -183,8 +183,8 @@ public class MultiTenancyIntegrationTest {
                         .header("Authorization", "Bearer " + tokenAdminA)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].name", hasItem("Physics Inst A")))
-                .andExpect(jsonPath("$[*].name", not(hasItem("Chemistry Inst B"))));
+                .andExpect(jsonPath("$.data[*].name", hasItem("Physics Inst A")))
+                .andExpect(jsonPath("$.data[*].name", not(hasItem("Chemistry Inst B"))));
 
         // List programs for Admin A
         mockMvc.perform(get("/api/admin/academic/programs")
