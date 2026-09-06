@@ -67,7 +67,7 @@ public class AcademicDataInitializer implements CommandLineRunner {
         for (Map.Entry<String, Map<Integer, List<String>>> programEntry : CURRICULUM.entrySet()) {
             String programCode = programEntry.getKey();
 
-            AcademicProgram program = programRepository.findByInstitution_InstitutionIdAndCode(defaultInstitution.getInstitutionId(), programCode)
+            AcademicProgram program = programRepository.findByInstitution_InstitutionIdAndCodeAndDeletedFalse(defaultInstitution.getInstitutionId(), programCode)
                     .orElseGet(() -> programRepository.save(AcademicProgram.builder()
                             .institution(defaultInstitution)
                             .name("Bachelor of Computer Application (" + programCode + ")")
@@ -81,7 +81,7 @@ public class AcademicDataInitializer implements CommandLineRunner {
                 String ordinal = semesterNumber < ORDINALS.length ? ORDINALS[semesterNumber] : semesterNumber + "th";
                 String levelName = ordinal + " Semester";
 
-                AcademicLevel level = levelRepository.findByProgram_ProgramIdAndLevelNumber(program.getProgramId(), semesterNumber)
+                AcademicLevel level = levelRepository.findByProgram_ProgramIdAndLevelNumberAndDeletedFalse(program.getProgramId(), semesterNumber)
                         .orElseGet(() -> {
                             AcademicLevel newLevel = levelRepository.save(AcademicLevel.builder()
                                     .program(program)
@@ -95,7 +95,7 @@ public class AcademicDataInitializer implements CommandLineRunner {
                 levelCount++;
 
                 for (String subjectName : subjects) {
-                    if (!subjectRepository.existsByAcademicLevel_LevelIdAndName(level.getLevelId(), subjectName)) {
+                    if (!subjectRepository.existsByAcademicLevel_LevelIdAndNameAndDeletedFalse(level.getLevelId(), subjectName)) {
                         subjectRepository.save(Subject.builder()
                                 .academicLevel(level)
                                 .name(subjectName)

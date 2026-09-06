@@ -1,8 +1,7 @@
 package com.college.bridge.academic.repository;
 
-import com.college.bridge.academic.dto.ClassStudentProjection;
+import com.college.bridge.academic.dto.SubjectResponse;
 import com.college.bridge.academic.entity.SubjectEnrollment;
-import com.college.bridge.auth.entity.Student;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -13,15 +12,8 @@ import java.util.List;
 
 public interface SubjectEnrollmentRepository extends JpaRepository<SubjectEnrollment, Long> {
 
-    List<SubjectEnrollment> findByStudent(Student student);
-
-    @EntityGraph(attributePaths = {"subject", "subject.academicLevel", "subject.academicLevel.program"})
-    List<SubjectEnrollment> findByStudent_StudentId(Long studentId);
-
     @EntityGraph(attributePaths = {"student", "student.user"})
     List<SubjectEnrollment> findBySubject_SubjectId(Long subjectId);
-
-    boolean existsByStudent_StudentIdAndSubject_SubjectId(Long studentId, Long subjectId);
 
     @Modifying
     @Query("DELETE FROM SubjectEnrollment se WHERE se.student.studentId IN :studentIds")
@@ -58,26 +50,48 @@ public interface SubjectEnrollmentRepository extends JpaRepository<SubjectEnroll
             @Param("tenantId") Long tenantId
     );
 
-
     @Query("""
-    SELECT
-        s.studentId AS studentId,
-        u.userId AS userId,
-        u.name AS fullName,
-        u.email AS email,
-        u.status AS status
-    FROM SubjectEnrollment se
-    JOIN se.student s
-    JOIN s.user u
-    WHERE se.subject.subjectId = :subjectId
-""")
-    List<ClassStudentProjection> findEnrolledStudents(
-            @Param("subjectId") Long subjectId
+        SELECT se FROM SubjectEnrollment se
+        JOIN se.student st
+        JOIN st.user u
+        WHERE st.studentId = :studentId
+          AND u.institution.institutionId = :institutionId
+    """)
+    List<SubjectEnrollment> findActiveByStudentIdAndInstitutionId(
+            @Param("studentId") Long studentId,
+            @Param("institutionId") Long institutionId
     );
 
-    List<SubjectEnrollment>
-    findByStudent_StudentIdAndStudent_User_Institution_InstitutionId(
-            Long studentId,
-            Long institutionId
+    @Query("""
+    SELECT new com.college.bridge.academic.dto.SubjectResponse(
+        s.subjectId,
+        al.levelId,
+        al.name,
+        p.programId,
+        p.name,
+        s.name,
+        s.code,
+        s.creditHours,
+        s.fcmTopicId,
+        u.name
+    )
+    FROM SubjectEnrollment se
+    JOIN se.student st
+    JOIN st.user studentUser
+    JOIN se.subject s
+    JOIN s.academicLevel al
+    JOIN al.program p
+    LEFT JOIN s.assignments ta
+    LEFT JOIN ta.teacher t
+    LEFT JOIN t.user u
+    WHERE st.studentId = :studentId
+      AND studentUser.institution.institutionId = :tenantId
+      AND s.deleted = false
+      AND al.deleted = false
+      AND p.deleted = false
+""")
+    List<SubjectResponse> findSubjectsForStudent(
+            @Param("studentId") Long studentId,
+            @Param("tenantId") Long tenantId
     );
 }

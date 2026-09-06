@@ -32,6 +32,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -54,6 +55,7 @@ public class AuthService {
     private final JwtProperties jwtProperties;
     private final CustomUserDetailsService userDetailsService;
     private final AuthenticationManager authenticationManager;
+    private final TokenRevocationService userTokenRevocationService;
 
     public AuthResponse register(RegisterRequest request) {
 
@@ -61,14 +63,12 @@ public class AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Institution not found with code: " + request.getInstitutionCode()));
 
-        if (userRepository.existsByInstitution_InstitutionIdAndEmail(institution.getInstitutionId(),
-                request.getEmail())) {
-            throw new DuplicateResourceException("Email is already registered in institution "
-                    + request.getInstitutionCode() + ": " + request.getEmail());
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new DuplicateResourceException("Email is already registered: " + request.getEmail());
         }
 
         AcademicLevel academicLevel = academicLevelRepository
-                .findByLevelIdAndProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(request.getLevelId(), institution.getInstitutionId())
+                .findActiveByIdAndInstitutionId(request.getLevelId(), institution.getInstitutionId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No academic level found with ID " + request.getLevelId()
                                 + " in institution " + request.getInstitutionCode()));
@@ -206,6 +206,7 @@ public class AuthService {
 
         if (refreshToken.isRevoked()) {
             refreshTokenRepository.revokeAllByUser(user);
+            userTokenRevocationService.revokeUserTokens(user.getUserId(), Instant.now());
             throw new SecurityException(
                     "This refresh token has already been used and is revoked. All active sessions for this account are terminated for safety.");
         }
@@ -259,6 +260,7 @@ public class AuthService {
             refreshTokenRepository.findByToken(refreshTokenStr).ifPresent(rt -> {
                 rt.setRevoked(true);
                 refreshTokenRepository.save(rt);
+                userTokenRevocationService.revokeUserTokens(rt.getUser().getUserId(), Instant.now());
             });
         }
     }

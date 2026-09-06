@@ -17,42 +17,40 @@ public interface AcademicLevelRepository extends JpaRepository<AcademicLevel, Lo
 
     @EntityGraph(attributePaths = {"program", "program.institution"})
     List<AcademicLevel> findByProgram_ProgramIdAndDeletedFalse(Long programId);
-    default List<AcademicLevel> findByProgram_ProgramId(Long programId) {
-        return findByProgram_ProgramIdAndDeletedFalse(programId);
-    }
 
     @EntityGraph(attributePaths = {"program", "program.institution"})
-    @Query("SELECT al FROM AcademicLevel al WHERE al.program.institution.institutionId = :institutionId AND al.deleted = false AND al.program.deleted = false")
-    List<AcademicLevel> findByProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(@Param("institutionId") Long institutionId);
-    default List<AcademicLevel> findByProgram_Institution_InstitutionId(Long institutionId) {
-        return findByProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(institutionId);
-    }
+    @Query("""
+        SELECT al FROM AcademicLevel al
+        WHERE al.program.institution.institutionId = :institutionId
+          AND al.deleted = false
+          AND al.program.deleted = false
+    """)
+    List<AcademicLevel> findActiveByInstitutionId(@Param("institutionId") Long institutionId);
 
     @EntityGraph(attributePaths = {"program", "program.institution"})
-    Optional<AcademicLevel> findByLevelIdAndProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(Long levelId, Long institutionId);
-    default Optional<AcademicLevel> findByLevelIdAndProgram_Institution_InstitutionId(Long levelId, Long institutionId) {
-        return findByLevelIdAndProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(levelId, institutionId);
-    }
+    @Query("""
+        SELECT al FROM AcademicLevel al
+        WHERE al.levelId = :levelId
+          AND al.program.institution.institutionId = :institutionId
+          AND al.deleted = false
+          AND al.program.deleted = false
+    """)
+    Optional<AcademicLevel> findActiveByIdAndInstitutionId(
+            @Param("levelId") Long levelId,
+            @Param("institutionId") Long institutionId
+    );
 
     Optional<AcademicLevel> findByProgram_ProgramIdAndLevelNumberAndDeletedFalse(Long programId, Integer levelNumber);
-    default Optional<AcademicLevel> findByProgram_ProgramIdAndLevelNumber(Long programId, Integer levelNumber) {
-        return findByProgram_ProgramIdAndLevelNumberAndDeletedFalse(programId, levelNumber);
-    }
 
     boolean existsByProgram_ProgramIdAndLevelNumberAndDeletedFalse(Long programId, Integer levelNumber);
-    default boolean existsByProgram_ProgramIdAndLevelNumber(Long programId, Integer levelNumber) {
-        return existsByProgram_ProgramIdAndLevelNumberAndDeletedFalse(programId, levelNumber);
-    }
 
-    boolean existsByProgram_ProgramIdAndNameAndDeletedFalse(Long programId, String name);
-    default boolean existsByProgram_ProgramIdAndName(Long programId, String name) {
-        return existsByProgram_ProgramIdAndNameAndDeletedFalse(programId, name);
-    }
-
-    long countByProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(Long institutionId);
-    default long countByProgram_Institution_InstitutionId(Long institutionId) {
-        return countByProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(institutionId);
-    }
+    @Query("""
+        SELECT COUNT(al) FROM AcademicLevel al
+        WHERE al.program.institution.institutionId = :institutionId
+          AND al.deleted = false
+          AND al.program.deleted = false
+    """)
+    long countActiveByInstitutionId(@Param("institutionId") Long institutionId);
 
     /**
      * Bulk soft-delete all non-deleted levels belonging to the given program.

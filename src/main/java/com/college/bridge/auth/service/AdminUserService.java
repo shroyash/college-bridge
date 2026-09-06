@@ -9,7 +9,6 @@ import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,9 +26,9 @@ import com.college.bridge.auth.repository.RefreshTokenRepository;
 import com.college.bridge.auth.repository.StudentRepository;
 import com.college.bridge.auth.repository.TeacherRepository;
 import com.college.bridge.auth.repository.UserRepository;
-import com.college.bridge.auth.specification.UserSpecification;
 import com.college.bridge.common.exception.BusinessRuleException;
 import com.college.bridge.common.exception.TenantMismatchException;
+import com.college.bridge.common.tenant.TenantContext;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,21 +48,37 @@ public class AdminUserService {
 
     @Transactional(readOnly = true)
     public Page<UserProfileResponse> getAllUsers(Pageable pageable) {
-        Page<User> userPage = userRepository.findAll(pageable);
+        Long tenantId = TenantContext.get();
+        Page<User> userPage;
+        if (tenantId != null) {
+            userPage = userRepository.findByInstitution_InstitutionIdAndDeletedFalse(tenantId, pageable);
+        } else {
+            userPage = userRepository.findAll(pageable);
+        }
         return mapUsersToProfileResponse(userPage);
     }
 
     @Transactional(readOnly = true)
     public Page<UserProfileResponse> searchUsers(String query, Pageable pageable) {
-        Specification<User> spec = UserSpecification.search(query);
-        Page<User> userPage = userRepository.findAll(spec, pageable);
+        Long tenantId = TenantContext.get();
+        Page<User> userPage;
+        if (tenantId != null) {
+            userPage = userRepository.searchWithinInstitution(tenantId, query, pageable);
+        } else {
+            userPage = userRepository.searchAllInstitutions(query, pageable);
+        }
         return mapUsersToProfileResponse(userPage);
     }
 
     @Transactional(readOnly = true)
     public Page<UserProfileResponse> filterUsers(UserRole role, UserStatus status, Pageable pageable) {
-        Specification<User> spec = UserSpecification.hasRole(role);
-        Page<User> userPage = userRepository.findAll(spec, pageable);
+        Long tenantId = TenantContext.get();
+        Page<User> userPage;
+        if (tenantId != null) {
+            userPage = userRepository.findByInstitution_InstitutionIdAndRoleAndStatusAndDeletedFalse(tenantId, role, status, pageable);
+        } else {
+            userPage = userRepository.findByRoleAndStatusAndDeletedFalse(role, status, pageable);
+        }
         return mapUsersToProfileResponse(userPage);
     }
 
@@ -103,8 +118,6 @@ public class AdminUserService {
 
         Instant suspendedAt = Instant.now();
         userTokenRevocationService.revokeUserTokens(userId, suspendedAt);
-
-        log.info("User ID: {} suspended at {}.", userId, suspendedAt);
     }
 
     public void activateUser(Long userId) {
@@ -115,8 +128,6 @@ public class AdminUserService {
 
         user.setStatus(UserStatus.ACTIVE);
         userRepository.save(user);
-
-        log.info("User ID: {} activated.", userId);
     }
 
     public void changeRole(Long userId, ChangeRoleRequest request, String adminEmail) {
@@ -159,12 +170,11 @@ public class AdminUserService {
         }
 
         refreshTokenRepository.revokeAllByUser(targetUser);
-        log.info("User ID: {} role updated from {} to {} by admin: {}", userId, oldRole, request.getRole(), adminEmail);
+        userTokenRevocationService.revokeUserTokens(targetUser.getUserId(), Instant.now());
     }
 
-
     private void validateTenantAccess(User targetUser) {
-        Long currentTenant = com.college.bridge.common.tenant.TenantContext.get();
+        Long currentTenant = TenantContext.get();
         if (currentTenant != null && targetUser.getInstitution() != null 
                 && !currentTenant.equals(targetUser.getInstitution().getInstitutionId())) {
             throw new TenantMismatchException("User does not belong to your institution.");

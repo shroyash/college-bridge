@@ -7,12 +7,6 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
-/**
- * Records a student's enrollment in a specific subject.
- * <p>
- * Created automatically by the backend when a student registers —
- * one record per subject in the chosen faculty+semester combination.
- */
 @Entity
 @Table(
     name = "subject_enrollments",

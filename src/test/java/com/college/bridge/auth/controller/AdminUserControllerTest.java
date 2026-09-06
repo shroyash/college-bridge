@@ -107,15 +107,5 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.message").value("User activated."));
     }
 
-    @Test
-    @WithMockUser(username = "admin@college.edu", roles = {"ADMIN"})
-    @DisplayName("DELETE /api/admin/users/{id} - Should delete user")
-    void testDeleteUserSuccess() throws Exception {
-        doNothing().when(adminUserService).deleteUser(2L);
 
-        mockMvc.perform(delete("/api/admin/users/2"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("User deleted."));
-    }
 }

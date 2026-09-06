@@ -45,13 +45,6 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     );
 
     @EntityGraph(attributePaths = {"academicLevel", "academicLevel.program", "user"})
-    List<Student> findByAcademicLevel_LevelId(Long levelId);
-
-    /**
-     * Tenant-scoped classmate lookup. Always prefer this over the unscoped variant
-     * to prevent cross-tenant exposure when fetching students in a class.
-     */
-    @EntityGraph(attributePaths = {"academicLevel", "academicLevel.program", "user"})
     List<Student> findByAcademicLevel_LevelIdAndUser_Institution_InstitutionId(
             Long levelId,
             Long institutionId
@@ -59,8 +52,6 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
 
     @EntityGraph(attributePaths = {"user"})
     List<Student> findByUser_Institution_InstitutionIdAndAcademicLevelIsNull(Long institutionId);
-
-    long countByAcademicLevel_LevelId(Long levelId);
 
     long countByUser_Institution_InstitutionId(Long institutionId);
 
@@ -75,5 +66,10 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
             @Param("levelId") Long levelId,
             @Param("search") String search,
             Pageable pageable
+    );
+
+    boolean existsByStudentIdAndUser_Institution_InstitutionId(
+            long studentId,
+            long tenantId
     );
 }

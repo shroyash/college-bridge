@@ -45,13 +45,13 @@ public class AdminDashboardService {
         metrics.add(DashboardMetric.builder()
                 .key("programs")
                 .title("Total Programs")
-                .value(academicProgramRepository.countByInstitution_InstitutionId(tenantId))
+                .value(academicProgramRepository.countByInstitution_InstitutionIdAndDeletedFalse(tenantId))
                 .build());
 
         metrics.add(DashboardMetric.builder()
                 .key("subjects")
                 .title("Total Subjects")
-                .value(subjectRepository.countByAcademicLevel_Program_Institution_InstitutionId(tenantId))
+                .value(subjectRepository.countActiveByInstitutionId(tenantId))
                 .build());
 
         return DashboardResponse.builder()

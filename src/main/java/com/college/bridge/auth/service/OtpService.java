@@ -56,8 +56,6 @@ public class OtpService {
 
         otpRepository.save(otp);
 
-        log.info("Generated OTP for email {} and type {}", email, type);
-
         CompletableFuture.runAsync(() -> {
             try {
                 SimpleMailMessage message = new SimpleMailMessage();
@@ -66,7 +64,6 @@ public class OtpService {
                 message.setText("Dear User,\n\nYour One Time Password (OTP) for verification is: " + code
                         + "\n\nThis OTP is valid for 5 minutes only.\n\nWarm regards,\nCollege Bridge Team");
                 mailSender.send(message);
-                log.info("OTP Email sent successfully to {}", email);
             } catch (Exception ex) {
                 log.warn("Could not send SMTP email to {}. Check mail configuration.", email, ex);
             }
@@ -101,7 +98,6 @@ public class OtpService {
         otp.setVerificationToken(token);
         otpRepository.save(otp);
 
-        log.info("OTP verified successfully for email {}", email);
         return token;
     }
 

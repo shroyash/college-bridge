@@ -2,10 +2,12 @@ package com.college.bridge.academic.service;
 
 import com.college.bridge.academic.dto.*;
 import com.college.bridge.academic.entity.*;
+import com.college.bridge.academic.mapper.AcademicLevelMapper;
+import com.college.bridge.academic.mapper.AcademicProgramMapper;
+import com.college.bridge.academic.mapper.SubjectMapper;
 import com.college.bridge.academic.repository.AcademicLevelRepository;
 import com.college.bridge.academic.repository.AcademicProgramRepository;
 import com.college.bridge.academic.repository.SubjectRepository;
-import com.college.bridge.academic.repository.TeacherAssignmentRepository;
 import com.college.bridge.auth.repository.StudentRepository;
 import com.college.bridge.common.exception.DuplicateResourceException;
 import com.college.bridge.common.exception.ResourceNotFoundException;
@@ -34,7 +36,9 @@ public class AcademicAdminService {
     private final SubjectRepository subjectRepository;
     private final InstitutionRepository institutionRepository;
     private final StudentRepository studentRepository;
-    private final TeacherAssignmentRepository teacherAssignmentRepository;
+    private final AcademicProgramMapper programMapper;
+    private final AcademicLevelMapper levelMapper;
+    private final SubjectMapper subjectMapper;
 
     // ── Program Management ────────────────────────────────────────────────────
 
@@ -55,17 +59,13 @@ public class AcademicAdminService {
                 .build();
 
         AcademicProgram saved = programRepository.save(program);
-        log.info("Created AcademicProgram ID: {} ({}) for tenant: {}", saved.getProgramId(), saved.getCode(), tenantId);
-        return AcademicProgramResponse.from(saved);
+        return programMapper.toResponse(saved);
     }
 
     @Transactional(readOnly = true)
     public List<AcademicProgramResponse> getPrograms() {
         Long tenantId = requireTenantId();
-        return programRepository.findByInstitution_InstitutionIdAndDeletedFalse(tenantId)
-                .stream()
-                .map(AcademicProgramResponse::from)
-                .toList();
+        return programMapper.toResponseList(programRepository.findByInstitution_InstitutionIdAndDeletedFalse(tenantId));
     }
 
     @Transactional(readOnly = true)
@@ -76,10 +76,7 @@ public class AcademicAdminService {
         Institution institution = institutionRepository.findByCode(institutionCode.trim().toUpperCase())
                 .orElseThrow(() -> new ResourceNotFoundException("Institution not found with code: " + institutionCode));
 
-        return programRepository.findByInstitution_InstitutionIdAndDeletedFalse(institution.getInstitutionId())
-                .stream()
-                .map(AcademicProgramResponse::from)
-                .toList();
+        return programMapper.toResponseList(programRepository.findByInstitution_InstitutionIdAndDeletedFalse(institution.getInstitutionId()));
     }
 
     @Transactional(readOnly = true)
@@ -88,22 +85,9 @@ public class AcademicAdminService {
         AcademicProgram program = programRepository
                 .findByProgramIdAndInstitution_InstitutionIdAndDeletedFalse(programId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic program not found with ID: " + programId));
-        return AcademicProgramResponse.from(program);
+        return programMapper.toResponse(program);
     }
 
-    /**
-     * Soft-delete a program and cascade to its levels and subjects.
-     * <p>
-     * Cascade order:
-     * 1. Collect the IDs of all non-deleted levels under this program.
-     * 2. Bulk soft-delete all subjects belonging to those levels.
-     * 3. Bulk soft-delete all levels.
-     * 4. Soft-delete the program itself.
-     * <p>
-     * All operations run in a single transaction so a failure at any step rolls back the whole cascade.
-     * Students that were assigned to a deleted level will have their level reference cleared (already handled
-     * by deleteLevel if a level is deleted individually; here we handle the program-level cascade).
-     */
     @Transactional
     public void deleteProgram(Long programId) {
         Long tenantId = requireTenantId();
@@ -113,30 +97,18 @@ public class AcademicAdminService {
 
         LocalDateTime now = LocalDateTime.now();
 
-        // Step 1: collect level IDs (non-deleted) under this program
         List<Long> levelIds = levelRepository.findLevelIdsByProgramId(programId);
 
         if (!levelIds.isEmpty()) {
-            // Step 2: cascade soft-delete all subjects in those levels
-            int subjectCount = subjectRepository.softDeleteByLevelIds(levelIds, now);
-            log.info("Cascade soft-deleted {} subjects for program ID: {}", subjectCount, programId);
-
-            // Step 3: bulk soft-delete students' level assignments for all affected levels
+            subjectRepository.softDeleteByLevelIds(levelIds, now);
             for (Long levelId : levelIds) {
-                int cleared = studentRepository.clearAcademicLevel(levelId);
-                log.info("Cleared academic level association for {} students (levelId: {}).", cleared, levelId);
+                studentRepository.clearAcademicLevel(levelId);
             }
-
-            // Step 4: cascade soft-delete all levels
-            int levelCount = levelRepository.softDeleteByProgramId(programId, now);
-            log.info("Cascade soft-deleted {} levels for program ID: {}", levelCount, programId);
+            levelRepository.softDeleteByProgramId(programId, now);
         }
-
-        // Step 5: soft-delete the program
         program.setDeleted(true);
         program.setDeletedAt(now);
         programRepository.save(program);
-        log.info("Soft-deleted AcademicProgram ID: {} for tenant: {}", programId, tenantId);
     }
 
     // ── Level Management ──────────────────────────────────────────────────────
@@ -160,8 +132,7 @@ public class AcademicAdminService {
                 .build();
 
         AcademicLevel saved = levelRepository.save(level);
-        log.info("Created AcademicLevel ID: {} ({}) for program: {}", saved.getLevelId(), saved.getName(), programId);
-        return AcademicLevelResponse.from(saved);
+        return levelMapper.toResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -170,10 +141,7 @@ public class AcademicAdminService {
         programRepository.findByProgramIdAndInstitution_InstitutionIdAndDeletedFalse(programId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic program not found with ID: " + programId));
 
-        return levelRepository.findByProgram_ProgramIdAndDeletedFalse(programId)
-                .stream()
-                .map(AcademicLevelResponse::from)
-                .toList();
+        return levelMapper.toResponseList(levelRepository.findByProgram_ProgramIdAndDeletedFalse(programId));
     }
 
     @Transactional(readOnly = true)
@@ -181,46 +149,30 @@ public class AcademicAdminService {
         programRepository.findByProgramIdAndDeletedFalse(programId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic program not found with ID: " + programId));
 
-        return levelRepository.findByProgram_ProgramIdAndDeletedFalse(programId)
-                .stream()
-                .map(AcademicLevelResponse::from)
-                .toList();
+        return levelMapper.toResponseList(levelRepository.findByProgram_ProgramIdAndDeletedFalse(programId));
     }
 
     @Transactional(readOnly = true)
     public List<AcademicLevelResponse> getAllLevelsForInstitution() {
         Long tenantId = requireTenantId();
-        return levelRepository.findByProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(tenantId)
-                .stream()
-                .map(AcademicLevelResponse::from)
-                .toList();
+        return levelMapper.toResponseList(levelRepository.findActiveByInstitutionId(tenantId));
     }
 
-    /**
-     * Soft-delete a level and cascade to its subjects.
-     * Also clears the student → level assignment for all affected students.
-     */
     @Transactional
     public void deleteLevel(Long levelId) {
         Long tenantId = requireTenantId();
         AcademicLevel level = levelRepository
-                .findByLevelIdAndProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(levelId, tenantId)
+                .findActiveByIdAndInstitutionId(levelId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic level not found with ID: " + levelId));
 
         LocalDateTime now = LocalDateTime.now();
 
-        // Cascade soft-delete subjects in this level
-        int subjectCount = subjectRepository.softDeleteByLevelIds(List.of(levelId), now);
-        log.info("Cascade soft-deleted {} subjects for level ID: {}", subjectCount, levelId);
-
-        // Clear student level assignments
-        int clearedCount = studentRepository.clearAcademicLevel(levelId);
-        log.info("Bulk cleared academic level association for {} students.", clearedCount);
+        subjectRepository.softDeleteByLevelIds(List.of(levelId), now);
+        studentRepository.clearAcademicLevel(levelId);
 
         level.setDeleted(true);
         level.setDeletedAt(now);
         levelRepository.save(level);
-        log.info("Soft-deleted AcademicLevel ID: {} for tenant: {}", levelId, tenantId);
     }
 
     // ── Subject Management ────────────────────────────────────────────────────
@@ -229,7 +181,7 @@ public class AcademicAdminService {
     public SubjectResponse createSubject(CreateSubjectRequest request) {
         Long tenantId = requireTenantId();
         AcademicLevel level = levelRepository
-                .findByLevelIdAndProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(request.getLevelId(), tenantId)
+                .findActiveByIdAndInstitutionId(request.getLevelId(), tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic level not found with ID: " + request.getLevelId()));
 
         if (subjectRepository.existsByAcademicLevel_LevelIdAndNameAndDeletedFalse(level.getLevelId(), request.getName().trim())) {
@@ -245,22 +197,16 @@ public class AcademicAdminService {
                 .build();
 
         Subject saved = subjectRepository.save(subject);
-        log.info("Created Subject ID: {} ('{}') for level: {}", saved.getSubjectId(), saved.getName(), level.getLevelId());
-        return SubjectResponse.from(saved);
+        return subjectMapper.toResponse(saved);
     }
 
-    /**
-     * Batch-create subjects for a level efficiently.
-     * Existing names are pre-fetched once; valid subjects are persisted with a single saveAll.
-     */
     @Transactional
     public List<SubjectResponse> batchCreateSubjects(BatchCreateSubjectRequest request) {
         Long tenantId = requireTenantId();
         AcademicLevel level = levelRepository
-                .findByLevelIdAndProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(request.getLevelId(), tenantId)
+                .findActiveByIdAndInstitutionId(request.getLevelId(), tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic level not found with ID: " + request.getLevelId()));
 
-        // Pre-fetch existing non-deleted subject names for this level (avoids per-item existsBy queries)
         Set<String> existingNames = subjectRepository
                 .findByAcademicLevel_LevelIdAndDeletedFalse(level.getLevelId())
                 .stream()
@@ -274,7 +220,7 @@ public class AcademicAdminService {
                 log.warn("Skipping duplicate subject creation: '{}' for level {}", trimmedName, level.getLevelId());
                 continue;
             }
-            existingNames.add(trimmedName.toLowerCase()); // prevent duplicates within the same batch
+            existingNames.add(trimmedName.toLowerCase());
             toCreate.add(Subject.builder()
                     .academicLevel(level)
                     .name(trimmedName)
@@ -284,42 +230,34 @@ public class AcademicAdminService {
         }
 
         List<Subject> saved = subjectRepository.saveAll(toCreate);
-        log.info("Batch created {} subjects for level: {}", saved.size(), level.getLevelId());
-        return saved.stream().map(SubjectResponse::from).toList();
+        return subjectMapper.toResponseList(saved);
     }
 
     @Transactional(readOnly = true)
     public List<SubjectResponse> getSubjectsForLevel(Long levelId) {
         Long tenantId = requireTenantId();
-        levelRepository.findByLevelIdAndProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(levelId, tenantId)
+        levelRepository.findActiveByIdAndInstitutionId(levelId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic level not found with ID: " + levelId));
 
-        return subjectRepository.findByAcademicLevel_LevelIdAndDeletedFalse(levelId)
-                .stream()
-                .map(SubjectResponse::from)
-                .toList();
+        return subjectMapper.toResponseList(subjectRepository.findByAcademicLevel_LevelIdAndDeletedFalse(levelId));
     }
 
     @Transactional(readOnly = true)
     public List<SubjectResponse> getAllSubjects() {
         Long tenantId = requireTenantId();
-        return subjectRepository
-                .findByAcademicLevel_Program_Institution_InstitutionIdAndDeletedFalseAndAcademicLevel_DeletedFalseAndAcademicLevel_Program_DeletedFalse(tenantId)
-                .stream()
-                .map(SubjectResponse::from)
-                .toList();
+        return subjectMapper.toResponseList(subjectRepository.findActiveByInstitutionId(tenantId));
     }
 
     @Transactional
     public SubjectResponse updateSubject(Long subjectId, CreateSubjectRequest request) {
         Long tenantId = requireTenantId();
         Subject subject = subjectRepository
-                .findBySubjectIdAndAcademicLevel_Program_Institution_InstitutionIdAndDeletedFalseAndAcademicLevel_DeletedFalseAndAcademicLevel_Program_DeletedFalse(subjectId, tenantId)
+                .findActiveByIdAndInstitutionId(subjectId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found with ID: " + subjectId));
 
         if (request.getLevelId() != null && !request.getLevelId().equals(subject.getAcademicLevel().getLevelId())) {
             AcademicLevel newLevel = levelRepository
-                    .findByLevelIdAndProgram_Institution_InstitutionIdAndDeletedFalseAndProgram_DeletedFalse(request.getLevelId(), tenantId)
+                    .findActiveByIdAndInstitutionId(request.getLevelId(), tenantId)
                     .orElseThrow(() -> new ResourceNotFoundException("Academic level not found with ID: " + request.getLevelId()));
             subject.setAcademicLevel(newLevel);
         }
@@ -336,20 +274,19 @@ public class AcademicAdminService {
         }
 
         Subject saved = subjectRepository.save(subject);
-        return SubjectResponse.from(saved);
+        return subjectMapper.toResponse(saved);
     }
 
     @Transactional
     public void deleteSubject(Long subjectId) {
         Long tenantId = requireTenantId();
         Subject subject = subjectRepository
-                .findBySubjectIdAndAcademicLevel_Program_Institution_InstitutionIdAndDeletedFalseAndAcademicLevel_DeletedFalseAndAcademicLevel_Program_DeletedFalse(subjectId, tenantId)
+                .findActiveByIdAndInstitutionId(subjectId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found with ID: " + subjectId));
 
         subject.setDeleted(true);
         subject.setDeletedAt(LocalDateTime.now());
         subjectRepository.save(subject);
-        log.info("Soft-deleted Subject ID: {} for tenant: {}", subjectId, tenantId);
     }
 
     // ── Private Helpers ───────────────────────────────────────────────────────

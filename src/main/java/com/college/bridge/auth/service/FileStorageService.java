@@ -2,7 +2,6 @@ package com.college.bridge.auth.service;
 
 import com.college.bridge.auth.exception.ProfileImageException;
 import com.college.bridge.common.exception.BusinessRuleException;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,7 +15,6 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Service
-@Slf4j
 public class FileStorageService {
 
     private final Path fileStorageLocation;
@@ -52,11 +50,25 @@ public class FileStorageService {
             throw new BusinessRuleException("Failed to store empty document file.");
         }
 
+        String contentType = file.getContentType();
+        if (contentType == null || !isAllowedDocumentContentType(contentType)) {
+            throw new BusinessRuleException("Only PDF, Word documents (DOC/DOCX), and Image files (JPEG, PNG, WEBP) are allowed for verification documents.");
+        }
+
         if (file.getSize() > 20 * 1024 * 1024) {
             throw new BusinessRuleException("Document file size exceeds the limit of 20MB.");
         }
 
         return saveFileToDisk(file);
+    }
+
+    private boolean isAllowedDocumentContentType(String contentType) {
+        return contentType.equals("application/pdf")
+                || contentType.equals("image/jpeg")
+                || contentType.equals("image/png")
+                || contentType.equals("image/webp")
+                || contentType.equals("application/msword")
+                || contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     }
 
     private String saveFileToDisk(MultipartFile file) {
@@ -77,7 +89,6 @@ public class FileStorageService {
             Path targetLocation = this.fileStorageLocation.resolve(fileName);
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
-            log.info("Uploaded file stored at: {}", targetLocation);
             return "/uploads/" + fileName;
         } catch (IOException ex) {
             throw new BusinessRuleException("Could not store file " + fileName + ". Please try again!");

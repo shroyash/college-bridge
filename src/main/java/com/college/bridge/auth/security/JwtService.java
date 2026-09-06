@@ -2,6 +2,7 @@ package com.college.bridge.auth.security;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
@@ -14,7 +15,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Header;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -25,6 +25,7 @@ public class JwtService {
     private final JwtProperties jwtProperties;
     private final PrivateKey privateKey;
     private final PublicKey publicKey;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     public JwtService(
             JwtProperties jwtProperties,
@@ -72,22 +73,13 @@ public class JwtService {
     }
 
     public String generateRefreshTokenString() {
-
-        Instant now = Instant.now();
-        Instant expiration = now.plus(
-                jwtProperties.getRefreshTokenExpiration()
-        );
-
-        return Jwts.builder()
-                .setHeaderParam(Header.TYPE, Header.JWT_TYPE)
-                .setIssuer("bridge-api")
-                .setAudience("bridge-clients")
-                .setSubject("refresh-token")
-                .setIssuedAt(Date.from(now))
-                .setExpiration(Date.from(expiration))
-                .setId(UUID.randomUUID().toString())
-                .signWith(privateKey, SignatureAlgorithm.RS256)
-                .compact();
+        byte[] randomBytes = new byte[32];
+        secureRandom.nextBytes(randomBytes);
+        StringBuilder sb = new StringBuilder();
+        for (byte b : randomBytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
     }
 
     public Claims parseClaims(String token) {

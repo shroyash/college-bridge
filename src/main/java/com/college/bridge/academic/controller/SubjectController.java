@@ -10,15 +10,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
-/**
- * Subject endpoints for students, teachers, and admins.
- * <p>
- * Q3 FIX: All responses now use the standard {@code ApiResponse<>} wrapper, consistent
- * with every other Academic controller. Flutter clients must read the {@code data} field.
- */
+
 @RestController
 @RequestMapping("/api/academic/subjects")
 @RequiredArgsConstructor

@@ -1,10 +1,10 @@
 package com.college.bridge.academic.service;
 
-import com.college.bridge.academic.dto.*;
+import com.college.bridge.academic.dto.AcademicLevelResponse;
+import com.college.bridge.academic.dto.SubjectResponse;
 import com.college.bridge.academic.entity.AcademicLevel;
-import com.college.bridge.academic.entity.Subject;
-import com.college.bridge.academic.entity.TeacherAssignment;
-import com.college.bridge.academic.repository.SubjectRepository;
+import com.college.bridge.academic.mapper.AcademicLevelMapper;
+import com.college.bridge.academic.mapper.SubjectMapper;
 import com.college.bridge.academic.repository.TeacherAssignmentRepository;
 import com.college.bridge.auth.entity.Teacher;
 import com.college.bridge.auth.repository.TeacherRepository;
@@ -12,7 +12,6 @@ import com.college.bridge.common.exception.ResourceNotFoundException;
 import com.college.bridge.common.exception.TenantMismatchException;
 import com.college.bridge.common.tenant.TenantContext;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,19 +19,15 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class TeacherAcademicService {
 
     private final TeacherRepository teacherRepository;
     private final TeacherAssignmentRepository teacherAssignmentRepository;
-    private final SubjectRepository subjectRepository;
+    private final SubjectMapper subjectMapper;
+    private final AcademicLevelMapper academicLevelMapper;
 
     /**
      * Returns all subjects assigned to the given teacher, scoped to the current tenant.
-     * <p>
-     * I-3 FIX: removed the null-tenant fallback that previously fell through to an
-     * unscoped query. Tenant context is always required; a missing context is a
-     * configuration/security error, not a valid runtime path.
      */
     @Transactional(readOnly = true)
     public List<SubjectResponse> getTeacherAssignedSubjects(Long teacherId) {
@@ -42,10 +37,14 @@ public class TeacherAcademicService {
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher not found with ID: " + teacherId));
 
         return teacherAssignmentRepository
-                .findByTeacher_TeacherIdAndSubject_AcademicLevel_Program_Institution_InstitutionId(
-                        teacher.getTeacherId(), tenantId)
+                .findActiveByTeacherIdAndInstitutionId(teacher.getTeacherId(), tenantId)
                 .stream()
-                .map(ta -> SubjectResponse.from(ta.getSubject()))
+                .map(ta -> {
+                    String teacherName = (ta.getTeacher() != null && ta.getTeacher().getUser() != null)
+                            ? ta.getTeacher().getUser().getFullName()
+                            : null;
+                    return subjectMapper.toResponse(ta.getSubject(), teacherName);
+                })
                 .toList();
     }
 
@@ -61,15 +60,14 @@ public class TeacherAcademicService {
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher not found with ID: " + teacherId));
 
         List<AcademicLevel> levels = teacherAssignmentRepository
-                .findByTeacher_TeacherIdAndSubject_AcademicLevel_Program_Institution_InstitutionId(
-                        teacher.getTeacherId(), tenantId)
+                .findActiveByTeacherIdAndInstitutionId(teacher.getTeacherId(), tenantId)
                 .stream()
                 .map(ta -> ta.getSubject().getAcademicLevel())
                 .filter(java.util.Objects::nonNull)
                 .distinct()
                 .toList();
 
-        return levels.stream().map(AcademicLevelResponse::from).toList();
+        return academicLevelMapper.toResponseList(levels);
     }
 
     private Long requireTenant() {

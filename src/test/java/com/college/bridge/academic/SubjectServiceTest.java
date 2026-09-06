@@ -11,6 +11,7 @@ import com.college.bridge.academic.repository.SubjectRepository;
 import com.college.bridge.academic.repository.TeacherAssignmentRepository;
 import com.college.bridge.academic.service.SubjectService;
 import com.college.bridge.auth.entity.Student;
+import com.college.bridge.auth.repository.StudentRepository;
 import com.college.bridge.common.tenant.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,7 +23,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -42,6 +42,9 @@ public class SubjectServiceTest {
     @Mock
     private SubjectMapper subjectMapper;
 
+    @Mock
+    private StudentRepository studentRepository;
+
     @InjectMocks
     private SubjectService subjectService;
 
@@ -58,38 +61,6 @@ public class SubjectServiceTest {
     @Test
     @DisplayName("Should return subjects for student by studentId")
     void testGetSubjectsForStudent_byStudentId() {
-        AcademicProgram program = AcademicProgram.builder()
-                .programId(1L)
-                .name("Bachelor of Computer Application")
-                .code("BCA")
-                .build();
-
-        AcademicLevel level = AcademicLevel.builder()
-                .levelId(10L)
-                .program(program)
-                .name("1st Semester")
-                .levelNumber(1)
-                .build();
-
-        Student student = Student.builder()
-                .studentId(1L)
-                .academicLevel(level)
-                .build();
-
-        Subject subject = Subject.builder()
-                .subjectId(20L)
-                .academicLevel(level)
-                .name("Java Programming")
-                .code("CACS201")
-                .creditHours(3)
-                .build();
-
-        SubjectEnrollment enrollment = SubjectEnrollment.builder()
-                .enrollmentId(100L)
-                .student(student)
-                .subject(subject)
-                .build();
-
         SubjectResponse expectedResponse = SubjectResponse.builder()
                 .subjectId(20L)
                 .name("Java Programming")
@@ -101,9 +72,8 @@ public class SubjectServiceTest {
                 .programName("Bachelor of Computer Application")
                 .build();
 
-        when(subjectEnrollmentRepository.findByStudent_StudentIdAndStudent_User_Institution_InstitutionId(1L, 100L)).thenReturn(List.of(enrollment));
-        when(teacherAssignmentRepository.findBySubjectIds(List.of(20L))).thenReturn(List.of());
-        when(subjectMapper.toResponse(subject, null)).thenReturn(expectedResponse);
+        when(studentRepository.existsByStudentIdAndUser_Institution_InstitutionId(1L, 100L)).thenReturn(true);
+        when(subjectEnrollmentRepository.findSubjectsForStudent(1L, 100L)).thenReturn(List.of(expectedResponse));
 
         List<SubjectResponse> responses = subjectService.getSubjectsForStudent(1L);
 
@@ -113,6 +83,7 @@ public class SubjectServiceTest {
         assertEquals("CACS201", responses.get(0).getCode());
         assertEquals("1st Semester", responses.get(0).getLevelName());
 
-        verify(subjectEnrollmentRepository, times(1)).findByStudent_StudentIdAndStudent_User_Institution_InstitutionId(1L, 100L);
+        verify(studentRepository, times(1)).existsByStudentIdAndUser_Institution_InstitutionId(1L, 100L);
+        verify(subjectEnrollmentRepository, times(1)).findSubjectsForStudent(1L, 100L);
     }
 }

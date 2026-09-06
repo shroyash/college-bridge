@@ -6,13 +6,13 @@ import com.college.bridge.auth.entity.User;
 import com.college.bridge.auth.repository.RefreshTokenRepository;
 import com.college.bridge.auth.repository.UserRepository;
 import com.college.bridge.common.exception.ResourceNotFoundException;
-import com.college.bridge.common.tenant.TenantContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Optional;
 
 @Service
@@ -24,32 +24,29 @@ public class PasswordResetService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final OtpService otpService;
+    private final TokenRevocationService userTokenRevocationService;
 
     public PasswordResetService(
             UserRepository userRepository,
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
-            OtpService otpService) {
+            OtpService otpService,
+            TokenRevocationService userTokenRevocationService) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.otpService = otpService;
+        this.userTokenRevocationService = userTokenRevocationService;
     }
 
     public void forgotPassword(ForgotPasswordRequest request) {
-        Long tenantId = TenantContext.get();
-        Optional<User> userOpt;
-        if (tenantId != null) {
-            userOpt = userRepository.findByInstitution_InstitutionIdAndEmail(tenantId, request.getEmail());
-        } else {
-            userOpt = userRepository.findByEmail(request.getEmail());
-        }
+        String email = request.getEmail().trim().toLowerCase();
+        Optional<User> userOpt = userRepository.findByEmail(email);
 
         if (userOpt.isPresent()) {
-            otpService.sendOtp(request.getEmail(), OtpType.PASSWORD_RESET);
-            log.info("Password reset OTP requested and sent for: {}", request.getEmail());
+            otpService.sendOtp(email, OtpType.PASSWORD_RESET);
         } else {
-            log.warn("Password reset requested for non-existent email: {}", request.getEmail());
+            log.warn("Password reset requested for non-existent email: {}", email);
         }
     }
 
@@ -62,25 +59,20 @@ public class PasswordResetService {
     }
 
     public void resendOtp(ForgotPasswordRequest request) {
-        Long tenantId = TenantContext.get();
-        Optional<User> userOpt;
-        if (tenantId != null) {
-            userOpt = userRepository.findByInstitution_InstitutionIdAndEmail(tenantId, request.getEmail());
-        } else {
-            userOpt = userRepository.findByEmail(request.getEmail());
-        }
+        String email = request.getEmail().trim().toLowerCase();
+        Optional<User> userOpt = userRepository.findByEmail(email);
 
         if (userOpt.isPresent()) {
-            otpService.sendOtp(request.getEmail(), OtpType.PASSWORD_RESET);
-            log.info("Verification OTP resent to: {}", request.getEmail());
+            otpService.sendOtp(email, OtpType.PASSWORD_RESET);
         } else {
-            log.warn("Resend OTP requested for non-existent email: {}", request.getEmail());
+            log.warn("Resend OTP requested for non-existent email: {}", email);
         }
     }
 
     public void resetPassword(ResetPasswordRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
         boolean isValidToken = otpService.validateVerificationToken(
-                request.getEmail(),
+                email,
                 request.getVerificationToken(),
                 OtpType.PASSWORD_RESET);
 
@@ -88,24 +80,15 @@ public class PasswordResetService {
             throw new BadCredentialsException("Invalid or expired password reset token.");
         }
 
-        Long tenantId = TenantContext.get();
-        User user;
-        if (tenantId != null) {
-            user = userRepository.findByInstitution_InstitutionIdAndEmail(tenantId, request.getEmail())
-                    .orElseThrow(
-                            () -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
-        } else {
-            user = userRepository.findByEmail(request.getEmail())
-                    .orElseThrow(
-                            () -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
-        }
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 
-        otpService.invalidateVerificationToken(request.getEmail(), request.getVerificationToken(), OtpType.PASSWORD_RESET);
+        otpService.invalidateVerificationToken(email, request.getVerificationToken(), OtpType.PASSWORD_RESET);
 
         refreshTokenRepository.revokeAllByUser(user);
-        log.info("Password reset successful and all sessions revoked for user: {}", request.getEmail());
+        userTokenRevocationService.revokeUserTokens(user.getUserId(), Instant.now());
     }
 }

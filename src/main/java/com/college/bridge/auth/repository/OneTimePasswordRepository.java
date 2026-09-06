@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Repository
@@ -15,6 +14,4 @@ public interface OneTimePasswordRepository extends JpaRepository<OneTimePassword
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<OneTimePassword> findFirstByEmailAndTypeAndVerifiedOrderByCreatedAtDesc(String email, OtpType type, boolean verified);
-
-    void deleteByExpiryDateBefore(LocalDateTime expiryTime);
 }

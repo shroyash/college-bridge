@@ -1,5 +1,7 @@
 package com.college.bridge.auth.service;
 
+import java.time.Instant;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +40,7 @@ public class AccountService {
     private final OtpService otpService;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
+    private final TokenRevocationService userTokenRevocationService;
 
 
     private User findUser(Long userId) {
@@ -118,6 +121,7 @@ public class AccountService {
         userRepository.save(user);
 
         refreshTokenRepository.revokeAllByUser(user);
+        userTokenRevocationService.revokeUserTokens(user.getUserId(), Instant.now());
     }
 
 
@@ -146,11 +150,6 @@ public class AccountService {
                 request.getNewEmail(),
                 OtpType.EMAIL_CHANGE
         );
-
-        log.info(
-                "Email change initiated for userId={}",
-                userId
-        );
     }
 
 
@@ -172,19 +171,12 @@ public class AccountService {
                 OtpType.EMAIL_CHANGE
         );
 
-        String oldEmail = user.getEmail();
-
         user.setEmail(request.getNewEmail());
 
         userRepository.save(user);
 
         refreshTokenRepository.revokeAllByUser(user);
-
-        log.info(
-                "Email updated for userId={} from {}",
-                userId,
-                oldEmail
-        );
+        userTokenRevocationService.revokeUserTokens(user.getUserId(), Instant.now());
     }
 
 
@@ -200,11 +192,6 @@ public class AccountService {
         user.setImageUrl(imageUrl);
 
         userRepository.save(user);
-
-        log.info(
-                "Profile image uploaded for userId={}",
-                userId
-        );
 
         return imageUrl;
     }
@@ -226,12 +213,8 @@ public class AccountService {
         }
 
         refreshTokenRepository.revokeAllByUser(user);
+        userTokenRevocationService.revokeUserTokens(user.getUserId(), Instant.now());
 
         userRepository.delete(user);
-
-        log.info(
-                "Account deleted for userId={}",
-                userId
-        );
     }
 }

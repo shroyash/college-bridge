@@ -4,13 +4,13 @@ import com.college.bridge.academic.dto.ClassStudentResponse;
 import com.college.bridge.academic.dto.SubjectDetailResponse;
 import com.college.bridge.academic.dto.SubjectResponse;
 import com.college.bridge.academic.entity.Subject;
-import com.college.bridge.academic.entity.SubjectEnrollment;
 import com.college.bridge.academic.entity.TeacherAssignment;
 import com.college.bridge.academic.mapper.SubjectMapper;
 import com.college.bridge.academic.repository.SubjectEnrollmentRepository;
 import com.college.bridge.academic.repository.SubjectRepository;
 import com.college.bridge.academic.repository.TeacherAssignmentRepository;
 import com.college.bridge.auth.entity.UserRole;
+import com.college.bridge.auth.repository.StudentRepository;
 import com.college.bridge.auth.security.UserPrincipal;
 import com.college.bridge.common.exception.ResourceNotFoundException;
 import com.college.bridge.common.exception.TenantMismatchException;
@@ -22,8 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +32,7 @@ public class SubjectService {
     private final SubjectEnrollmentRepository subjectEnrollmentRepository;
     private final TeacherAssignmentRepository teacherAssignmentRepository;
     private final SubjectMapper subjectMapper;
+    private final StudentRepository studentRepository;
 
 
     @Transactional(readOnly = true)
@@ -41,8 +40,7 @@ public class SubjectService {
         Long tenantId = requireTenant();
 
         Subject subject = subjectRepository
-                .findBySubjectIdAndAcademicLevel_Program_Institution_InstitutionIdAndDeletedFalseAndAcademicLevel_DeletedFalseAndAcademicLevel_Program_DeletedFalse(
-                        subjectId, tenantId)
+                .findActiveByIdAndInstitutionId(subjectId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subject", subjectId));
 
         return subjectMapper.toResponse(subject);
@@ -54,8 +52,7 @@ public class SubjectService {
         Long tenantId = requireTenant();
 
         return subjectRepository
-                .findByAcademicLevel_LevelIdAndAcademicLevel_Program_Institution_InstitutionIdAndDeletedFalseAndAcademicLevel_DeletedFalseAndAcademicLevel_Program_DeletedFalse(
-                        levelId, tenantId)
+                .findActiveByLevelIdAndInstitutionId(levelId, tenantId)
                 .stream()
                 .map(subjectMapper::toResponse)
                 .toList();
@@ -67,8 +64,7 @@ public class SubjectService {
         Long tenantId = requireTenant();
 
         return subjectRepository
-                .findByAcademicLevel_Program_Institution_InstitutionIdAndDeletedFalseAndAcademicLevel_DeletedFalseAndAcademicLevel_Program_DeletedFalse(
-                        tenantId)
+                .findActiveByInstitutionId(tenantId)
                 .stream()
                 .map(subjectMapper::toResponse)
                 .toList();
@@ -84,8 +80,7 @@ public class SubjectService {
         }
 
         return subjectRepository
-                .findByAcademicLevel_Program_Institution_InstitutionIdAndNameContainingIgnoreCaseAndDeletedFalseAndAcademicLevel_DeletedFalseAndAcademicLevel_Program_DeletedFalse(
-                        tenantId, name.trim())
+                .findActiveByInstitutionIdAndNameContaining(tenantId, name.trim())
                 .stream()
                 .map(subjectMapper::toResponse)
                 .toList();
@@ -101,8 +96,7 @@ public class SubjectService {
         if (principal.getTeacherId() != null) {
             Long tenantId = requireTenant();
             return teacherAssignmentRepository
-                    .findByTeacher_TeacherIdAndSubject_AcademicLevel_Program_Institution_InstitutionId(
-                            principal.getTeacherId(), tenantId)
+                    .findActiveByTeacherIdAndInstitutionId(principal.getTeacherId(), tenantId)
                     .stream()
                     .map(ta -> {
                         String tName = (ta.getTeacher() != null && ta.getTeacher().getUser() != null)
@@ -120,58 +114,27 @@ public class SubjectService {
         throw new AccessDeniedException("Only logged in students or teachers can access their subjects.");
     }
 
-
-    /**
-     * Returns all subjects a student is enrolled in, with teacher names resolved.
-     * <p>
-     * I-2 FIX: teacher names are resolved with a single bulk query rather than one
-     * query per subject, eliminating the N+1 pattern.
-     * <p>
-     * C-5 FIX: student lookup is scoped to the current tenant so a caller cannot
-     * probe student IDs from other institutions.
-     */
     @Transactional(readOnly = true)
     public List<SubjectResponse> getSubjectsForStudent(Long studentId) {
+
         Long tenantId = requireTenant();
 
         if (studentId == null) {
             throw new AccessDeniedException("Student information not available");
         }
 
-        List<SubjectEnrollment> enrollments =
-                subjectEnrollmentRepository
-                        .findByStudent_StudentIdAndStudent_User_Institution_InstitutionId(
-                                studentId, tenantId);
+        boolean studentExists = studentRepository
+                .existsByStudentIdAndUser_Institution_InstitutionId(
+                        studentId,
+                        tenantId
+                );
 
-        if (enrollments.isEmpty()) {
-            return List.of();
+        if (!studentExists) {
+            throw new ResourceNotFoundException("Student not found");
         }
 
-        // Collect subject IDs from enrollments
-        List<Long> subjectIds = enrollments.stream()
-                .map(e -> e.getSubject().getSubjectId())
-                .toList();
-
-        // I-2 FIX: one bulk query to get all teacher assignments for all subjects at once
-        Map<Long, String> teacherNameBySubjectId = teacherAssignmentRepository
-                .findBySubjectIds(subjectIds)
-                .stream()
-                // Keep only the first assignment per subject (a subject has at most one teacher)
-                .collect(Collectors.toMap(
-                        ta -> ta.getSubject().getSubjectId(),
-                        ta -> (ta.getTeacher() != null && ta.getTeacher().getUser() != null)
-                                ? ta.getTeacher().getUser().getFullName()
-                                : null,
-                        (existing, replacement) -> existing // keep first if multiple
-                ));
-
-        return enrollments.stream()
-                .map(enrollment -> {
-                    Subject subject = enrollment.getSubject();
-                    String tName = teacherNameBySubjectId.get(subject.getSubjectId());
-                    return subjectMapper.toResponse(subject, tName);
-                })
-                .toList();
+        return subjectEnrollmentRepository
+                .findSubjectsForStudent(studentId, tenantId);
     }
 
 
@@ -222,7 +185,6 @@ public class SubjectService {
         }
 
         if (role == UserRole.TEACHER) {
-            // I-10 FIX: use TeacherAssignmentRepository (the canonical location for this query)
             boolean assigned = teacherAssignmentRepository.existsAssignmentForUser(
                     subjectId, principal.getUserId(), tenantId);
             if (!assigned) {

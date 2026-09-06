@@ -14,7 +14,6 @@ import com.college.bridge.common.exception.ResourceNotFoundException;
 import com.college.bridge.common.exception.TenantMismatchException;
 import com.college.bridge.common.tenant.TenantContext;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +24,6 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class TeacherAssignmentService {
 
     private final TeacherRepository teacherRepository;
@@ -98,7 +96,7 @@ public class TeacherAssignmentService {
         validateTeacherBelongsToTenant(teacher, tenantId);
 
         return teacherAssignmentRepository
-                .findByTeacher_TeacherIdAndSubject_AcademicLevel_Program_Institution_InstitutionId(teacherId, tenantId)
+                .findActiveByTeacherIdAndInstitutionId(teacherId, tenantId)
                 .stream()
                 .map(mapper::toResponse)
                 .toList();
