@@ -23,7 +23,7 @@ class StudentAcademicRemoteDataSource {
     return Exception('Something went wrong. Please try again.');
   }
 
-  /// GET /api/v1/student/academic/class-details
+  /// GET /api/student/academic/class-details
   Future<ClassDetailModel?> fetchMyClassDetails() async {
     try {
       final options = await _authOptions();

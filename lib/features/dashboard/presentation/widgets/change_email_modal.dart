@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../auth/presentation/controllers/auth_providers.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../auth/presentation/screens/otp_verification_screen.dart';
 import '../controllers/dashboard_providers.dart';
 

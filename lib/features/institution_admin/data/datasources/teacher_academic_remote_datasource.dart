@@ -25,10 +25,29 @@ class TeacherAcademicRemoteDataSource {
     return Exception('Something went wrong. Please try again.');
   }
 
-  /// GET /api/v1/teacher/academic/my-classes
+  /// GET /api/academic/subjects/my-subjects
+  ///
+  /// Q3: SubjectController now wraps all responses in ApiResponse<> — read 'data' field.
   Future<List<AcademicClassModel>> fetchMyClasses() async {
     try {
       final options = await _authOptions();
+      try {
+        final response = await _apiClient.get<Map<String, dynamic>>(
+          ApiConstants.teacherMySubjects,
+          options: options,
+        );
+        // Q3 fix: always read from response['data']
+        final data = response.data?['data'];
+        if (data is List && data.isNotEmpty) {
+          return data
+              .map((e) => AcademicClassModel.fromJson(e as Map<String, dynamic>))
+              .toList();
+        }
+        // Empty list from my-subjects — fall through to my-classes
+      } catch (_) {
+        // Fallback to my-classes if my-subjects fails
+      }
+
       final response = await _apiClient.get<Map<String, dynamic>>(
         ApiConstants.teacherMyClasses,
         options: options,
@@ -42,16 +61,19 @@ class TeacherAcademicRemoteDataSource {
     }
   }
 
-  /// GET /api/v1/teacher/academic/classes/{classId}/details
+  /// GET /api/academic/subjects/{subjectId}/details
+  ///
+  /// Q3: SubjectController now wraps all responses in ApiResponse<> — read 'data' field.
   Future<ClassDetailModel> fetchClassDetails(int classId) async {
     try {
       final options = await _authOptions();
       final response = await _apiClient.get<Map<String, dynamic>>(
-        '${ApiConstants.teacherClassDetails}/$classId/details',
+        '/api/academic/subjects/$classId/details',
         options: options,
       );
-      final data = response.data!['data'] as Map<String, dynamic>;
-      return ClassDetailModel.fromJson(data);
+      // Q3 fix: always read from response['data']
+      final data = response.data?['data'] as Map<String, dynamic>?;
+      return ClassDetailModel.fromJson(data ?? {});
     } on DioException catch (e) {
       throw _mapDioError(e);
     }

@@ -166,9 +166,9 @@ class _InstitutionDetailModalState extends ConsumerState<InstitutionDetailModal>
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Institution status updated successfully.'),
-            backgroundColor: const Color(0xFF2563EB),
+            backgroundColor: Color(0xFF2563EB),
           ),
         );
       }
@@ -504,7 +504,7 @@ class _InstitutionDetailModalState extends ConsumerState<InstitutionDetailModal>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.people_outline_rounded, size: 48, color: const Color(0xFF94A3B8)),
+            const Icon(Icons.people_outline_rounded, size: 48, color: Color(0xFF94A3B8)),
             const SizedBox(height: 12),
             Text(
               'No users found in this category',

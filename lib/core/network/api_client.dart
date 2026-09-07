@@ -1,39 +1,49 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 
-import '../../app/constants/api_constants.dart';
+import '../constants/api_endpoints.dart';
+import '../storage/secure_storage_service.dart';
 import 'auth_interceptor.dart';
 import 'error_interceptor.dart';
 
+final apiClientProvider = Provider<ApiClient>((ref) {
+  final storageService = ref.watch(secureStorageProvider);
+  return ApiClient(storageService: storageService);
+});
+
 /// Singleton-safe Dio wrapper with:
-/// - JWT auth interceptor (attaches Bearer token from SecureStorage)
+/// - JWT auth interceptor (attaches Bearer token from SecureStorageService)
+/// - Auto refresh token on 401 Unauthorized
 /// - Error interceptor (maps Dio errors → typed Failures)
-/// - Auto-logout on 401 via [onUnauthorized] callback
 class ApiClient {
   final Dio dio;
   final Logger logger;
+  final SecureStorageService storageService;
 
   ApiClient({
     Dio? dioClient,
     Logger? customLogger,
-    FlutterSecureStorage? secureStorage,
+    SecureStorageService? storageService,
     void Function()? onUnauthorized,
-  })  : dio = dioClient ??
+  })  : storageService = storageService ?? SecureStorageService(),
+        dio = dioClient ??
             Dio(
               BaseOptions(
-                baseUrl: ApiConstants.baseUrl,
-                connectTimeout: ApiConstants.connectTimeout,
-                receiveTimeout: ApiConstants.receiveTimeout,
+                baseUrl: ApiEndpoints.baseUrl,
+                connectTimeout: ApiEndpoints.connectTimeout,
+                receiveTimeout: ApiEndpoints.receiveTimeout,
                 headers: {
                   'Accept': 'application/json',
                 },
               ),
             ),
         logger = customLogger ?? Logger() {
-    final storage = secureStorage ?? const FlutterSecureStorage();
     dio.interceptors.add(
-      AuthInterceptor(storage: storage, onUnauthorized: onUnauthorized),
+      AuthInterceptor(
+        storageService: this.storageService,
+        onUnauthorized: onUnauthorized,
+      ),
     );
     dio.interceptors.add(ErrorInterceptor());
     dio.interceptors.add(
@@ -63,7 +73,12 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
-    return dio.post<T>(path, data: data, queryParameters: queryParameters, options: options);
+    return dio.post<T>(
+      path,
+      data: data,
+      queryParameters: queryParameters,
+      options: options,
+    );
   }
 
   Future<Response<T>> put<T>(
@@ -76,16 +91,32 @@ class ApiClient {
 
   Future<Response<T>> delete<T>(
     String path, {
+    dynamic data,
     Options? options,
   }) async {
-    return dio.delete<T>(path, options: options);
+    return dio.delete<T>(path, data: data, options: options);
   }
 
-  // Legacy helpers — kept for backward compat with existing code
+  Future<Response<T>> postMultipart<T>(
+    String path, {
+    required FormData formData,
+    Options? options,
+  }) async {
+    return dio.post<T>(
+      path,
+      data: formData,
+      options: options ??
+          Options(contentType: 'multipart/form-data'),
+    );
+  }
+
+  // Deprecated legacy helpers — preserved for smooth transition during feature refactoring
+  @Deprecated('Use AuthInterceptor and SecureStorageService instead')
   void setAuthHeader(String token) {
     dio.options.headers['Authorization'] = 'Bearer $token';
   }
 
+  @Deprecated('Use AuthInterceptor and SecureStorageService instead')
   void clearAuthHeader() {
     dio.options.headers.remove('Authorization');
   }

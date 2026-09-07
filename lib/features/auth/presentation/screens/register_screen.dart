@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/constants/api_constants.dart';
-import '../../../../core/network/api_client.dart';
-import '../../../../core/storage/secure_storage_service.dart';
 import '../../../institution_admin/data/models/academic_level_model.dart';
 import '../../../institution_admin/data/models/academic_program_model.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
@@ -475,7 +472,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           )
         else
           DropdownButtonFormField<T>(
-            value: value,
+            initialValue: value,
             hint: Text(
               hint,
               style: const TextStyle(

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../core/storage/secure_storage_service.dart';
+import '../../../auth/presentation/controllers/auth_providers.dart';
 import 'super_admin_profile_modal.dart';
 
 class SuperAdminSettingsScreen extends ConsumerWidget {
@@ -194,11 +195,9 @@ class SuperAdminSettingsScreen extends ConsumerWidget {
   }
 
   void _handleLogout(BuildContext context, WidgetRef ref) async {
-    final storage = ref.read(secureStorageProvider);
-    await storage.clearAll();
-
+    await ref.read(authNotifierProvider.notifier).logout();
     if (context.mounted) {
-      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      context.go('/login');
     }
   }
 }

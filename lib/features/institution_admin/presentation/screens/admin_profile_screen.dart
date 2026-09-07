@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../auth/presentation/controllers/auth_providers.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../dashboard/presentation/controllers/dashboard_providers.dart';
 import '../../../dashboard/presentation/widgets/change_password_modal.dart';
 
@@ -245,9 +245,10 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
+              final nav = Navigator.of(context);
               await ref.read(profileNotifierProvider.notifier).logoutAndClear();
               if (mounted) {
-                Navigator.of(context).popUntil((route) => route.isFirst);
+                nav.popUntil((route) => route.isFirst);
                 if (widget.onLogout != null) {
                   widget.onLogout!();
                 }

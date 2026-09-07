@@ -17,18 +17,15 @@ import 'profile_notifier.dart';
 import 'student_dashboard_notifier.dart';
 import 'teacher_dashboard_notifier.dart';
 
-// ── Infrastructure ─────────────────────────────────────────────────────────
-
-// Re-use core providers (assume these might be defined globally, but for modularity we declare them here or import them)
-// We'll create local instances since Riverpod providers are just global variables.
-final _apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
-
 // ── Data Layer ─────────────────────────────────────────────────────────────
+// NOTE: apiClientProvider is the singleton defined in core/network/api_client.dart.
+// Do NOT declare a private copy — all features must share the same Dio instance
+// so the AuthInterceptor (token attach + refresh) applies everywhere.
 
 final dashboardRemoteDataSourceProvider =
     Provider<DashboardRemoteDataSource>((ref) {
   return DashboardRemoteDataSource(
-    ref.watch(_apiClientProvider),
+    ref.watch(apiClientProvider),
     ref.watch(secureStorageProvider),
   );
 });
@@ -63,7 +60,9 @@ final studentDashboardNotifierProvider = StateNotifierProvider<
 final teacherDashboardNotifierProvider = StateNotifierProvider<
     TeacherDashboardNotifier, DashboardState<List<TeacherAssignment>>>((ref) {
   return TeacherDashboardNotifier(
-      ref.watch(manageTeacherAssignmentsUseCaseProvider));
+    ref.watch(manageTeacherAssignmentsUseCaseProvider),
+    ref.watch(getMySubjectsUseCaseProvider),
+  );
 });
 
 final profileNotifierProvider =

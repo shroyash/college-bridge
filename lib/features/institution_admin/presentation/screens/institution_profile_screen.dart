@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../auth/presentation/controllers/auth_providers.dart';
+import '../../../../core/network/api_client.dart';
 
 class InstitutionProfileScreen extends ConsumerStatefulWidget {
   const InstitutionProfileScreen({super.key});

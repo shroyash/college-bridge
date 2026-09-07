@@ -10,6 +10,7 @@ class Subject extends Equatable {
   final int levelId;
   final String levelName;
   final String programName;
+  final String? teacherName;
 
   const Subject({
     required this.subjectId,
@@ -19,6 +20,7 @@ class Subject extends Equatable {
     required this.levelId,
     required this.levelName,
     required this.programName,
+    this.teacherName,
   });
 
   // Backwards compatibility getters
@@ -32,6 +34,6 @@ class Subject extends Equatable {
   }
 
   @override
-  List<Object?> get props => [subjectId, name, code, creditHours, levelId, levelName, programName];
+  List<Object?> get props => [subjectId, name, code, creditHours, levelId, levelName, programName, teacherName];
 }
 

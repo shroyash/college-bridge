@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../features/auth/presentation/controllers/auth_providers.dart';
+import '../../../../core/network/api_client.dart';
 import '../../data/datasources/institution_admin_remote_datasource.dart';
 import '../../data/repositories/institution_admin_repository.dart';
 import 'institution_notifiers.dart';

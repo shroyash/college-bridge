@@ -10,11 +10,9 @@ import '../../domain/usecases/register_usecase.dart';
 import 'auth_notifier.dart';
 import 'auth_state.dart';
 
-// ── Infrastructure ─────────────────────────────────────────────────────────
-
-final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
-
 // ── Data Layer ─────────────────────────────────────────────────────────────
+// NOTE: apiClientProvider is defined in core/network/api_client.dart.
+// We import and use it here — do NOT redeclare it.
 
 final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
   return AuthRemoteDataSource(ref.watch(apiClientProvider));
@@ -41,6 +39,7 @@ final authNotifierProvider =
   return AuthNotifier(
     loginUseCase: ref.watch(loginUseCaseProvider),
     registerUseCase: ref.watch(registerUseCaseProvider),
+    authRepository: ref.watch(authRepositoryProvider),
     storageService: ref.watch(secureStorageProvider),
     ref: ref,
   );

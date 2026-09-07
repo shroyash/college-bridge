@@ -102,7 +102,7 @@ class _RegisterTeacherScreenState
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withValues(alpha: 0.04),
                   blurRadius: 16,
                   offset: const Offset(0, 4),
                 )
@@ -148,9 +148,9 @@ class _RegisterTeacherScreenState
                   const SizedBox(height: 24),
 
                   // Full Name Field
-                  Align(
+                  const Align(
                     alignment: Alignment.centerLeft,
-                    child: const Text(
+                    child: Text(
                       'Full Name',
                       style: TextStyle(
                         fontSize: 13,
@@ -188,9 +188,9 @@ class _RegisterTeacherScreenState
                   const SizedBox(height: 16),
 
                   // Email Address Field
-                  Align(
+                  const Align(
                     alignment: Alignment.centerLeft,
-                    child: const Text(
+                    child: Text(
                       'Email Address',
                       style: TextStyle(
                         fontSize: 13,
@@ -232,9 +232,9 @@ class _RegisterTeacherScreenState
                   const SizedBox(height: 16),
 
                   // Temporary Password Field
-                  Align(
+                  const Align(
                     alignment: Alignment.centerLeft,
-                    child: const Text(
+                    child: Text(
                       'Temporary Password',
                       style: TextStyle(
                         fontSize: 13,
@@ -296,9 +296,9 @@ class _RegisterTeacherScreenState
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: const Color(0xFFBFDBFE)),
                     ),
-                    child: Row(
+                    child: const Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Icon(Icons.info, color: Color(0xFF2563EB), size: 20),
                         SizedBox(width: 10),
                         Expanded(
@@ -339,9 +339,9 @@ class _RegisterTeacherScreenState
                                 color: Colors.white,
                               ),
                             )
-                          : Row(
+                          : const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 Text(
                                   'Register Teacher',
                                   style: TextStyle(

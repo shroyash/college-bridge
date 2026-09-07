@@ -6,12 +6,11 @@ import '../../data/datasources/academic_admin_remote_datasource.dart';
 import 'academic_management_notifier.dart';
 import 'academic_management_state.dart';
 
-final _apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
 final academicAdminRemoteDataSourceProvider =
     Provider<AcademicAdminRemoteDataSource>((ref) {
   return AcademicAdminRemoteDataSource(
-    ref.watch(_apiClientProvider),
+    ref.watch(apiClientProvider),
     ref.watch(secureStorageProvider),
   );
 });

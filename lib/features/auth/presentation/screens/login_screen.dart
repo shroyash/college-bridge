@@ -60,8 +60,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authNotifierProvider, (_, next) {
       if (next is AuthSuccess) {
-        widget.onLoginSuccessWithUser?.call(next.user);
-        widget.onLoginSuccess();
+        if (widget.onLoginSuccessWithUser != null) {
+          widget.onLoginSuccessWithUser!(next.user);
+        } else {
+          widget.onLoginSuccess();
+        }
       }
       // AuthLoginFailure is handled inline via ref.watch below
       // Generic errors still use snackbar
@@ -224,8 +227,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
 
               const SizedBox(height: 24),
-              Row(
-                children: const [
+              const Row(
+                children: [
                   Expanded(
                       child: Divider(
                           color: Color(0xFFE2E8F0), thickness: 1)),

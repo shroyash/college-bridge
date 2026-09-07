@@ -11,6 +11,7 @@ class SubjectModel extends Subject {
     required super.levelId,
     required super.levelName,
     required super.programName,
+    super.teacherName,
   });
 
   factory SubjectModel.fromJson(Map<String, dynamic> json) {
@@ -22,6 +23,8 @@ class SubjectModel extends Subject {
       levelId: (json['levelId'] as num?)?.toInt() ?? 0,
       levelName: json['levelName'] as String? ?? '',
       programName: json['programName'] as String? ?? '',
+      teacherName: json['teacherName'] as String? ??
+          (json['teacher'] is Map ? json['teacher']['name'] as String? : null),
     );
   }
 
@@ -34,6 +37,7 @@ class SubjectModel extends Subject {
       'levelId': levelId,
       'levelName': levelName,
       'programName': programName,
+      if (teacherName != null) 'teacherName': teacherName,
     };
   }
 }

@@ -102,18 +102,30 @@ class ClassDetailModel {
             .toList() ??
         [];
 
-    final lId = (json['levelId'] ?? json['classId'] as num?)?.toInt() ?? 0;
-    final progName = json['programName'] ?? json['faculty'] as String? ?? '';
-    final lvlName = json['levelName'] ?? json['displayName'] as String? ?? '';
+    final lId = (json['levelId'] ?? json['subjectId'] ?? json['classId'] as num?)?.toInt() ?? 0;
+    final progName = json['programName'] ??
+        (json['academicProgram'] is Map ? json['academicProgram']['name'] : null) ??
+        json['faculty'] as String? ??
+        '';
+    final lvlName = json['levelName'] ??
+        (json['academicLevel'] is Map ? json['academicLevel']['name'] : null) ??
+        json['subjectName'] ??
+        json['displayName'] as String? ??
+        '';
+
+    final teacherInfo = json['teacher'] is Map ? json['teacher'] as Map : null;
+    final tId = (json['classTeacherId'] ?? teacherInfo?['teacherId'] as num?)?.toInt();
+    final tName = json['classTeacherName'] ?? teacherInfo?['name'] as String?;
+    final totalSt = (json['totalStudents'] ?? json['studentCount'] as num?)?.toInt() ?? 0;
 
     return ClassDetailModel(
       levelId: lId,
-      displayName: json['displayName'] as String? ?? lvlName,
+      displayName: json['displayName'] as String? ?? (json['subjectName'] != null ? '${json['subjectName']} ($lvlName)' : lvlName),
       levelName: lvlName,
       programName: progName,
-      totalStudents: (json['totalStudents'] as num?)?.toInt() ?? 0,
-      classTeacherId: (json['classTeacherId'] as num?)?.toInt(),
-      classTeacherName: json['classTeacherName'] as String?,
+      totalStudents: totalSt,
+      classTeacherId: tId,
+      classTeacherName: tName,
       institutionId: (json['institutionId'] as num?)?.toInt() ?? 0,
       institutionName: json['institutionName'] as String? ?? '',
       createdBy: json['createdBy'] as String? ?? 'Institution Admin',

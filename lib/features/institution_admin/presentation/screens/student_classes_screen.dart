@@ -318,7 +318,6 @@ class _StudentClassesScreenState extends ConsumerState<StudentClassesScreen> {
 
   Widget _buildSubjectList(List<Subject> subjects, int totalStudents) {
     final mockUpdates = [3, 0, 2, 1, 0];
-    final mockTeachers = ['Mr. Karki', 'Mr. Sharma', 'Ms. Rai', 'Mr. Singh', 'Mr. Adhikari'];
 
     return ListView.separated(
       shrinkWrap: true,
@@ -327,9 +326,9 @@ class _StudentClassesScreenState extends ConsumerState<StudentClassesScreen> {
       separatorBuilder: (_, __) => const SizedBox(height: 14),
       itemBuilder: (context, index) {
         final subject = subjects[index];
-        final teacherName = subject.programName.isNotEmpty
-            ? subject.programName
-            : mockTeachers[index % mockTeachers.length];
+        final teacherName = (subject.teacherName != null && subject.teacherName!.isNotEmpty)
+            ? subject.teacherName!
+            : 'Teacher not assigned';
         final newPostsCount = mockUpdates[index % mockUpdates.length];
 
         return _buildSubjectCard(
@@ -345,11 +344,11 @@ class _StudentClassesScreenState extends ConsumerState<StudentClassesScreen> {
 
   Widget _buildFallbackSubjectList(int totalStudents) {
     final fallbackData = [
-      {'id': 101, 'name': 'Database Management System', 'teacher': 'Mr. Karki', 'posts': 3},
-      {'id': 102, 'name': 'Operating System', 'teacher': 'Mr. Sharma', 'posts': 0},
-      {'id': 103, 'name': 'Java Programming', 'teacher': 'Ms. Rai', 'posts': 2},
-      {'id': 104, 'name': 'Computer Networks', 'teacher': 'Mr. Singh', 'posts': 1},
-      {'id': 105, 'name': 'Mathematics', 'teacher': 'Mr. Adhikari', 'posts': 0},
+      {'id': 101, 'name': 'Database Management System', 'teacher': 'Teacher not assigned', 'posts': 3},
+      {'id': 102, 'name': 'Operating System', 'teacher': 'Teacher not assigned', 'posts': 0},
+      {'id': 103, 'name': 'Java Programming', 'teacher': 'Teacher not assigned', 'posts': 2},
+      {'id': 104, 'name': 'Computer Networks', 'teacher': 'Teacher not assigned', 'posts': 1},
+      {'id': 105, 'name': 'Mathematics', 'teacher': 'Teacher not assigned', 'posts': 0},
     ];
 
     return ListView.separated(

@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage_service.dart';
-import '../../../auth/presentation/controllers/auth_providers.dart';
 import '../../data/datasources/super_admin_remote_datasource.dart';
 import '../../domain/entities/super_admin_models.dart';
 
@@ -53,15 +53,15 @@ class SuperAdminDashboardNotifier
     state = state.copyWith(isLoading: true, error: null);
     try {
       final statsFuture = _dataSource.getDashboardStats();
-      final pendingFuture = _dataSource.getPendingInstitutions(page: 0, size: 5);
+      final pendingFuture = _dataSource.getPendingInstitutions();
 
       final stats = await statsFuture;
-      final pendingRes = await pendingFuture;
+      final pendingList = await pendingFuture;
 
       state = state.copyWith(
         isLoading: false,
         stats: stats,
-        pendingQueue: pendingRes.content,
+        pendingQueue: pendingList,
       );
     } catch (e) {
       state = state.copyWith(
@@ -380,9 +380,7 @@ class SuperAdminInstitutionsNotifier
     state = state.copyWith(isLoading: true, error: null);
     try {
       // Always fetch pending count badge
-      final pendingRes = await _dataSource.getPendingInstitutions(
-        page: state.currentTab == 1 ? 0 : state.pendingPage,
-        size: 20,
+      final pendingList = await _dataSource.getPendingInstitutions(
         search: state.currentTab == 1 ? state.search : null,
       );
 
@@ -400,16 +398,16 @@ class SuperAdminInstitutionsNotifier
           allPage: allRes.currentPage,
           allTotalPages: allRes.totalPages,
           allHasNext: allRes.hasNext,
-          pendingTotalCount: pendingRes.totalElements,
+          pendingTotalCount: pendingList.length,
         );
       } else {
         state = state.copyWith(
           isLoading: false,
-          pendingInstitutions: pendingRes.content,
-          pendingPage: pendingRes.currentPage,
-          pendingTotalPages: pendingRes.totalPages,
-          pendingHasNext: pendingRes.hasNext,
-          pendingTotalCount: pendingRes.totalElements,
+          pendingInstitutions: pendingList,
+          pendingPage: 0,
+          pendingTotalPages: 1,
+          pendingHasNext: false,
+          pendingTotalCount: pendingList.length,
         );
       }
     } catch (e) {

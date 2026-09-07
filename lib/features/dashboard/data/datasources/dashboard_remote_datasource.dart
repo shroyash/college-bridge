@@ -78,22 +78,18 @@ class DashboardRemoteDataSource {
   Future<List<SubjectModel>> fetchMySubjects() async {
     try {
       final options = await _authOptions();
-      final response = await _apiClient.get<dynamic>(
+      final response = await _apiClient.get<Map<String, dynamic>>(
         ApiConstants.mySubjects,
         options: options,
       );
-      final rawData = response.data;
-      final List<dynamic> list;
-      if (rawData is Map<String, dynamic> && rawData.containsKey('data')) {
-        list = rawData['data'] as List<dynamic>? ?? [];
-      } else if (rawData is List<dynamic>) {
-        list = rawData;
-      } else {
-        list = [];
+      // Q3: SubjectController now always wraps in ApiResponse<> — read 'data' field
+      final data = response.data?['data'];
+      if (data is List) {
+        return data
+            .map((e) => SubjectModel.fromJson(e as Map<String, dynamic>))
+            .toList();
       }
-      return list
-          .map((e) => SubjectModel.fromJson(e as Map<String, dynamic>))
-          .toList();
+      return [];
     } on DioException catch (e) {
       throw _mapDioException(e);
     }

@@ -292,16 +292,18 @@ class _StudentDashboardScreenState
                                         builder: (_) => StudentSubjectDetailScreen(
                                           subjectId: subject.subjectId,
                                           subjectName: subject.name,
-                                          teacherName: subject.faculty.isNotEmpty
-                                              ? subject.faculty
-                                              : 'Mr. Karki',
+                                          teacherName: (subject.teacherName != null && subject.teacherName!.isNotEmpty)
+                                              ? subject.teacherName!
+                                              : 'Teacher not assigned',
                                         ),
                                       ),
                                     );
                                   },
                                   child: SubjectCard(
                                     title: subject.name,
-                                    teacher: subject.faculty,
+                                    teacher: (subject.teacherName != null && subject.teacherName!.isNotEmpty)
+                                        ? subject.teacherName!
+                                        : 'Teacher not assigned',
                                     icon: _getSubjectIcon(subject.name),
                                     hasUpdates: index % 2 == 0,
                                     badgeText: index % 2 == 0
@@ -460,11 +462,13 @@ class _StudentDashboardScreenState
   IconData _getSubjectIcon(String name) {
     final lower = name.toLowerCase();
     if (lower.contains('dbms') || lower.contains('data')) return Icons.storage;
-    if (lower.contains('java') || lower.contains('program'))
+    if (lower.contains('java') || lower.contains('program')) {
       return Icons.local_cafe;
+    }
     if (lower.contains('os') || lower.contains('system')) return Icons.terminal;
-    if (lower.contains('cn') || lower.contains('network'))
+    if (lower.contains('cn') || lower.contains('network')) {
       return Icons.account_tree;
+    }
     return Icons.menu_book;
   }
 }

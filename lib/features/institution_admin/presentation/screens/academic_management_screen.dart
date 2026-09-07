@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../dashboard/domain/entities/subject.dart';
-import '../../domain/entities/academic_level.dart';
 import '../../domain/entities/academic_program.dart';
 import '../controllers/academic_management_providers.dart';
 import '../controllers/academic_management_state.dart';
@@ -590,7 +589,7 @@ class _AcademicManagementScreenState
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
-                value: levelType,
+                initialValue: levelType,
                 decoration: const InputDecoration(labelText: 'Level Type'),
                 items: const [
                   DropdownMenuItem(value: 'SEMESTER', child: Text('Semester')),

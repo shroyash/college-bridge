@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage_service.dart';
-import '../../../../features/auth/presentation/controllers/auth_providers.dart';
 import '../../data/datasources/student_admin_remote_datasource.dart';
 
 // ── Provider ──────────────────────────────────────────────────────────────

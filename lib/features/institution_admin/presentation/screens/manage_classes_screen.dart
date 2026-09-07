@@ -107,7 +107,7 @@ class _ManageClassesScreenState extends ConsumerState<ManageClassesScreen> {
               const Text('Select Faculty/Program:'),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
-                value: faculty,
+                initialValue: faculty,
                 decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
                 items: _faculties
                     .where((f) => f != 'ALL')
@@ -126,7 +126,7 @@ class _ManageClassesScreenState extends ConsumerState<ManageClassesScreen> {
               const Text('Select Semester:'),
               const SizedBox(height: 6),
               DropdownButtonFormField<int>(
-                value: semester,
+                initialValue: semester,
                 decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
                 items: List.generate(8, (i) => DropdownMenuItem(value: i + 1, child: Text('Semester ${i + 1}'))),
                 onChanged: (val) {
@@ -152,6 +152,7 @@ class _ManageClassesScreenState extends ConsumerState<ManageClassesScreen> {
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(ctx);
+                final messenger = ScaffoldMessenger.of(context);
                 try {
                   final dataSource = ref.read(academicAdminRemoteDataSourceProvider);
                   await dataSource.createAcademicClass(
@@ -160,14 +161,14 @@ class _ManageClassesScreenState extends ConsumerState<ManageClassesScreen> {
                     displayName: nameController.text.trim(),
                   );
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       const SnackBar(content: Text('Class created successfully!'), backgroundColor: Color(0xFF16A34A)),
                     );
                     _fetchClasses();
                   }
                 } catch (e) {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
                     );
                   }
@@ -201,7 +202,7 @@ class _ManageClassesScreenState extends ConsumerState<ManageClassesScreen> {
                 const Text('Select designated primary class teacher:'),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<UserProfileModel>(
-                  value: selectedTeacher,
+                  initialValue: selectedTeacher,
                   decoration: const InputDecoration(border: OutlineInputBorder()),
                   hint: const Text('Choose teacher...'),
                   items: teachers.map((t) => DropdownMenuItem(value: t, child: Text('${t.name} (${t.email})'))).toList(),
@@ -216,18 +217,19 @@ class _ManageClassesScreenState extends ConsumerState<ManageClassesScreen> {
                     ? null
                     : () async {
                         Navigator.pop(ctx);
+                        final messenger = ScaffoldMessenger.of(context);
                         try {
                           final academicDs = ref.read(academicAdminRemoteDataSourceProvider);
                           await academicDs.assignClassTeacher(academicClass.classId, selectedTeacher!.userId);
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            messenger.showSnackBar(
                               SnackBar(content: Text('${selectedTeacher!.name} designated as Class Teacher for ${academicClass.displayName}.')),
                             );
                             _fetchClasses();
                           }
                         } catch (e) {
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            messenger.showSnackBar(
                               SnackBar(content: Text('Failed: ${e.toString()}'), backgroundColor: Colors.red),
                             );
                           }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../admin_users/domain/entities/teacher_assignment.dart';
 import '../../../institution_admin/presentation/screens/teacher_classes_screen.dart';
 import '../../../institution_admin/presentation/screens/teacher_class_detail_screen.dart';
+import '../widgets/subject_card.dart';
 import '../controllers/dashboard_providers.dart';
 import '../controllers/dashboard_state.dart';
 import 'teacher_profile_screen.dart';
@@ -16,7 +17,7 @@ class TeacherDashboardScreen extends ConsumerStatefulWidget {
   const TeacherDashboardScreen({
     super.key,
     required this.userName,
-    this.teacherId = 1,
+    this.teacherId =1,
     this.onLogout,
   });
 
@@ -99,7 +100,7 @@ class _TeacherDashboardScreenState
   // ── 1. Header ───────────────────────────────────────────────────────────────
   Widget _buildHeader(BuildContext context) {
     final greetingName =
-        widget.userName.isNotEmpty ? widget.userName : 'Mr. Karki';
+        widget.userName.isNotEmpty ? widget.userName : 'Teacher';
 
     return Row(
       children: [
@@ -219,7 +220,7 @@ class _TeacherDashboardScreenState
                 border: Border.all(color: const Color(0xFFE2E8F0)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -267,7 +268,11 @@ class _TeacherDashboardScreenState
               ),
             ),
             GestureDetector(
-              onTap: () {},
+              onTap: () {
+                setState(() {
+                  _selectedBottomNavIndex = 1;
+                });
+              },
               child: const Text(
                 'See all',
                 style: TextStyle(
@@ -333,6 +338,22 @@ class _TeacherDashboardScreenState
     );
   }
 
+  IconData _getSubjectIcon(String title) {
+    final lower = title.toLowerCase();
+    if (lower.contains('db') || lower.contains('data') || lower.contains('sql')) {
+      return Icons.storage_rounded;
+    } else if (lower.contains('os') || lower.contains('operating') || lower.contains('system')) {
+      return Icons.laptop_chromebook_rounded;
+    } else if (lower.contains('java') || lower.contains('code') || lower.contains('program')) {
+      return Icons.code_rounded;
+    } else if (lower.contains('network') || lower.contains('web')) {
+      return Icons.hub_rounded;
+    } else if (lower.contains('math') || lower.contains('stat')) {
+      return Icons.functions_rounded;
+    }
+    return Icons.school_outlined;
+  }
+
   Widget _buildClassesGrid(List<TeacherAssignment> assignments) {
     if (assignments.isEmpty) {
       return Container(
@@ -367,24 +388,34 @@ class _TeacherDashboardScreenState
       itemCount: assignments.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.95,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 1.1,
       ),
       itemBuilder: (context, index) {
         final item = assignments[index];
-        final pendingCounts = [12, 5, 2, 9];
-        final pending = pendingCounts[index % pendingCounts.length];
+        final facultyStr = item.faculty ?? 'BCA';
+        final semInt = item.semester ?? 3;
 
-        return _buildClassCard(
-          assignmentId: item.assignmentId,
-          subjectId: item.subjectId,
-          subjectName: item.subjectName,
-          faculty: item.faculty ?? 'BCA',
-          semester: item.semester ?? 3,
-          studentsCount: 35 + (index * 4),
-          pendingCount: pending,
-          index: index,
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TeacherClassDetailScreen(
+                  classId: item.subjectId,
+                  className: '${item.subjectName} - $facultyStr Sem $semInt',
+                ),
+              ),
+            );
+          },
+          child: SubjectCard(
+            title: item.subjectName,
+            teacher: '$facultyStr • Sem $semInt',
+            icon: _getSubjectIcon(item.subjectName),
+            hasUpdates: index % 2 == 0,
+            badgeText: index % 2 == 0 ? 'ASSIGNED' : 'ACTIVE',
+          ),
         );
       },
     );
@@ -392,42 +423,10 @@ class _TeacherDashboardScreenState
 
   Widget _buildFallbackClassesGrid() {
     final defaultClasses = [
-      {
-        'assignmentId': 1,
-        'subjectId': 101,
-        'name': 'DBMS',
-        'faculty': 'BCA',
-        'sem': 3,
-        'students': 42,
-        'pending': 12
-      },
-      {
-        'assignmentId': 2,
-        'subjectId': 102,
-        'name': 'OS',
-        'faculty': 'BCA',
-        'sem': 3,
-        'students': 38,
-        'pending': 5
-      },
-      {
-        'assignmentId': 3,
-        'subjectId': 103,
-        'name': 'Java',
-        'faculty': 'BCA',
-        'sem': 5,
-        'students': 35,
-        'pending': 2
-      },
-      {
-        'assignmentId': 4,
-        'subjectId': 104,
-        'name': 'Networks',
-        'faculty': 'BCA',
-        'sem': 3,
-        'students': 40,
-        'pending': 9
-      },
+      {'id': 101, 'name': 'Mathematics', 'faculty': 'BCA', 'sem': 1},
+      {'id': 102, 'name': 'Database Management System', 'faculty': 'BCA', 'sem': 3},
+      {'id': 103, 'name': 'Operating Systems', 'faculty': 'BCA', 'sem': 3},
+      {'id': 104, 'name': 'Java Programming', 'faculty': 'BCA', 'sem': 5},
     ];
 
     return GridView.builder(
@@ -436,205 +435,38 @@ class _TeacherDashboardScreenState
       itemCount: defaultClasses.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.95,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 1.1,
       ),
       itemBuilder: (context, index) {
         final c = defaultClasses[index];
-        return _buildClassCard(
-          assignmentId: c['assignmentId'] as int,
-          subjectId: c['subjectId'] as int,
-          subjectName: c['name'] as String,
-          faculty: c['faculty'] as String,
-          semester: c['sem'] as int,
-          studentsCount: c['students'] as int,
-          pendingCount: c['pending'] as int,
-          index: index,
+        final name = c['name'] as String;
+        final faculty = c['faculty'] as String;
+        final sem = c['sem'] as int;
+        final id = c['id'] as int;
+
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TeacherClassDetailScreen(
+                  classId: id,
+                  className: '$name - $faculty Sem $sem',
+                ),
+              ),
+            );
+          },
+          child: SubjectCard(
+            title: name,
+            teacher: '$faculty • Sem $sem',
+            icon: _getSubjectIcon(name),
+            hasUpdates: index % 2 == 0,
+            badgeText: 'ASSIGNED',
+          ),
         );
       },
-    );
-  }
-
-  Widget _buildClassCard({
-    required int assignmentId,
-    required int subjectId,
-    required String subjectName,
-    required String faculty,
-    required int semester,
-    required int studentsCount,
-    required int pendingCount,
-    required int index,
-  }) {
-    IconData iconData;
-    if (subjectName.toLowerCase().contains('db') ||
-        subjectName.toLowerCase().contains('data')) {
-      iconData = Icons.storage_rounded;
-    } else if (subjectName.toLowerCase().contains('os') ||
-        subjectName.toLowerCase().contains('system')) {
-      iconData = Icons.laptop_chromebook_rounded;
-    } else if (subjectName.toLowerCase().contains('java') ||
-        subjectName.toLowerCase().contains('code')) {
-      iconData = Icons.local_cafe_outlined;
-    } else {
-      iconData = Icons.hub_rounded;
-    }
-
-    Color pendingBg;
-    Color pendingColor;
-    if (pendingCount >= 9) {
-      pendingBg = const Color(0xFFFEE2E2);
-      pendingColor = const Color(0xFFDC2626);
-    } else if (pendingCount >= 4) {
-      pendingBg = const Color(0xFFFEF3C7);
-      pendingColor = const Color(0xFFD97706);
-    } else {
-      pendingBg = const Color(0xFFDCFCE7);
-      pendingColor = const Color(0xFF16A34A);
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Top Row: Icon & Faculty/Semester Badge
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Icon(iconData, color: const Color(0xFF2563EB), size: 22),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '$faculty • Sem $semester',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF475569),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // Subject Name
-          Text(
-            subjectName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0F172A),
-            ),
-          ),
-
-          // Subject ID & Assignment ID Badges
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  'Sub ID: #$subjectId',
-                  style: const TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1D4ED8),
-                  ),
-                ),
-              ),
-              if (assignmentId > 0) ...[
-                const SizedBox(width: 4),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3E8FF),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'Assign: #$assignmentId',
-                    style: const TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF7E22CE),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-
-          // Students Count
-          Row(
-            children: [
-              const Icon(Icons.people_alt_outlined,
-                  size: 13, color: Color(0xFF64748B)),
-              const SizedBox(width: 4),
-              Text(
-                '$studentsCount Students',
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Color(0xFF64748B),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-
-          // Pending Count Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: pendingBg,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: pendingColor,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  '$pendingCount Pending',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: pendingColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -785,7 +617,7 @@ class _TeacherDashboardScreenState
             border: Border.all(color: const Color(0xFFE2E8F0)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.02),
+                color: Colors.black.withValues(alpha: 0.02),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -1017,7 +849,7 @@ class _TeacherDashboardScreenState
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, -3),
           ),

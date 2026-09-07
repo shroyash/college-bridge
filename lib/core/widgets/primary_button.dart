@@ -93,9 +93,9 @@ class _PrimaryButtonState extends State<PrimaryButton>
               onPressed: isEnabled ? widget.onPressed : null,
               style: ElevatedButton.styleFrom(
                 disabledBackgroundColor:
-                    AppColors.primary.withOpacity(0.5),
+                    AppColors.primary.withValues(alpha: 0.5),
                 disabledForegroundColor:
-                    Colors.white.withOpacity(0.7),
+                    Colors.white.withValues(alpha: 0.7),
                 elevation: 0,
                 shape: const RoundedRectangleBorder(
                   borderRadius: AppRadius.borderMd,

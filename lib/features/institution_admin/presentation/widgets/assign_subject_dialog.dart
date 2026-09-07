@@ -133,7 +133,7 @@ class _AssignSubjectDialogState extends ConsumerState<AssignSubjectDialog> {
                   const Text('Select Teacher:', style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<UserProfileModel>(
-                    value: _selectedTeacher,
+                    initialValue: _selectedTeacher,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),

@@ -174,8 +174,8 @@ class _AssignClassesScreenState extends ConsumerState<AssignClassesScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: const [
+                        const Row(
+                          children: [
                             Icon(Icons.bookmark_outline,
                                 color: Color(0xFF2563EB), size: 20),
                             SizedBox(width: 8),

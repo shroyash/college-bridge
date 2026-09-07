@@ -1,6 +1,5 @@
 import '../entities/academic_level.dart';
 import '../entities/academic_program.dart';
-import '../entities/academic_class.dart';
 
 /// Normalized repository abstraction for academic management.
 /// Replaces the legacy class-centric API surface.

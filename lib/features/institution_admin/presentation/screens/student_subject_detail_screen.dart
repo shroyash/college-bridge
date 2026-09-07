@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:bridge_mobile/features/institution_admin/data/models/class_detail_model.dart';
+import 'package:bridge_mobile/features/institution_admin/presentation/controllers/role_academic_providers.dart';
 import 'subject_members_screen.dart';
 
-class StudentSubjectDetailScreen extends StatefulWidget {
+class StudentSubjectDetailScreen extends ConsumerStatefulWidget {
   final int subjectId;
   final String subjectName;
   final String teacherName;
@@ -19,17 +22,42 @@ class StudentSubjectDetailScreen extends StatefulWidget {
   });
 
   @override
-  State<StudentSubjectDetailScreen> createState() =>
+  ConsumerState<StudentSubjectDetailScreen> createState() =>
       _StudentSubjectDetailScreenState();
 }
 
 class _StudentSubjectDetailScreenState
-    extends State<StudentSubjectDetailScreen> {
+    extends ConsumerState<StudentSubjectDetailScreen> {
   int _selectedNavIndex = 1; // 1 = Subjects
   String _selectedDoubtFilter = 'All';
 
   @override
   Widget build(BuildContext context) {
+    final detailsAsync = ref.watch(subjectDetailsProvider(widget.subjectId));
+
+    final dynamicStudentsCount = detailsAsync.when(
+      data: (ClassDetailModel? details) => details?.totalStudents ?? widget.studentsCount,
+      loading: () => widget.studentsCount,
+      error: (_, __) => widget.studentsCount,
+    );
+
+    final dynamicTeacherName = detailsAsync.when(
+      data: (ClassDetailModel? details) {
+        if (details != null) {
+          if (details.classTeacherName != null && details.classTeacherName!.isNotEmpty) {
+            return details.classTeacherName!;
+          }
+          if (details.teachers.isNotEmpty) {
+            return details.teachers.first.fullName;
+          }
+          return 'Teacher not assigned';
+        }
+        return widget.teacherName.isNotEmpty ? widget.teacherName : 'Teacher not assigned';
+      },
+      loading: () => widget.teacherName.isNotEmpty ? widget.teacherName : 'Teacher not assigned',
+      error: (_, __) => 'Teacher not assigned',
+    );
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -53,7 +81,7 @@ class _StudentSubjectDetailScreenState
               ),
             ),
             Text(
-              widget.teacherName,
+              dynamicTeacherName,
               style: const TextStyle(
                 color: Color(0xFF64748B),
                 fontSize: 12,
@@ -64,8 +92,8 @@ class _StudentSubjectDetailScreenState
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.more_vert, color: Color(0xFF2563EB)),
-            onPressed: () {},
+            icon: const Icon(Icons.refresh, color: Color(0xFF2563EB)),
+            onPressed: () => ref.invalidate(subjectDetailsProvider(widget.subjectId)),
           ),
         ],
       ),
@@ -87,7 +115,7 @@ class _StudentSubjectDetailScreenState
                   icon: Icons.groups_outlined,
                   iconBg: const Color(0xFFEFF6FF),
                   iconColor: const Color(0xFF2563EB),
-                  value: '${widget.studentsCount}',
+                  value: '$dynamicStudentsCount',
                   label: 'Students',
                 ),
                 _buildStatCard(
@@ -159,8 +187,8 @@ class _StudentSubjectDetailScreenState
                       MaterialPageRoute(
                         builder: (_) => SubjectMembersScreen(
                           subjectName: widget.subjectName,
-                          teacherName: widget.teacherName,
-                          totalStudents: widget.studentsCount,
+                          teacherName: dynamicTeacherName,
+                          totalStudents: dynamicStudentsCount,
                         ),
                       ),
                     );

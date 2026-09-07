@@ -38,7 +38,7 @@ class RegistrationSubmittedScreen extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF10B981).withOpacity(0.3),
+                      color: const Color(0xFF10B981).withValues(alpha: 0.3),
                       blurRadius: 30,
                       spreadRadius: 5,
                     ),
@@ -81,7 +81,7 @@ class RegistrationSubmittedScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     )
@@ -101,11 +101,11 @@ class RegistrationSubmittedScreen extends StatelessWidget {
                       value: result.code,
                     ),
                     const Divider(height: 20, color: Color(0xFFF1F5F9)),
-                    _InfoRow(
+                    const _InfoRow(
                       icon: Icons.pending_actions_rounded,
                       label: 'Status',
                       value: 'Awaiting Review',
-                      valueColor: const Color(0xFFF59E0B),
+                      valueColor: Color(0xFFF59E0B),
                     ),
                   ],
                 ),
@@ -131,11 +131,11 @@ class RegistrationSubmittedScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _BulletPoint(
+                    const _BulletPoint(
                         'Our team will review your registration and documents.'),
-                    _BulletPoint(
+                    const _BulletPoint(
                         'You\'ll receive an email notification once reviewed.'),
-                    _BulletPoint(
+                    const _BulletPoint(
                         'After approval, log in using your institution code and credentials.'),
                   ],
                 ),

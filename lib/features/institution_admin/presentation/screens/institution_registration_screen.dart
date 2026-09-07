@@ -238,7 +238,7 @@ class _InstitutionRegistrationScreenState
                 borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
+                    color: Colors.black.withValues(alpha: 0.06),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   )
@@ -365,7 +365,7 @@ class _StepInstitutionDetails extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _SectionHeader(
+            const _SectionHeader(
               icon: Icons.business_rounded,
               title: 'Institution Details',
               subtitle: 'Enter your institution\'s basic information',
@@ -455,7 +455,7 @@ class _StepAdminAccount extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _SectionHeader(
+            const _SectionHeader(
               icon: Icons.manage_accounts_rounded,
               title: 'Admin Account',
               subtitle: 'This will be the primary administrator account',
@@ -551,7 +551,7 @@ class _StepDocuments extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionHeader(
+          const _SectionHeader(
             icon: Icons.upload_file_rounded,
             title: 'Verification Documents',
             subtitle:
@@ -579,7 +579,7 @@ class _StepDocuments extends StatelessWidget {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB).withOpacity(0.12),
+                      color: const Color(0xFF2563EB).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Icon(Icons.cloud_upload_rounded,
@@ -642,7 +642,7 @@ class _StepDocuments extends StatelessWidget {
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: Colors.black.withValues(alpha: 0.04),
                       blurRadius: 4,
                     )
                   ],

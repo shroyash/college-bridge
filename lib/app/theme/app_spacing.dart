@@ -45,7 +45,7 @@ abstract class AppRadius {
 abstract class AppShadows {
   static List<BoxShadow> sm = [
     BoxShadow(
-      color: Colors.black.withOpacity(0.04),
+      color: Colors.black.withValues(alpha: 0.04),
       blurRadius: 6,
       offset: const Offset(0, 2),
     ),
@@ -53,7 +53,7 @@ abstract class AppShadows {
 
   static List<BoxShadow> md = [
     BoxShadow(
-      color: Colors.black.withOpacity(0.08),
+      color: Colors.black.withValues(alpha: 0.08),
       blurRadius: 12,
       offset: const Offset(0, 4),
     ),
@@ -61,7 +61,7 @@ abstract class AppShadows {
 
   static List<BoxShadow> lg = [
     BoxShadow(
-      color: Colors.black.withOpacity(0.12),
+      color: Colors.black.withValues(alpha: 0.12),
       blurRadius: 24,
       offset: const Offset(0, 8),
     ),

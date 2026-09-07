@@ -157,7 +157,7 @@ class AdminUserRemoteDataSource {
     }
   }
 
-  /// GET /api/v1/admin/teachers/{teacherId}/subject-assignments
+  /// GET /api/admin/teachers/{teacherId}/subject-assignments
   Future<List<TeacherAssignmentModel>> getTeacherAssignments(int teacherId) async {
     try {
       final options = await _authOptions();
@@ -175,7 +175,7 @@ class AdminUserRemoteDataSource {
     }
   }
 
-  /// PUT /api/v1/admin/teachers/{teacherId}/subject-assignments
+  /// PUT /api/admin/teachers/{teacherId}/subject-assignments
   Future<List<TeacherAssignmentModel>> replaceTeacherAssignments(
     int teacherId,
     List<int> subjectIds,
@@ -201,14 +201,19 @@ class AdminUserRemoteDataSource {
   Future<List<SubjectModel>> getStudentSubjects(int studentId) async {
     try {
       final options = await _authOptions();
-      final response = await _apiClient.get<List<dynamic>>(
+      final response = await _apiClient.get<Map<String, dynamic>>(
         '${ApiConstants.academicStudentSubjects}/$studentId',
         options: options,
       );
 
-      return (response.data as List<dynamic>)
-          .map((e) => SubjectModel.fromJson(e as Map<String, dynamic>))
-          .toList();
+      // Q3: SubjectController now wraps all responses in ApiResponse<> — read 'data' field
+      final data = response.data?['data'];
+      if (data is List) {
+        return data
+            .map((e) => SubjectModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
     } on DioException catch (e) {
       throw _mapDioException(e);
     }
@@ -218,14 +223,19 @@ class AdminUserRemoteDataSource {
   Future<List<SubjectModel>> getAllSubjects() async {
     try {
       final options = await _authOptions();
-      final response = await _apiClient.get<List<dynamic>>(
+      final response = await _apiClient.get<Map<String, dynamic>>(
         ApiConstants.academicSubjectsAll,
         options: options,
       );
 
-      return (response.data as List<dynamic>)
-          .map((e) => SubjectModel.fromJson(e as Map<String, dynamic>))
-          .toList();
+      // Q3: ApiResponse wrapper — read 'data' field
+      final data = response.data?['data'];
+      if (data is List) {
+        return data
+            .map((e) => SubjectModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
     } on DioException catch (e) {
       throw _mapDioException(e);
     }
@@ -235,15 +245,20 @@ class AdminUserRemoteDataSource {
   Future<List<SubjectModel>> searchSubjects(String name) async {
     try {
       final options = await _authOptions();
-      final response = await _apiClient.get<List<dynamic>>(
+      final response = await _apiClient.get<Map<String, dynamic>>(
         ApiConstants.academicSubjectsSearch,
         queryParameters: {'name': name},
         options: options,
       );
 
-      return (response.data as List<dynamic>)
-          .map((e) => SubjectModel.fromJson(e as Map<String, dynamic>))
-          .toList();
+      // Q3: ApiResponse wrapper — read 'data' field
+      final data = response.data?['data'];
+      if (data is List) {
+        return data
+            .map((e) => SubjectModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
     } on DioException catch (e) {
       throw _mapDioException(e);
     }

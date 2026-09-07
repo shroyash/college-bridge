@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../auth/presentation/controllers/auth_providers.dart';
+import '../../../../core/constants/api_endpoints.dart';
+import '../../../../core/network/api_client.dart';
 
 class ChangePasswordModal extends ConsumerStatefulWidget {
   const ChangePasswordModal({super.key});
@@ -46,9 +47,9 @@ class _ChangePasswordModalState extends ConsumerState<ChangePasswordModal> {
       );
       return;
     }
-    if (newP.length < 6) {
+    if (newP.length < 8) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('New password must be at least 6 characters.')),
+        const SnackBar(content: Text('New password must be at least 8 characters.')),
       );
       return;
     }
@@ -63,7 +64,7 @@ class _ChangePasswordModalState extends ConsumerState<ChangePasswordModal> {
     try {
       final apiClient = ref.read(apiClientProvider);
       await apiClient.post(
-        '/api/account/password/change',
+        ApiEndpoints.accountChangePassword,
         data: {
           'currentPassword': currentP,
           'newPassword': newP,

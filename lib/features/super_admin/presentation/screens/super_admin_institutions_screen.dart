@@ -104,7 +104,7 @@ class _SuperAdminInstitutionsScreenState
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
+                          color: Colors.black.withValues(alpha: 0.04),
                           blurRadius: 10,
                           offset: const Offset(0, 2),
                         )
@@ -268,12 +268,29 @@ class _SuperAdminInstitutionsScreenState
           ),
           ElevatedButton(
             onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
               Navigator.pop(context);
               try {
                 await notifier.approveInstitution(inst.institutionId);
-                if (mounted) _showToast(context, '${inst.institutionName} approved!');
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text('${inst.institutionName} approved!'),
+                    backgroundColor: const Color(0xFF10B981),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
               } catch (e) {
-                if (mounted) _showErrorToast(context, e.toString());
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(e.toString()),
+                    backgroundColor: const Color(0xFFEF4444),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
               }
             },
             style: ElevatedButton.styleFrom(
@@ -332,12 +349,25 @@ class _SuperAdminInstitutionsScreenState
             onPressed: () async {
               final reason = reasonController.text.trim();
               if (reason.isEmpty) return;
+              final messenger = ScaffoldMessenger.of(context);
               Navigator.pop(context);
               try {
                 await notifier.rejectInstitution(inst.institutionId, reason);
-                if (mounted) _showToast(context, 'Registration rejected.');
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Registration rejected.'),
+                    backgroundColor: Color(0xFF10B981),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
               } catch (e) {
-                if (mounted) _showErrorToast(context, e.toString());
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(e.toString()),
+                    backgroundColor: const Color(0xFFEF4444),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
               }
             },
             style: ElevatedButton.styleFrom(
@@ -366,28 +396,6 @@ class _SuperAdminInstitutionsScreenState
         institution: inst,
         onApprove: () => _confirmApprove(context, notifier, inst),
         onReject: () => _confirmReject(context, notifier, inst),
-      ),
-    );
-  }
-
-  void _showToast(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: const Color(0xFF10B981),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  void _showErrorToast(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: const Color(0xFFEF4444),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }

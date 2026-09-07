@@ -158,7 +158,7 @@ class _ManageUsersScreenState extends ConsumerState<ManageUsersScreen> {
                           boxShadow: notifier.currentRole == 'TEACHER'
                               ? [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.04),
+                                    color: Colors.black.withValues(alpha: 0.04),
                                     blurRadius: 4,
                                   )
                                 ]
@@ -191,7 +191,7 @@ class _ManageUsersScreenState extends ConsumerState<ManageUsersScreen> {
                           boxShadow: notifier.currentRole == 'STUDENT'
                               ? [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.04),
+                                    color: Colors.black.withValues(alpha: 0.04),
                                     blurRadius: 4,
                                   )
                                 ]
@@ -273,10 +273,10 @@ class _ManageUsersScreenState extends ConsumerState<ManageUsersScreen> {
                   children: [
                     const Icon(Icons.school, color: Colors.white, size: 28),
                     const SizedBox(width: 12),
-                    Expanded(
+                    const Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           Text(
                             'Bulk Cohort Transfer',
                             style: TextStyle(
@@ -394,7 +394,7 @@ class _ManageUsersScreenState extends ConsumerState<ManageUsersScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -629,7 +629,7 @@ class _ManageUsersScreenState extends ConsumerState<ManageUsersScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),

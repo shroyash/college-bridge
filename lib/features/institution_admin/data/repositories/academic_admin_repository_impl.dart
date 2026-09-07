@@ -1,4 +1,3 @@
-import '../../../dashboard/domain/entities/subject.dart';
 import '../datasources/academic_admin_remote_datasource.dart';
 import '../../domain/entities/academic_level.dart';
 import '../../domain/entities/academic_program.dart';

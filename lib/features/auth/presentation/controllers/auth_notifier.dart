@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/auth_exceptions.dart';
 import '../../../../core/storage/secure_storage_service.dart';
+import '../../domain/repositories/auth_repository.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/register_usecase.dart';
 import 'auth_state.dart';
@@ -12,16 +13,19 @@ import 'institution_provider.dart';
 class AuthNotifier extends StateNotifier<AuthState> {
   final LoginUseCase _loginUseCase;
   final RegisterUseCase _registerUseCase;
+  final AuthRepository _authRepository;
   final SecureStorageService _storageService;
   final Ref _ref;
 
   AuthNotifier({
     required LoginUseCase loginUseCase,
     required RegisterUseCase registerUseCase,
+    required AuthRepository authRepository,
     required SecureStorageService storageService,
     required Ref ref,
   })  : _loginUseCase = loginUseCase,
         _registerUseCase = registerUseCase,
+        _authRepository = authRepository,
         _storageService = storageService,
         _ref = ref,
         super(const AuthInitial());
@@ -105,12 +109,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     final refreshToken = await _storageService.getRefreshToken();
-    if (refreshToken != null) {
-      // best-effort logout (ignore errors)
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      // Best-effort: revoke the refresh token on the backend.
+      // Failures are intentionally swallowed so the local logout always succeeds.
       try {
-        // We don't have the logout use case here; storage clear is enough for UI
+        await _authRepository.logout(refreshToken: refreshToken);
       } catch (_) {}
     }
+    _ref.read(currentInstitutionProvider.notifier).clear();
     await _storageService.clearAll();
     state = const AuthInitial();
   }

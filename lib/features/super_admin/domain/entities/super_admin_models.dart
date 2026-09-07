@@ -53,6 +53,22 @@ class SuperAdminDashboardStats {
     required this.totalTeachers,
     required this.totalAdmins,
   });
+
+  factory SuperAdminDashboardStats.fromJson(Map<String, dynamic> json) {
+    final inst = json['institutions'] as Map<String, dynamic>? ?? {};
+    final users = json['users'] as Map<String, dynamic>? ?? {};
+
+    return SuperAdminDashboardStats(
+      totalInstitutions: (inst['total'] as num?)?.toInt() ?? 0,
+      pendingInstitutions: (inst['pending'] as num?)?.toInt() ?? 0,
+      activeInstitutions: (inst['active'] as num?)?.toInt() ?? 0,
+      suspendedInstitutions: (inst['suspended'] as num?)?.toInt() ?? 0,
+      totalUsers: (users['total'] as num?)?.toInt() ?? 0,
+      totalStudents: (users['students'] as num?)?.toInt() ?? 0,
+      totalTeachers: (users['teachers'] as num?)?.toInt() ?? 0,
+      totalAdmins: (users['admins'] as num?)?.toInt() ?? 0,
+    );
+  }
 }
 
 class SuperAdminUser {

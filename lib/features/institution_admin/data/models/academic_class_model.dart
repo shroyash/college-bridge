@@ -12,14 +12,34 @@ class AcademicClassModel extends AcademicClass {
   });
 
   factory AcademicClassModel.fromJson(Map<String, dynamic> json) {
-    final facultyStr = json['faculty'] as String? ?? '';
-    final semInt = (json['semester'] as num?)?.toInt() ?? 1;
+    final facultyStr = (json['programName'] as String?) ??
+        (json['faculty'] as String?) ??
+        '';
+
+    final levelNameStr = (json['levelName'] as String?) ?? '';
+    int semInt = (json['semester'] as num?)?.toInt() ?? 1;
+    if (levelNameStr.isNotEmpty) {
+      final match = RegExp(r'\d+').firstMatch(levelNameStr);
+      if (match != null) {
+        semInt = int.tryParse(match.group(0)!) ?? semInt;
+      }
+    }
+
+    final subjectName = json['name'] as String?;
+    final defaultDisplayName = subjectName != null && subjectName.isNotEmpty
+        ? subjectName
+        : (facultyStr.isNotEmpty ? '$facultyStr Sem $semInt' : 'Class Sem $semInt');
+
+    final resolvedClassId = (json['levelId'] as num?)?.toInt() ??
+        (json['classId'] as num?)?.toInt() ??
+        (json['subjectId'] as num?)?.toInt() ??
+        0;
 
     return AcademicClassModel(
-      classId: (json['classId'] as num?)?.toInt() ?? 0,
+      classId: resolvedClassId,
       faculty: facultyStr,
       semester: semInt,
-      displayName: json['displayName'] as String? ?? '$facultyStr Sem $semInt',
+      displayName: json['displayName'] as String? ?? defaultDisplayName,
       totalStudents: (json['totalStudents'] as num?)?.toInt() ?? 0,
       classTeacherId: (json['classTeacherId'] as num?)?.toInt(),
       classTeacherName: json['classTeacherName'] as String?,

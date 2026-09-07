@@ -211,10 +211,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
                 const SizedBox(height: 28),
 
                 // ── Security tip card ──
-                AuthInfoCard(
+                const AuthInfoCard(
                   icon: Icons.auto_awesome_rounded,
-                  iconColor: const Color(0xFF7C3AED),
-                  iconBgColor: const Color(0xFFEDE9FE),
+                  iconColor: Color(0xFF7C3AED),
+                  iconBgColor: Color(0xFFEDE9FE),
                   title: 'Academic Security Tip',
                   description:
                       'Use your official institutional email for faster verification. '

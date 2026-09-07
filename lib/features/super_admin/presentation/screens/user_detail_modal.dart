@@ -95,9 +95,9 @@ class _UserDetailModalState extends ConsumerState<UserDetailModal> {
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('User status updated successfully.'),
-            backgroundColor: const Color(0xFF2563EB),
+            backgroundColor: Color(0xFF2563EB),
           ),
         );
       }

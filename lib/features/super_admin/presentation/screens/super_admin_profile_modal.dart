@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../auth/presentation/controllers/auth_providers.dart';
+import '../../../../core/constants/api_endpoints.dart';
+import '../../../../core/network/api_client.dart';
 
 class SuperAdminProfileModal extends ConsumerStatefulWidget {
   const SuperAdminProfileModal({super.key});
@@ -44,49 +45,48 @@ class _SuperAdminProfileModalState
   Future<void> _handleChangePassword() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final messenger = ScaffoldMessenger.of(context);
+    final nav = Navigator.of(context);
+
     setState(() => _isLoading = true);
 
     try {
       final apiClient = ref.read(apiClientProvider);
       await apiClient.post(
-        '/api/account/password/change',
+        ApiEndpoints.accountChangePassword,
         data: {
           'currentPassword': _currentPasswordController.text,
           'newPassword': _newPasswordController.text,
         },
       );
 
-      if (mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Password updated successfully!',
-              style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-            ),
-            backgroundColor: const Color(0xFF16A34A),
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      nav.pop();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Password updated successfully!',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w600),
           ),
-        );
-      }
+          backgroundColor: const Color(0xFF16A34A),
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        final errMessage = e.toString().replaceAll('Exception: ', '');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Failed to update password: $errMessage',
-              style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-            ),
-            backgroundColor: const Color(0xFFDC2626),
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      final errMessage = e.toString().replaceAll('Exception: ', '');
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to update password: $errMessage',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w600),
           ),
-        );
-      }
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

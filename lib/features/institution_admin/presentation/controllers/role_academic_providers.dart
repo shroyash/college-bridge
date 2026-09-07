@@ -7,12 +7,11 @@ import 'package:bridge_mobile/features/institution_admin/data/datasources/teache
 import 'package:bridge_mobile/features/institution_admin/data/models/academic_class_model.dart';
 import 'package:bridge_mobile/features/institution_admin/data/models/class_detail_model.dart';
 
-final _apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
 final teacherAcademicRemoteDataSourceProvider =
     Provider<TeacherAcademicRemoteDataSource>((ref) {
   return TeacherAcademicRemoteDataSource(
-    ref.watch(_apiClientProvider),
+    ref.watch(apiClientProvider),
     ref.watch(secureStorageProvider),
   );
 });
@@ -20,7 +19,7 @@ final teacherAcademicRemoteDataSourceProvider =
 final studentAcademicRemoteDataSourceProvider =
     Provider<StudentAcademicRemoteDataSource>((ref) {
   return StudentAcademicRemoteDataSource(
-    ref.watch(_apiClientProvider),
+    ref.watch(apiClientProvider),
     ref.watch(secureStorageProvider),
   );
 });
@@ -35,6 +34,12 @@ final teacherClassDetailsProvider = FutureProvider.autoDispose
     .family<ClassDetailModel?, int>((ref, classId) async {
   final dataSource = ref.watch(teacherAcademicRemoteDataSourceProvider);
   return dataSource.fetchClassDetails(classId);
+});
+
+final subjectDetailsProvider = FutureProvider.autoDispose
+    .family<ClassDetailModel?, int>((ref, subjectId) async {
+  final dataSource = ref.watch(teacherAcademicRemoteDataSourceProvider);
+  return dataSource.fetchClassDetails(subjectId);
 });
 
 final studentClassDetailsProvider =

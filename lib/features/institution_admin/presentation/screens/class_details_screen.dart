@@ -163,7 +163,7 @@ class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen>
                 const Text('Select primary class teacher:'),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<UserProfileModel>(
-                  value: selectedTeacher,
+                  initialValue: selectedTeacher,
                   decoration: const InputDecoration(border: OutlineInputBorder()),
                   hint: const Text('Choose teacher...'),
                   items: teachers.map((t) => DropdownMenuItem(value: t, child: Text(t.name))).toList(),
@@ -178,18 +178,19 @@ class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen>
                     ? null
                     : () async {
                         Navigator.pop(ctx);
+                        final messenger = ScaffoldMessenger.of(context);
                         try {
                           final academicDs = ref.read(academicAdminRemoteDataSourceProvider);
                           await academicDs.assignClassTeacher(widget.classId, selectedTeacher!.userId);
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            messenger.showSnackBar(
                               SnackBar(content: Text('${selectedTeacher!.name} designated as Class Teacher.')),
                             );
                             _loadClassDetails();
                           }
                         } catch (e) {
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            messenger.showSnackBar(
                               SnackBar(content: Text('Failed: ${e.toString()}'), backgroundColor: Colors.red),
                             );
                           }

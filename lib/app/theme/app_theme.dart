@@ -5,7 +5,7 @@ import 'app_typography.dart';
 
 abstract class AppTheme {
   static ThemeData get lightTheme {
-    final colorScheme = ColorScheme.light(
+    const colorScheme = ColorScheme.light(
       primary: AppColors.primary,
       onPrimary: Colors.white,
       primaryContainer: AppColors.primaryLight,
@@ -42,25 +42,25 @@ abstract class AppTheme {
           horizontal: AppSpacing.md,
           vertical: AppSpacing.md,
         ),
-        border: OutlineInputBorder(
+        border: const OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.borderLight, width: 1.5),
+          borderSide: BorderSide(color: AppColors.borderLight, width: 1.5),
         ),
-        enabledBorder: OutlineInputBorder(
+        enabledBorder: const OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.borderLight, width: 1.5),
+          borderSide: BorderSide(color: AppColors.borderLight, width: 1.5),
         ),
-        focusedBorder: OutlineInputBorder(
+        focusedBorder: const OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.primary, width: 2.0),
+          borderSide: BorderSide(color: AppColors.primary, width: 2.0),
         ),
-        errorBorder: OutlineInputBorder(
+        errorBorder: const OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+          borderSide: BorderSide(color: AppColors.error, width: 1.5),
         ),
-        focusedErrorBorder: OutlineInputBorder(
+        focusedErrorBorder: const OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.error, width: 2.0),
+          borderSide: BorderSide(color: AppColors.error, width: 2.0),
         ),
         hintStyle: AppTypography.bodyMedium(isDark: false).copyWith(
           color: AppColors.textPlaceholderLight,
@@ -104,7 +104,7 @@ abstract class AppTheme {
   }
 
   static ThemeData get darkTheme {
-    final colorScheme = ColorScheme.dark(
+    const colorScheme = ColorScheme.dark(
       primary: AppColors.primary,
       onPrimary: Colors.white,
       primaryContainer: AppColors.primaryDark,
@@ -141,25 +141,25 @@ abstract class AppTheme {
           horizontal: AppSpacing.md,
           vertical: AppSpacing.md,
         ),
-        border: OutlineInputBorder(
+        border: const OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.borderDark, width: 1.5),
+          borderSide: BorderSide(color: AppColors.borderDark, width: 1.5),
         ),
-        enabledBorder: OutlineInputBorder(
+        enabledBorder: const OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.borderDark, width: 1.5),
+          borderSide: BorderSide(color: AppColors.borderDark, width: 1.5),
         ),
-        focusedBorder: OutlineInputBorder(
+        focusedBorder: const OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.primary, width: 2.0),
+          borderSide: BorderSide(color: AppColors.primary, width: 2.0),
         ),
-        errorBorder: OutlineInputBorder(
+        errorBorder: const OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+          borderSide: BorderSide(color: AppColors.error, width: 1.5),
         ),
-        focusedErrorBorder: OutlineInputBorder(
+        focusedErrorBorder: const OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.error, width: 2.0),
+          borderSide: BorderSide(color: AppColors.error, width: 2.0),
         ),
         hintStyle: AppTypography.bodyMedium(isDark: true).copyWith(
           color: AppColors.textPlaceholderDark,

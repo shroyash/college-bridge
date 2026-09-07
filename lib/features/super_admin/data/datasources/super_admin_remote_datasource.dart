@@ -48,38 +48,28 @@ class SuperAdminRemoteDataSource {
     return '';
   }
 
-  /// GET Dashboard stats (combines metric endpoints)
+  /// GET /api/super-admin/dashboard
   Future<SuperAdminDashboardStats> getDashboardStats() async {
     try {
       final options = await _authOptions();
+      final response = await _apiClient.get<Map<String, dynamic>>(
+        ApiConstants.superAdminDashboardInstTotal,
+        options: options,
+      );
 
-      final results = await Future.wait([
-        _apiClient.get<Map<String, dynamic>>(ApiConstants.superAdminDashboardInstTotal, options: options),
-        _apiClient.get<Map<String, dynamic>>(ApiConstants.superAdminDashboardInstPending, options: options),
-        _apiClient.get<Map<String, dynamic>>(ApiConstants.superAdminDashboardInstActive, options: options),
-        _apiClient.get<Map<String, dynamic>>(ApiConstants.superAdminDashboardInstSuspended, options: options),
-        _apiClient.get<Map<String, dynamic>>(ApiConstants.superAdminDashboardUsersTotal, options: options),
-        _apiClient.get<Map<String, dynamic>>(ApiConstants.superAdminDashboardUsersStudents, options: options),
-        _apiClient.get<Map<String, dynamic>>(ApiConstants.superAdminDashboardUsersTeachers, options: options),
-        _apiClient.get<Map<String, dynamic>>(ApiConstants.superAdminDashboardUsersAdmins, options: options),
-      ]);
-
-      int extractCount(Response<Map<String, dynamic>> res) {
-        final data = res.data?['data'];
-        if (data is int) return data;
-        if (data is num) return data.toInt();
-        return 0;
+      final data = response.data?['data'];
+      if (data is Map<String, dynamic>) {
+        return SuperAdminDashboardStats.fromJson(data);
       }
-
       return SuperAdminDashboardStats(
-        totalInstitutions: extractCount(results[0]),
-        pendingInstitutions: extractCount(results[1]),
-        activeInstitutions: extractCount(results[2]),
-        suspendedInstitutions: extractCount(results[3]),
-        totalUsers: extractCount(results[4]),
-        totalStudents: extractCount(results[5]),
-        totalTeachers: extractCount(results[6]),
-        totalAdmins: extractCount(results[7]),
+        totalInstitutions: 0,
+        pendingInstitutions: 0,
+        activeInstitutions: 0,
+        suspendedInstitutions: 0,
+        totalUsers: 0,
+        totalStudents: 0,
+        totalTeachers: 0,
+        totalAdmins: 0,
       );
     } on DioException catch (e) {
       throw _mapDioException(e);
@@ -178,17 +168,12 @@ class SuperAdminRemoteDataSource {
   }
 
   /// GET /api/super-admin/institutions/pending
-  Future<PaginatedResponse<SuperAdminPendingInstitution>> getPendingInstitutions({
-    int page = 0,
-    int size = 20,
+  Future<List<SuperAdminPendingInstitution>> getPendingInstitutions({
     String? search,
   }) async {
     try {
       final options = await _authOptions();
-      final queryParams = <String, dynamic>{
-        'page': page,
-        'size': size,
-      };
+      final queryParams = <String, dynamic>{};
       if (search != null && search.trim().isNotEmpty) queryParams['search'] = search.trim();
 
       final response = await _apiClient.get<Map<String, dynamic>>(
@@ -197,8 +182,13 @@ class SuperAdminRemoteDataSource {
         options: options,
       );
 
-      final data = response.data!['data'] as Map<String, dynamic>;
-      return PaginatedResponse<SuperAdminPendingInstitution>.fromJson(data, SuperAdminPendingInstitution.fromJson);
+      final rawData = response.data?['data'];
+      if (rawData is List) {
+        return rawData
+            .map((item) => SuperAdminPendingInstitution.fromJson(item as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
     } on DioException catch (e) {
       throw _mapDioException(e);
     }
