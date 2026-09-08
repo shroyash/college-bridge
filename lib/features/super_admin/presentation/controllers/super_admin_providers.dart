@@ -154,8 +154,9 @@ class SuperAdminUsersState {
 
 class SuperAdminUsersNotifier extends StateNotifier<SuperAdminUsersState> {
   final SuperAdminRemoteDataSource _dataSource;
+  final Ref _ref;
 
-  SuperAdminUsersNotifier(this._dataSource)
+  SuperAdminUsersNotifier(this._dataSource, this._ref)
       : super(const SuperAdminUsersState());
 
   Future<void> loadUsers({bool refresh = false}) async {
@@ -259,6 +260,8 @@ class SuperAdminUsersNotifier extends StateNotifier<SuperAdminUsersState> {
     try {
       await _dataSource.suspendUser(userId);
       await loadUsers(refresh: true);
+      _ref.read(superAdminDashboardProvider.notifier).loadDashboard();
+      _ref.read(superAdminInstitutionsProvider.notifier).loadData(refresh: true);
     } catch (e) {
       rethrow;
     }
@@ -268,6 +271,8 @@ class SuperAdminUsersNotifier extends StateNotifier<SuperAdminUsersState> {
     try {
       await _dataSource.activateUser(userId);
       await loadUsers(refresh: true);
+      _ref.read(superAdminDashboardProvider.notifier).loadDashboard();
+      _ref.read(superAdminInstitutionsProvider.notifier).loadData(refresh: true);
     } catch (e) {
       rethrow;
     }
@@ -277,7 +282,7 @@ class SuperAdminUsersNotifier extends StateNotifier<SuperAdminUsersState> {
 final superAdminUsersProvider =
     StateNotifierProvider<SuperAdminUsersNotifier, SuperAdminUsersState>((ref) {
   final ds = ref.watch(superAdminRemoteDataSourceProvider);
-  return SuperAdminUsersNotifier(ds);
+  return SuperAdminUsersNotifier(ds, ref);
 });
 
 // ── Institutions Controller ──────────────────────────────────────────────────
@@ -357,8 +362,9 @@ class SuperAdminInstitutionsState {
 class SuperAdminInstitutionsNotifier
     extends StateNotifier<SuperAdminInstitutionsState> {
   final SuperAdminRemoteDataSource _dataSource;
+  final Ref _ref;
 
-  SuperAdminInstitutionsNotifier(this._dataSource)
+  SuperAdminInstitutionsNotifier(this._dataSource, this._ref)
       : super(const SuperAdminInstitutionsState());
 
   void setTab(int tab) {
@@ -421,7 +427,9 @@ class SuperAdminInstitutionsNotifier
   Future<void> approveInstitution(int id) async {
     try {
       await _dataSource.approveInstitution(id);
-      loadData(refresh: true);
+      await loadData(refresh: true);
+      _ref.read(superAdminDashboardProvider.notifier).loadDashboard();
+      _ref.read(superAdminUsersProvider.notifier).loadUsers(refresh: true);
     } catch (e) {
       rethrow;
     }
@@ -430,7 +438,9 @@ class SuperAdminInstitutionsNotifier
   Future<void> rejectInstitution(int id, String reason) async {
     try {
       await _dataSource.rejectInstitution(id, reason);
-      loadData(refresh: true);
+      await loadData(refresh: true);
+      _ref.read(superAdminDashboardProvider.notifier).loadDashboard();
+      _ref.read(superAdminUsersProvider.notifier).loadUsers(refresh: true);
     } catch (e) {
       rethrow;
     }
@@ -439,7 +449,9 @@ class SuperAdminInstitutionsNotifier
   Future<void> suspendInstitution(int id) async {
     try {
       await _dataSource.suspendInstitution(id);
-      loadData(refresh: true);
+      await loadData(refresh: true);
+      _ref.read(superAdminDashboardProvider.notifier).loadDashboard();
+      _ref.read(superAdminUsersProvider.notifier).loadUsers(refresh: true);
     } catch (e) {
       rethrow;
     }
@@ -448,7 +460,9 @@ class SuperAdminInstitutionsNotifier
   Future<void> reactivateInstitution(int id) async {
     try {
       await _dataSource.reactivateInstitution(id);
-      loadData(refresh: true);
+      await loadData(refresh: true);
+      _ref.read(superAdminDashboardProvider.notifier).loadDashboard();
+      _ref.read(superAdminUsersProvider.notifier).loadUsers(refresh: true);
     } catch (e) {
       rethrow;
     }
@@ -458,5 +472,5 @@ class SuperAdminInstitutionsNotifier
 final superAdminInstitutionsProvider = StateNotifierProvider<
     SuperAdminInstitutionsNotifier, SuperAdminInstitutionsState>((ref) {
   final ds = ref.watch(superAdminRemoteDataSourceProvider);
-  return SuperAdminInstitutionsNotifier(ds);
+  return SuperAdminInstitutionsNotifier(ds, ref);
 });

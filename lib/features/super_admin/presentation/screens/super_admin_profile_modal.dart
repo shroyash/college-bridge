@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/api_endpoints.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/network/api_client.dart';
 
 class SuperAdminProfileModal extends ConsumerStatefulWidget {
@@ -74,7 +75,7 @@ class _SuperAdminProfileModalState
         ),
       );
     } catch (e) {
-      final errMessage = e.toString().replaceAll('Exception: ', '');
+      final errMessage = extractErrorMessage(e);
       messenger.showSnackBar(
         SnackBar(
           content: Text(

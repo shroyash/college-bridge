@@ -10,6 +10,8 @@ import '../widgets/auth_button.dart';
 import '../widgets/auth_info_card.dart';
 import '../widgets/auth_text_field.dart';
 
+import 'otp_verification_screen.dart';
+
 /// Register Screen — normalized academic hierarchy version.
 /// • Institution Code → loads Programs → loads Levels → picks levelId
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -36,6 +38,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _sendingOtp = false;
 
   // Hierarchy state
   List<AcademicProgramModel> _programs = [];
@@ -115,20 +118,62 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
-  void _onRegister() {
+  Future<void> _onRegister() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedLevel == null) {
       _showError('Please select your program and level.');
       return;
     }
 
-    ref.read(authNotifierProvider.notifier).register(
-          institutionCode: _institutionCodeController.text.trim().toUpperCase(),
-          name: _nameController.text.trim(),
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-          levelId: _selectedLevel!.levelId,
-        );
+    final institutionCode = _institutionCodeController.text.trim().toUpperCase();
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final levelId = _selectedLevel!.levelId;
+
+    setState(() => _sendingOtp = true);
+
+    try {
+      await _authDs.sendRegistrationOtp(email: email);
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OtpVerificationScreen(
+            email: email,
+            title: 'Verify Registration Email',
+            subtitle: 'Please enter the 6-digit verification code sent to ',
+            onBack: () => Navigator.pop(context),
+            onVerifyCustom: (ref, otpCode) async {
+              await _authDs.verifyRegistrationOtp(
+                email: email,
+                code: otpCode,
+              );
+              await ref.read(authNotifierProvider.notifier).register(
+                    institutionCode: institutionCode,
+                    name: name,
+                    email: email,
+                    password: password,
+                    levelId: levelId,
+                  );
+            },
+            onResendCustom: (ref) async {
+              await _authDs.sendRegistrationOtp(email: email);
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        _showError(e.toString().replaceAll('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _sendingOtp = false);
+      }
+    }
   }
 
   void _showError(String msg) {
@@ -154,7 +199,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
 
     final authState = ref.watch(authNotifierProvider);
-    final isLoading = authState is AuthLoading;
+    final isLoading = _sendingOtp || authState is AuthLoading;
 
     return Scaffold(
       backgroundColor: Colors.white,

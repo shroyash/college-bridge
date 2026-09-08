@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/api_endpoints.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/network/api_client.dart';
 
 class ChangePasswordModal extends ConsumerStatefulWidget {
@@ -83,7 +84,7 @@ class _ChangePasswordModalState extends ConsumerState<ChangePasswordModal> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSubmitting = false);
-        final msg = e.toString().replaceAll('Exception: ', '');
+        final msg = extractErrorMessage(e);
         messenger.showSnackBar(
           SnackBar(
             content: Text('Failed to change password: $msg'),

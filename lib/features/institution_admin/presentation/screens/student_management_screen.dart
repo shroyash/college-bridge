@@ -82,7 +82,7 @@ class _StudentManagementScreenState
                       child: CircularProgressIndicator(
                           color: Color(0xFF2563EB)))
                   : state.students.isEmpty && !state.isLoading
-                      ? _buildEmptyState(state)
+                      ? _buildEmptyState(state, notifier)
                       : _buildStudentList(state, notifier),
             ),
           ),
@@ -307,7 +307,11 @@ class _StudentManagementScreenState
     );
   }
 
-  Widget _buildEmptyState(StudentManagementState state) {
+  Widget _buildEmptyState(
+      StudentManagementState state, StudentManagementNotifier notifier) {
+    final hasActiveFilters = state.selectedFaculty != null ||
+        state.selectedSemester != null ||
+        (state.searchQuery != null && state.searchQuery!.isNotEmpty);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -316,8 +320,8 @@ class _StudentManagementScreenState
               size: 72, color: Color(0xFF94A3B8)),
           const SizedBox(height: 16),
           Text(
-            state.selectedFaculty != null || state.selectedSemester != null
-                ? 'No students in this cohort'
+            hasActiveFilters
+                ? 'No students found matching filters'
                 : 'No students found',
             style: GoogleFonts.inter(
                 fontSize: 18,
@@ -326,10 +330,29 @@ class _StudentManagementScreenState
           ),
           const SizedBox(height: 8),
           Text(
-            'Try adjusting the Faculty or Semester filter.',
+            hasActiveFilters
+                ? 'Try adjusting or clearing your Search, Faculty, or Semester filter.'
+                : 'There are currently no students registered.',
             style: GoogleFonts.inter(
                 fontSize: 13, color: const Color(0xFF94A3B8)),
           ),
+          if (hasActiveFilters) ...[
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {
+                _searchController.clear();
+                notifier.setSearch(null);
+                notifier.setFacultyFilter(null);
+                notifier.setSemesterFilter(null);
+              },
+              icon: const Icon(Icons.filter_alt_off, size: 16),
+              label: const Text('Reset All Filters'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -345,10 +368,9 @@ class _StudentManagementScreenState
         currentSemester: state.selectedSemester,
         dataSource: ref.read(academicAdminRemoteDataSourceProvider),
         onConfirm: (targetClassId, targetDisplayName) async {
-          Navigator.pop(ctx);
           final result = await notifier.bulkTransfer(targetClassId);
-          if (result != null && mounted) {
-            // success message already shown via listener
+          if (result != null && ctx.mounted) {
+            Navigator.pop(ctx);
           }
         },
       ),
@@ -597,6 +619,17 @@ class _BulkTransferDialogState extends ConsumerState<_BulkTransferDialog> {
     }
   }
 
+  bool get _isSameLevel {
+    if (_targetLevel == null) return false;
+    if (widget.currentSemester != null && _targetLevel!.levelNumber == widget.currentSemester) {
+      if (widget.currentFaculty != null && widget.currentFaculty!.isNotEmpty) {
+        return _targetLevel!.programName.trim().toLowerCase() == widget.currentFaculty!.trim().toLowerCase();
+      }
+      return true;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentLabel = (widget.currentFaculty != null || widget.currentSemester != null)
@@ -678,7 +711,24 @@ class _BulkTransferDialogState extends ConsumerState<_BulkTransferDialog> {
                         ),
                       ),
                     ),
-                    if (_targetLevel != null) ...[
+                    if (_isSameLevel) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEE2E2),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFFCA5A5)),
+                        ),
+                        child: Text(
+                          '🚫 Target level cannot be the same as the current level/semester.',
+                          style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: const Color(0xFFDC2626),
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ] else if (_targetLevel != null) ...[
                       const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.all(12),
@@ -701,17 +751,21 @@ class _BulkTransferDialogState extends ConsumerState<_BulkTransferDialog> {
                 ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: _confirming ? null : () => Navigator.pop(context),
           child: Text('Cancel',
               style: GoogleFonts.inter(color: const Color(0xFF64748B))),
         ),
         ElevatedButton(
-          onPressed: (_targetLevel == null || _confirming)
+          onPressed: (_targetLevel == null || _isSameLevel || _confirming)
               ? null
               : () async {
                   setState(() => _confirming = true);
-                  await widget.onConfirm(
-                      _targetLevel!.levelId, '${_targetLevel!.programName} ${_targetLevel!.name}');
+                  try {
+                    await widget.onConfirm(
+                        _targetLevel!.levelId, '${_targetLevel!.programName} ${_targetLevel!.name}');
+                  } finally {
+                    if (mounted) setState(() => _confirming = false);
+                  }
                 },
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF2563EB),

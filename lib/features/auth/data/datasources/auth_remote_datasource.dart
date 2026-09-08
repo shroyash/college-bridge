@@ -142,6 +142,46 @@ class AuthRemoteDataSource {
     }
   }
 
+  /// POST /api/otp/send (REGISTRATION)
+  Future<void> sendRegistrationOtp({required String email}) async {
+    try {
+      await _apiClient.post<dynamic>(
+        '/api/otp/send',
+        data: {
+          'email': email,
+          'type': 'REGISTRATION',
+        },
+      );
+    } on DioException catch (e) {
+      throw _mapDioException(e);
+    }
+  }
+
+  /// POST /api/otp/verify (REGISTRATION)
+  Future<String> verifyRegistrationOtp({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      final response = await _apiClient.post<Map<String, dynamic>>(
+        '/api/otp/verify',
+        data: {
+          'email': email,
+          'code': code,
+          'type': 'REGISTRATION',
+        },
+      );
+      final rawData = response.data?['data'];
+      if (rawData is String) return rawData;
+      if (rawData is Map<String, dynamic>) {
+        return (rawData['verificationToken'] ?? rawData['token'] ?? '') as String;
+      }
+      return 'VERIFIED';
+    } on DioException catch (e) {
+      throw _mapDioException(e);
+    }
+  }
+
   /// POST /api/auth/verify-otp
   Future<String> verifyOtp({
     required String email,

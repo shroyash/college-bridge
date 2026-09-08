@@ -132,7 +132,43 @@ class AcademicManagementNotifier extends StateNotifier<AcademicManagementState> 
     }
   }
 
+  Future<bool> updateProgram({
+    required int programId,
+    required String name,
+    required String code,
+  }) async {
+    state = state.copyWith(isSubmitting: true, clearError: true, clearSuccess: true);
+    try {
+      final updated = await _dataSource.updateProgram(
+        programId: programId,
+        name: name,
+        code: code,
+      );
+      final updatedPrograms = state.programs.map((p) {
+        return p.programId == programId ? updated as AcademicProgram : p;
+      }).toList();
+      // Also update selectedProgram if it matches
+      final newSelected = state.selectedProgram?.programId == programId
+          ? updated as AcademicProgram
+          : state.selectedProgram;
+      state = state.copyWith(
+        isSubmitting: false,
+        programs: updatedPrograms,
+        selectedProgram: newSelected,
+        successMessage: 'Program "$name" updated successfully.',
+      );
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isSubmitting: false,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
   // ── Levels ────────────────────────────────────────────────────────────────
+
 
   Future<bool> createLevel({
     required int programId,
@@ -186,7 +222,44 @@ class AcademicManagementNotifier extends StateNotifier<AcademicManagementState> 
     }
   }
 
+  Future<bool> updateLevel({
+    required int levelId,
+    required int levelNumber,
+    required String name,
+    required String type,
+  }) async {
+    state = state.copyWith(isSubmitting: true, clearError: true, clearSuccess: true);
+    try {
+      final updated = await _dataSource.updateLevel(
+        levelId: levelId,
+        levelNumber: levelNumber,
+        name: name,
+        type: type,
+      );
+      final updatedLevels = state.levels.map((l) {
+        return l.levelId == levelId ? updated as AcademicLevel : l;
+      }).toList();
+      final newSelected = state.selectedLevel?.levelId == levelId
+          ? updated as AcademicLevel
+          : state.selectedLevel;
+      state = state.copyWith(
+        isSubmitting: false,
+        levels: updatedLevels,
+        selectedLevel: newSelected,
+        successMessage: 'Level "$name" updated successfully.',
+      );
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isSubmitting: false,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
   // ── Subjects ──────────────────────────────────────────────────────────────
+
 
   Future<bool> createSubject({
     required String name,
@@ -224,7 +297,9 @@ class AcademicManagementNotifier extends StateNotifier<AcademicManagementState> 
     required String name,
     String? code,
     int creditHours = 3,
+    int? levelId,
   }) async {
+    final effectiveLevelId = levelId ?? state.selectedLevel?.levelId;
     state = state.copyWith(isSubmitting: true, clearError: true, clearSuccess: true);
     try {
       await _dataSource.updateSubject(
@@ -232,6 +307,7 @@ class AcademicManagementNotifier extends StateNotifier<AcademicManagementState> 
         name: name,
         code: code,
         creditHours: creditHours,
+        levelId: effectiveLevelId,
       );
       state = state.copyWith(
         isSubmitting: false,
@@ -277,8 +353,10 @@ class AcademicManagementNotifier extends StateNotifier<AcademicManagementState> 
     state = state.copyWith(isSubmitting: true, clearError: true, clearSuccess: true);
     try {
       await _dataSource.deleteSubject(subjectId);
+      final updatedSubjects = state.subjects.where((s) => s.subjectId != subjectId).toList();
       state = state.copyWith(
         isSubmitting: false,
+        subjects: updatedSubjects,
         successMessage: 'Subject deleted successfully.',
       );
       await refreshSubjects();

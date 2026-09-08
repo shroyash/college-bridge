@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../controllers/super_admin_providers.dart';
 import '../../domain/entities/super_admin_models.dart';
 import 'user_detail_modal.dart';
+import 'super_admin_shell.dart';
 
 class SuperAdminUsersScreen extends ConsumerStatefulWidget {
   const SuperAdminUsersScreen({super.key});
@@ -43,6 +44,12 @@ class _SuperAdminUsersScreenState
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(superAdminTabProvider, (previous, next) {
+      if (next == 1) {
+        ref.read(superAdminUsersProvider.notifier).loadUsers(refresh: true);
+      }
+    });
+
     final state = ref.watch(superAdminUsersProvider);
     final notifier = ref.read(superAdminUsersProvider.notifier);
 

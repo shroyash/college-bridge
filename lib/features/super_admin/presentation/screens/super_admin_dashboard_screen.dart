@@ -27,6 +27,12 @@ class _SuperAdminDashboardScreenState
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(superAdminTabProvider, (previous, next) {
+      if (next == 0) {
+        ref.read(superAdminDashboardProvider.notifier).loadDashboard();
+      }
+    });
+
     final state = ref.watch(superAdminDashboardProvider);
 
     return Scaffold(

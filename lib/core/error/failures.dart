@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 
 abstract class Failure extends Equatable {
@@ -84,4 +85,25 @@ class UnknownFailure extends Failure {
   const UnknownFailure([
     super.message = 'An unexpected error occurred.',
   ]);
+}
+
+String extractErrorMessage(Object error) {
+  if (error is DioException) {
+    final inner = error.error;
+    if (inner is Failure) {
+      return inner.message;
+    }
+    if (error.response?.data is Map<String, dynamic>) {
+      final msg = error.response!.data['message'] as String? ??
+          error.response!.data['error'] as String?;
+      if (msg != null && msg.isNotEmpty) return msg;
+    }
+    if (error.message != null && error.message!.isNotEmpty) {
+      return error.message!;
+    }
+  }
+  if (error is Failure) {
+    return error.message;
+  }
+  return error.toString().replaceAll('Exception: ', '');
 }

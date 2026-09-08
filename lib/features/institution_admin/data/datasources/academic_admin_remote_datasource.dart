@@ -109,6 +109,27 @@ class AcademicAdminRemoteDataSource {
     }
   }
 
+  /// PUT /api/admin/academic/programs/{programId}
+  Future<AcademicProgramModel> updateProgram({
+    required int programId,
+    required String name,
+    required String code,
+  }) async {
+    try {
+      final options = await _authOptions();
+      final response = await _apiClient.put<Map<String, dynamic>>(
+        '${ApiConstants.adminAcademicPrograms}/$programId',
+        data: {'name': name, 'code': code},
+        options: options,
+      );
+
+      final data = response.data?['data'] as Map<String, dynamic>? ?? {};
+      return AcademicProgramModel.fromJson(data);
+    } on DioException catch (e) {
+      throw _mapDioException(e);
+    }
+  }
+
   // ── Levels (formerly semesters/classes) ───────────────────────────────────
 
   /// GET /api/admin/academic/programs/{programId}/levels
@@ -166,6 +187,32 @@ class AcademicAdminRemoteDataSource {
         '${ApiConstants.adminAcademicLevels}/$levelId',
         options: options,
       );
+    } on DioException catch (e) {
+      throw _mapDioException(e);
+    }
+  }
+
+  /// PUT /api/admin/academic/levels/{levelId}
+  Future<AcademicLevelModel> updateLevel({
+    required int levelId,
+    required int levelNumber,
+    required String name,
+    required String type,
+  }) async {
+    try {
+      final options = await _authOptions();
+      final response = await _apiClient.put<Map<String, dynamic>>(
+        '${ApiConstants.adminAcademicLevels}/$levelId',
+        data: {
+          'levelNumber': levelNumber,
+          'name': name,
+          'type': type,
+        },
+        options: options,
+      );
+
+      final data = response.data?['data'] as Map<String, dynamic>? ?? {};
+      return AcademicLevelModel.fromJson(data);
     } on DioException catch (e) {
       throw _mapDioException(e);
     }
@@ -231,6 +278,7 @@ class AcademicAdminRemoteDataSource {
     required String name,
     String? code,
     int creditHours = 3,
+    int? levelId,
   }) async {
     try {
       final options = await _authOptions();
@@ -240,6 +288,7 @@ class AcademicAdminRemoteDataSource {
           'name': name,
           if (code != null && code.isNotEmpty) 'code': code,
           'creditHours': creditHours,
+          if (levelId != null) 'levelId': levelId,
         },
         options: options,
       );

@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../controllers/super_admin_providers.dart';
 import '../../domain/entities/super_admin_models.dart';
 import 'institution_detail_modal.dart';
+import 'super_admin_shell.dart';
 
 class SuperAdminInstitutionsScreen extends ConsumerStatefulWidget {
   const SuperAdminInstitutionsScreen({super.key});
@@ -34,6 +35,12 @@ class _SuperAdminInstitutionsScreenState
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(superAdminTabProvider, (previous, next) {
+      if (next == 2) {
+        ref.read(superAdminInstitutionsProvider.notifier).loadData(refresh: true);
+      }
+    });
+
     final state = ref.watch(superAdminInstitutionsProvider);
     final notifier = ref.read(superAdminInstitutionsProvider.notifier);
 
