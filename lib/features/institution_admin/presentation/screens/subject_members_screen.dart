@@ -1,21 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:bridge_mobile/features/institution_admin/presentation/controllers/role_academic_providers.dart';
 import 'package:bridge_mobile/features/institution_admin/data/models/class_detail_model.dart';
+import 'package:bridge_mobile/features/institution_admin/presentation/controllers/role_academic_providers.dart';
+
+enum ClassMembersViewMode { student, teacher, admin }
 
 class SubjectMembersScreen extends ConsumerStatefulWidget {
+  final int subjectId;
   final String subjectName;
   final String teacherName;
   final int totalStudents;
   final bool isFromDashboard;
+  final ClassMembersViewMode viewMode;
 
   const SubjectMembersScreen({
     super.key,
-    required this.subjectName,
-    required this.teacherName,
-    this.totalStudents = 42,
+    required this.subjectId,
+    this.subjectName = '',
+    this.teacherName = '',
+    this.totalStudents = 0,
     this.isFromDashboard = false,
+    this.viewMode = ClassMembersViewMode.student,
   });
 
   @override
@@ -23,9 +29,92 @@ class SubjectMembersScreen extends ConsumerStatefulWidget {
 }
 
 class _SubjectMembersScreenState extends ConsumerState<SubjectMembersScreen> {
+  String _searchQuery = '';
+  bool _isActionLoading = false;
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // ── Colors derived deterministically from student name initials ─────────────
+  static const List<Color> _avatarColors = [
+    Color(0xFF3B82F6),
+    Color(0xFF10B981),
+    Color(0xFF8B5CF6),
+    Color(0xFFF59E0B),
+    Color(0xFFEF4444),
+    Color(0xFF06B6D4),
+    Color(0xFF6366F1),
+    Color(0xFFEC4899),
+    Color(0xFF14B8A6),
+    Color(0xFF84CC16),
+  ];
+
+  Color _avatarColorFor(String name) {
+    final hash = name.isEmpty ? 0 : name.codeUnits.fold(0, (a, b) => a + b);
+    return _avatarColors[hash % _avatarColors.length];
+  }
+
+  String _initialsFor(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts[0].isEmpty) return '??';
+    if (parts.length == 1) return parts[0][0].toUpperCase();
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  Future<void> _toggleStudentStatus(
+    ClassStudentModel student,
+    bool isSuspended,
+  ) async {
+    setState(() => _isActionLoading = true);
+    try {
+      final ds = ref.read(academicAdminRemoteDataSourceProvider);
+
+      if (isSuspended) {
+        await ds.activateStudentInSubject(widget.subjectId, student.studentId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${student.fullName} has been reactivated.'),
+              backgroundColor: const Color(0xFF10B981),
+            ),
+          );
+        }
+      } else {
+        await ds.suspendStudentInSubject(widget.subjectId, student.studentId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${student.fullName} has been suspended.'),
+              backgroundColor: const Color(0xFFEF4444),
+            ),
+          );
+        }
+      }
+
+      // Force immediate re-fetch so the card flips right away.
+      if (mounted) {
+        final refreshFuture = ref.refresh(subjectDetailsProvider(widget.subjectId).future);
+        await refreshFuture;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isActionLoading = false);
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
-    final classDetailAsync = ref.watch(studentClassDetailsProvider);
+    final detailsAsync = ref.watch(subjectDetailsProvider(widget.subjectId));
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -37,492 +126,449 @@ class _SubjectMembersScreenState extends ConsumerState<SubjectMembersScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Members',
+          'Class Members',
           style: TextStyle(
             color: Color(0xFF0F172A),
             fontWeight: FontWeight.bold,
-            fontSize: 22,
+            fontSize: 20,
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Color(0xFF2563EB), size: 24),
-            onPressed: () {},
-          ),
+          if (_isActionLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+            ),
         ],
       ),
-      body: classDetailAsync.when(
+      body: detailsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => _buildMembersContent(null),
-        data: (ClassDetailModel? details) => _buildMembersContent(details),
+        error: (e, _) => _buildErrorState(e.toString()),
+        data: (details) => _buildBody(details),
       ),
     );
   }
 
-  Widget _buildMembersContent(ClassDetailModel? details) {
-    final rawTeacherName = details?.classTeacherName ?? widget.teacherName;
-    final isTeacherAssigned = rawTeacherName.isNotEmpty &&
-        !rawTeacherName.toLowerCase().contains('unassigned') &&
-        !rawTeacherName.toLowerCase().contains('not assign') &&
-        rawTeacherName != 'Class Coordinator';
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 48),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => ref.invalidate(subjectDetailsProvider(widget.subjectId)),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-    final displayTeacherName = isTeacherAssigned ? rawTeacherName : 'Teacher not assigned yet';
+  Widget _buildBody(ClassDetailModel? details) {
+    final displaySubjectName = widget.subjectName.isNotEmpty
+        ? widget.subjectName
+        : (details?.displayName ?? 'Class');
+    final hasAssignedTeacher = details?.classTeacherId != null;
+    final displayTeacherName = (details?.classTeacherName?.isNotEmpty == true)
+        ? details!.classTeacherName!
+        : (widget.teacherName.isNotEmpty ? widget.teacherName : 'No teacher assigned');
+    final totalCount = details?.totalStudents ?? widget.totalStudents;
 
-    final studentsList = details?.students ?? [];
-    final studentsCount = details?.totalStudents ?? widget.totalStudents;
+    // Filter students by search query
+    final allStudents = details?.students ?? [];
+    final filteredStudents = _searchQuery.isEmpty
+        ? allStudents
+        : allStudents.where((s) {
+            final q = _searchQuery.toLowerCase();
+            return s.fullName.toLowerCase().contains(q) ||
+                s.email.toLowerCase().contains(q);
+          }).toList();
+
+    String searchHintText;
+    switch (widget.viewMode) {
+      case ClassMembersViewMode.student:
+        searchHintText = 'Search classmates by name...';
+        break;
+      case ClassMembersViewMode.teacher:
+        searchHintText = 'Search students by name or email...';
+        break;
+      case ClassMembersViewMode.admin:
+        searchHintText = 'Search by name or email...';
+        break;
+    }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── 1. Teacher Section (Only if not viewing general dashboard members or if teacher is assigned) ──────────────────────
-          Row(
-            children: [
-              Text(
-                widget.isFromDashboard ? 'Faculty Teachers' : 'Teacher',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F172A),
-                ),
+          // ── 1. Directory Header Banner ─────────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Container(
-                  height: 1,
-                  color: const Color(0xFFCBD5E1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displaySubjectName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  '$totalCount students enrolled',
+                  style: const TextStyle(
+                    color: Color(0xFFBFDBFE),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
 
-          // Teacher Card or "Teacher not assigned yet"
-          if (isTeacherAssigned)
-            _buildAssignedTeacherCard(displayTeacherName)
-          else
-            _buildUnassignedTeacherCard(),
+          // ── 2. Teacher Info (visible to all roles) ─────────────────────────
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: hasAssignedTeacher ? const Color(0xFFEFF6FF) : const Color(0xFFF1F5F9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.school_outlined,
+                    color: hasAssignedTeacher ? const Color(0xFF2563EB) : const Color(0xFF94A3B8),
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayTeacherName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      const Text(
+                        'Primary Faculty',
+                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: hasAssignedTeacher ? const Color(0xFFEFF6FF) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    hasAssignedTeacher ? 'ASSIGNED' : 'UNASSIGNED',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: hasAssignedTeacher ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
 
-          const SizedBox(height: 28),
+          // ── 3. Search Field ────────────────────────────────────────────────
+          TextField(
+            controller: _searchController,
+            onChanged: (val) => setState(() => _searchQuery = val.trim()),
+            decoration: InputDecoration(
+              hintText: searchHintText,
+              hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+              prefixIcon: const Icon(Icons.search, color: Color(0xFF94A3B8), size: 20),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 18, color: Color(0xFF94A3B8)),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _searchQuery = '');
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
 
-          // ── 2. Students Section ─────────────────────────────────────────────
+          // ── 4. Students List Header ────────────────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Students ($studentsCount)',
+                'Students (${filteredStudents.length})',
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 15,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF0F172A),
                 ),
               ),
+              if (widget.viewMode == ClassMembersViewMode.student)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'View Only',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
 
-          // Students List (No Trophies / Scores)
-          if (studentsList.isNotEmpty)
+          // ── 5. Students List ───────────────────────────────────────────────
+          if (filteredStudents.isEmpty)
+            _buildEmptyStudents()
+          else
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: studentsList.length > 8 ? 8 : studentsList.length,
+              itemCount: filteredStudents.length,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
-                final student = studentsList[index];
-                final mockMajors = ['CS Major', 'IT Major', 'CS Major', 'Engineering', 'IT Major'];
-                final major = mockMajors[index % mockMajors.length];
-                final rollNo = (index + 1).toString().padLeft(2, '0');
-
-                return _buildStudentCard(
-                  name: student.fullName,
-                  rollNo: rollNo,
-                  major: major,
-                  index: index,
-                );
+                final student = filteredStudents[index];
+                final isSuspended = student.status.toUpperCase() == 'SUSPENDED';
+                return _buildStudentCard(student, isSuspended);
               },
-            )
-          else
-            _buildFallbackStudentsList(),
-
-          const SizedBox(height: 20),
-
-          // View All Students Link
-          Center(
-            child: InkWell(
-              onTap: () {},
-              borderRadius: BorderRadius.circular(8),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'View All Students',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2563EB),
-                      ),
-                    ),
-                    SizedBox(width: 6),
-                    Icon(
-                      Icons.arrow_forward,
-                      color: Color(0xFF2563EB),
-                      size: 18,
-                    ),
-                  ],
-                ),
-              ),
             ),
-          ),
           const SizedBox(height: 24),
         ],
       ),
     );
   }
 
-  Widget _buildAssignedTeacherCard(String teacherName) {
+  Widget _buildEmptyStudents() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
-      child: Row(
-        children: [
-          Stack(
-            children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: const Color(0xFFEFF6FF),
-                child: Text(
-                  teacherName.isNotEmpty ? teacherName[0].toUpperCase() : 'T',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2563EB),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.verified,
-                    color: Color(0xFF2563EB),
-                    size: 16,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  teacherName,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Assistant Professor',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF64748B),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.email_outlined, size: 14, color: Color(0xFF2563EB)),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${teacherName.toLowerCase().replaceAll(' ', '.')}@college.edu',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF2563EB),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+      child: const Center(
+        child: Column(
+          children: [
+            Icon(Icons.group_off_outlined, color: Color(0xFFCBD5E1), size: 40),
+            SizedBox(height: 10),
+            Text(
+              'No students found',
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildUnassignedTeacherCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEB),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFDE68A)),
-      ),
-      child: const Row(
-        children: [
-          Icon(
-            Icons.person_off_outlined,
-            color: Color(0xFFD97706),
-            size: 26,
-          ),
-          SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Teacher not assigned yet',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF92400E),
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Your institution admin will assign a faculty teacher soon.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFFB45309),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFallbackStudentsList() {
-    final defaultStudents = [
-      {'name': 'Aarav', 'roll': '01', 'major': 'CS Major'},
-      {'name': 'Sita', 'roll': '04', 'major': 'IT Major'},
-      {'name': 'Ram', 'roll': '12', 'major': 'CS Major'},
-      {'name': 'Hari', 'roll': '15', 'major': 'Engineering'},
-      {'name': 'Nabin', 'roll': '22', 'major': 'IT Major'},
-    ];
-
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: defaultStudents.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final item = defaultStudents[index];
-        return _buildStudentCard(
-          name: item['name'] as String,
-          rollNo: item['roll'] as String,
-          major: item['major'] as String,
-          index: index,
-        );
-      },
-    );
-  }
-
-  Widget _buildStudentCard({
-    required String name,
-    required String rollNo,
-    required String major,
-    required int index,
-  }) {
-    final avatarColors = [
-      const Color(0xFFF3E8FF), // Light Purple
-      const Color(0xFFEFF6FF), // Light Blue
-      const Color(0xFFF1F5F9), // Light Gray
-      const Color(0xFFFEF3C7), // Light Yellow
-      const Color(0xFFDCFCE7), // Light Green
-    ];
-
-    final textColors = [
-      const Color(0xFF7E22CE),
-      const Color(0xFF1D4ED8),
-      const Color(0xFF475569),
-      const Color(0xFFB45309),
-      const Color(0xFF15803D),
-    ];
-
-    final bg = avatarColors[index % avatarColors.length];
-    final textColor = textColors[index % textColors.length];
+  Widget _buildStudentCard(ClassStudentModel student, bool isSuspended) {
+    final avatarColor = _avatarColorFor(student.fullName);
+    final initials = _initialsFor(student.fullName);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isSuspended ? const Color(0xFFFFF1F2) : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: isSuspended ? const Color(0xFFFCA5A5) : const Color(0xFFE2E8F0),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
+            color: Colors.black.withValues(alpha: 0.015),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: bg,
-            child: Text(
-              name.isNotEmpty ? name[0].toUpperCase() : 'S',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: textColor,
+          // Avatar
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: isSuspended ? const Color(0xFFEF4444) : avatarColor,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
+
+          // Name & email
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
-                  ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        student.fullName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: isSuspended
+                              ? const Color(0xFF991B1B)
+                              : const Color(0xFF0F172A),
+                        ),
+                      ),
+                    ),
+                    if (isSuspended) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'SUSPENDED',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Roll No. $rollNo  •  $major',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF64748B),
-                    fontWeight: FontWeight.w500,
-                  ),
+                  student.email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                 ),
               ],
             ),
           ),
-          // "View" Student Button
-          InkWell(
-            onTap: () {
-              _showStudentDetailsModal(context, name, rollNo, major);
-            },
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFBFDBFE)),
-              ),
-              child: const Text(
-                'View',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2563EB),
-                ),
-              ),
-            ),
-          ),
+          const SizedBox(width: 8),
+
+          // Action button (Teacher & Admin only)
+          if (widget.viewMode == ClassMembersViewMode.teacher ||
+              widget.viewMode == ClassMembersViewMode.admin)
+            _buildStudentActionButton(student, isSuspended),
         ],
       ),
     );
   }
 
-  void _showStudentDetailsModal(BuildContext context, String name, String rollNo, String major) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFCBD5E1),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-              CircleAvatar(
-                radius: 32,
-                backgroundColor: const Color(0xFFEFF6FF),
-                child: Text(
-                  name.isNotEmpty ? name[0].toUpperCase() : 'S',
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2563EB),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Roll No. $rollNo  •  $major',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text('Close', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
+  Widget _buildStudentActionButton(ClassStudentModel student, bool isSuspended) {
+    if (isSuspended) {
+      return TextButton(
+        onPressed: _isActionLoading ? null : () => _toggleStudentStatus(student, true),
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF059669),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: const BorderSide(color: Color(0xFF34D399)),
           ),
-        );
-      },
-    );
+        ),
+        child: const Text(
+          'Reactivate',
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+        ),
+      );
+    } else {
+      return TextButton(
+        onPressed: _isActionLoading ? null : () => _toggleStudentStatus(student, false),
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFFDC2626),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: const BorderSide(color: Color(0xFFFCA5A5)),
+          ),
+        ),
+        child: const Text(
+          'Suspend',
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+        ),
+      );
+    }
   }
 }

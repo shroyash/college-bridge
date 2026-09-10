@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/presentation/controllers/institution_provider.dart';
+import '../../../dashboard/presentation/controllers/dashboard_providers.dart';
+import '../../../dashboard/presentation/controllers/profile_notifier.dart';
 import '../controllers/role_academic_providers.dart';
 import 'teacher_class_detail_screen.dart';
 
@@ -17,9 +19,13 @@ class TeacherClassesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final classesAsync = ref.watch(teacherClassesProvider);
     final currentInstitution = ref.watch(currentInstitutionProvider);
+    final profileState = ref.watch(profileNotifierProvider);
+
     final instName = (currentInstitution?.name != null && currentInstitution!.name.isNotEmpty)
         ? currentInstitution.name
-        : 'My Institution';
+        : (profileState is ProfileSuccess && profileState.profile.name.isNotEmpty)
+            ? profileState.profile.name
+            : 'My Institution';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -363,21 +369,6 @@ class TeacherClassesScreen extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF1E293B),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.people_outline, size: 16, color: Color(0xFF94A3B8)),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$studentsCount Enrolled Students',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF64748B),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
                   ),
                   const SizedBox(height: 10),
                   Container(

@@ -16,8 +16,8 @@ class StudentSubjectDetailScreen extends ConsumerStatefulWidget {
     super.key,
     required this.subjectId,
     required this.subjectName,
-    required this.teacherName,
-    this.studentsCount = 42,
+    this.teacherName = '',
+    this.studentsCount = 0,
     this.showBottomNav = false,
   });
 
@@ -28,7 +28,6 @@ class StudentSubjectDetailScreen extends ConsumerStatefulWidget {
 
 class _StudentSubjectDetailScreenState
     extends ConsumerState<StudentSubjectDetailScreen> {
-  int _selectedNavIndex = 1; // 1 = Subjects
   String _selectedDoubtFilter = 'All';
 
   @override
@@ -43,20 +42,23 @@ class _StudentSubjectDetailScreenState
 
     final dynamicTeacherName = detailsAsync.when(
       data: (ClassDetailModel? details) {
-        if (details != null) {
-          if (details.classTeacherName != null && details.classTeacherName!.isNotEmpty) {
-            return details.classTeacherName!;
-          }
-          if (details.teachers.isNotEmpty) {
-            return details.teachers.first.fullName;
-          }
-          return 'Teacher not assigned';
+        if (details != null && details.classTeacherName != null && details.classTeacherName!.isNotEmpty) {
+          return details.classTeacherName!;
         }
-        return widget.teacherName.isNotEmpty ? widget.teacherName : 'Teacher not assigned';
+        return widget.teacherName.isNotEmpty ? widget.teacherName : 'Unassigned';
       },
-      loading: () => widget.teacherName.isNotEmpty ? widget.teacherName : 'Teacher not assigned',
-      error: (_, __) => 'Teacher not assigned',
+      loading: () => widget.teacherName.isNotEmpty ? widget.teacherName : 'Loading...',
+      error: (_, __) => 'Unassigned',
     );
+
+    final hasAssignedTeacher = detailsAsync.when(
+      data: (ClassDetailModel? details) => details?.classTeacherId != null,
+      loading: () => false,
+      error: (_, __) => false,
+    );
+
+    final displaySubjectName =
+        widget.subjectName.isNotEmpty ? widget.subjectName : 'Untitled Subject';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -71,7 +73,7 @@ class _StudentSubjectDetailScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.subjectName,
+              displaySubjectName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
@@ -91,14 +93,18 @@ class _StudentSubjectDetailScreenState
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFF2563EB)),
-            onPressed: () => ref.invalidate(subjectDetailsProvider(widget.subjectId)),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Color(0xFF64748B)),
+            onSelected: (val) {},
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(value: 'refresh', child: Text('Refresh Data')),
+              const PopupMenuItem(value: 'share', child: Text('Share Subject')),
+            ],
           ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -119,41 +125,41 @@ class _StudentSubjectDetailScreenState
                   label: 'Students',
                 ),
                 _buildStatCard(
-                  icon: Icons.description_outlined,
+                  icon: Icons.school_outlined,
                   iconBg: const Color(0xFFEFF6FF),
                   iconColor: const Color(0xFF2563EB),
-                  value: '128',
-                  label: 'Doubts',
+                  value: hasAssignedTeacher ? '1' : '0',
+                  label: 'Assigned Teacher',
                 ),
                 _buildStatCard(
-                  icon: Icons.check_circle_outline,
-                  iconBg: const Color(0xFFDCFCE7),
-                  iconColor: const Color(0xFF16A34A),
-                  value: '102',
-                  label: 'Solved',
+                  icon: Icons.chat_bubble_outline,
+                  iconBg: const Color(0xFFECFDF5),
+                  iconColor: const Color(0xFF10B981),
+                  value: '128',
+                  label: 'Discussions',
                 ),
                 _buildStatCard(
                   icon: Icons.access_time,
-                  iconBg: const Color(0xFFFEF3C7),
-                  iconColor: const Color(0xFFD97706),
+                  iconBg: const Color(0xFFFFF7ED),
+                  iconColor: const Color(0xFFF59E0B),
                   value: '26',
-                  label: 'Open',
+                  label: 'Unresolved',
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // ── 2. QUICK ACTIONS (2x2) ─────────────────────────────────────────
             const Text(
               'QUICK ACTIONS',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF0F172A),
+                color: Color(0xFF475569),
                 letterSpacing: 0.5,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -163,22 +169,29 @@ class _StudentSubjectDetailScreenState
               childAspectRatio: 1.8,
               children: [
                 _buildQuickActionCard(
-                  icon: Icons.help_outline_rounded,
+                  icon: Icons.help_outline,
+                  iconBg: const Color(0xFFEFF6FF),
                   iconColor: const Color(0xFF2563EB),
                   title: 'Ask Doubt',
+                  onTap: () {},
                 ),
                 _buildQuickActionCard(
-                  icon: Icons.chat_bubble_outline_rounded,
+                  icon: Icons.chat_bubble_outline,
+                  iconBg: const Color(0xFFEFF6FF),
                   iconColor: const Color(0xFF2563EB),
                   title: 'View Doubts',
+                  onTap: () {},
                 ),
                 _buildQuickActionCard(
                   icon: Icons.campaign_outlined,
+                  iconBg: const Color(0xFFFEF2F2),
                   iconColor: const Color(0xFFDC2626),
                   title: 'Notices',
+                  onTap: () {},
                 ),
                 _buildQuickActionCard(
-                  icon: Icons.people_outline_rounded,
+                  icon: Icons.people_outline,
+                  iconBg: const Color(0xFFEFF6FF),
                   iconColor: const Color(0xFF2563EB),
                   title: 'Members',
                   onTap: () {
@@ -186,9 +199,11 @@ class _StudentSubjectDetailScreenState
                       context,
                       MaterialPageRoute(
                         builder: (_) => SubjectMembersScreen(
-                          subjectName: widget.subjectName,
+                          subjectId: widget.subjectId,
+                          subjectName: displaySubjectName,
                           teacherName: dynamicTeacherName,
                           totalStudents: dynamicStudentsCount,
+                          viewMode: ClassMembersViewMode.student,
                         ),
                       ),
                     );
@@ -196,23 +211,23 @@ class _StudentSubjectDetailScreenState
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // ── 3. Latest Teacher Announcement ─────────────────────────────────
             const Text(
               'Latest Teacher Announcement',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF0F172A),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
                 boxShadow: [
                   BoxShadow(
@@ -225,7 +240,7 @@ class _StudentSubjectDetailScreenState
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(10),
                     decoration: const BoxDecoration(
                       color: Color(0xFFEFF6FF),
                       shape: BoxShape.circle,
@@ -233,10 +248,10 @@ class _StudentSubjectDetailScreenState
                     child: const Icon(
                       Icons.campaign_outlined,
                       color: Color(0xFF2563EB),
-                      size: 24,
+                      size: 22,
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,18 +259,17 @@ class _StudentSubjectDetailScreenState
                         const Text(
                           'Mid-term exam on Monday',
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF0F172A),
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
-                          '${widget.teacherName}  •  Yesterday',
+                          '$dynamicTeacherName  •  Yesterday',
                           style: const TextStyle(
                             fontSize: 12,
                             color: Color(0xFF64748B),
-                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
@@ -264,73 +278,66 @@ class _StudentSubjectDetailScreenState
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // ── 4. Recent Doubts ───────────────────────────────────────────────
+            // ── 4. Recent Doubts ──────────────────────────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
                   'Recent Doubts',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF0F172A),
                   ),
                 ),
                 Row(
                   children: [
-                    _buildFilterPill('All'),
+                    _buildDoubtFilterChip('All', _selectedDoubtFilter == 'All', () {
+                      setState(() => _selectedDoubtFilter = 'All');
+                    }),
                     const SizedBox(width: 6),
-                    _buildFilterPill('Unsolved'),
+                    _buildDoubtFilterChip('Unsolved', _selectedDoubtFilter == 'Unsolved', () {
+                      setState(() => _selectedDoubtFilter = 'Unsolved');
+                    }),
                   ],
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
-            // Doubt Card 1
-            if (_selectedDoubtFilter == 'All') ...[
-              _buildDoubtCard(
-                title: 'What is Third Normal Form?',
-                badgeText: ' Verified Answer',
-                badgeIcon: Icons.check_circle,
-                badgeBg: const Color(0xFFDCFCE7),
-                badgeColor: const Color(0xFF15803D),
-                author: 'Aarav',
-                repliesCount: 8,
-                likesCount: 21,
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            // Doubt Card 2
+            // Doubts Cards
+            _buildDoubtCard(
+              title: 'What is Third Normal Form?',
+              author: 'Aarav',
+              badgeText: '✓ Verified Answer',
+              badgeBg: const Color(0xFFDCFCE7),
+              badgeTextColor: const Color(0xFF15803D),
+              repliesCount: '8',
+              likesCount: '21',
+            ),
+            const SizedBox(height: 10),
             _buildDoubtCard(
               title: 'Explain BCNF',
-              badgeText: ' Waiting for Teacher',
-              badgeIcon: Icons.access_time_filled,
-              badgeBg: const Color(0xFFFEF3C7),
-              badgeColor: const Color(0xFFB45309),
               author: 'Sita',
-              repliesCount: 4,
+              badgeText: '🕒 Waiting for Teacher',
+              badgeBg: const Color(0xFFFFEDD5),
+              badgeTextColor: const Color(0xFFC2410C),
+              repliesCount: '4',
             ),
-            const SizedBox(height: 12),
-
-            // Doubt Card 3
-            if (_selectedDoubtFilter == 'All') ...[
-              _buildDoubtCard(
-                title: 'Difference between 2NF and 3NF',
-                badgeText: ' Community Discussion',
-                badgeIcon: Icons.groups,
-                badgeBg: const Color(0xFFEFF6FF),
-                badgeColor: const Color(0xFF1D4ED8),
-                author: 'Ram',
-              ),
-            ],
+            const SizedBox(height: 10),
+            _buildDoubtCard(
+              title: 'Difference between 2NF and 3NF',
+              author: 'Ram',
+              badgeText: '👥 Community Discussion',
+              badgeBg: const Color(0xFFDBEAFE),
+              badgeTextColor: const Color(0xFF1D4ED8),
+            ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
-      bottomNavigationBar: widget.showBottomNav ? _buildBottomNavigationBar() : null,
     );
   }
 
@@ -345,12 +352,12 @@ class _StudentSubjectDetailScreenState
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
+            color: Colors.black.withValues(alpha: 0.015),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -358,35 +365,39 @@ class _StudentSubjectDetailScreenState
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: iconBg,
-              borderRadius: BorderRadius.circular(10),
+              shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: iconColor, size: 22),
+            child: Icon(icon, color: iconColor, size: 20),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F172A),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                  ),
                 ),
-              ),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF64748B),
-                  fontWeight: FontWeight.w500,
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -395,58 +406,71 @@ class _StudentSubjectDetailScreenState
 
   Widget _buildQuickActionCard({
     required IconData icon,
+    required Color iconBg,
     required Color iconColor,
     required String title,
-    VoidCallback? onTap,
+    required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: iconColor, size: 26),
-            const SizedBox(height: 6),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1E293B),
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.015),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
-            ),
-          ],
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: iconColor, size: 20),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildFilterPill(String label) {
-    final isSelected = _selectedDoubtFilter == label;
+  Widget _buildDoubtFilterChip(String label, bool isSelected, VoidCallback onTap) {
     return GestureDetector(
-      onTap: () => setState(() => _selectedDoubtFilter = label),
+      onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.bold,
             color: isSelected ? Colors.white : const Color(0xFF64748B),
           ),
@@ -457,24 +481,23 @@ class _StudentSubjectDetailScreenState
 
   Widget _buildDoubtCard({
     required String title,
-    required String badgeText,
-    required IconData badgeIcon,
-    required Color badgeBg,
-    required Color badgeColor,
     required String author,
-    int? repliesCount,
-    int? likesCount,
+    required String badgeText,
+    required Color badgeBg,
+    required Color badgeTextColor,
+    String? repliesCount,
+    String? likesCount,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
+            color: Colors.black.withValues(alpha: 0.015),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -489,7 +512,7 @@ class _StudentSubjectDetailScreenState
                 child: Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF0F172A),
                   ),
@@ -500,22 +523,15 @@ class _StudentSubjectDetailScreenState
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: badgeBg,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(badgeIcon, size: 12, color: badgeColor),
-                    const SizedBox(width: 3),
-                    Text(
-                      badgeText,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: badgeColor,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  badgeText,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: badgeTextColor,
+                  ),
                 ),
               ),
             ],
@@ -526,116 +542,33 @@ class _StudentSubjectDetailScreenState
             style: const TextStyle(
               fontSize: 12,
               color: Color(0xFF64748B),
-              fontWeight: FontWeight.w500,
             ),
           ),
           if (repliesCount != null || likesCount != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Row(
               children: [
                 if (repliesCount != null) ...[
-                  const Icon(Icons.chat_bubble_outline_rounded,
-                      size: 14, color: Color(0xFF64748B)),
+                  const Icon(Icons.chat_bubble_outline, size: 14, color: Color(0xFF64748B)),
                   const SizedBox(width: 4),
                   Text(
                     '$repliesCount Replies',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF64748B),
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                   ),
                 ],
                 if (likesCount != null) ...[
                   const SizedBox(width: 16),
-                  const Icon(Icons.thumb_up_outlined,
-                      size: 14, color: Color(0xFF64748B)),
+                  const Icon(Icons.thumb_up_alt_outlined, size: 14, color: Color(0xFF64748B)),
                   const SizedBox(width: 4),
                   Text(
                     '$likesCount Likes',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF64748B),
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                   ),
                 ],
               ],
             ),
           ],
         ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNavigationBar() {
-    final navItems = [
-      {'icon': Icons.home_outlined, 'label': 'Home'},
-      {'icon': Icons.book, 'label': 'Subjects'},
-      {'icon': Icons.notifications_none_outlined, 'label': 'Notifications'},
-      {'icon': Icons.help_outline_rounded, 'label': 'Doubts'},
-      {'icon': Icons.person_outline_rounded, 'label': 'Me'},
-    ];
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: List.generate(navItems.length, (index) {
-          final isSelected = _selectedNavIndex == index;
-          final item = navItems[index];
-
-          if (isSelected) {
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2563EB),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(item['icon'] as IconData, color: Colors.white, size: 20),
-                  const SizedBox(width: 6),
-                  Text(
-                    item['label'] as String,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return InkWell(
-            onTap: () => setState(() => _selectedNavIndex = index),
-            borderRadius: BorderRadius.circular(10),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(item['icon'] as IconData, color: const Color(0xFF64748B), size: 22),
-                  const SizedBox(height: 2),
-                  Text(
-                    item['label'] as String,
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }),
       ),
     );
   }

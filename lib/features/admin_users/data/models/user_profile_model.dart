@@ -8,9 +8,16 @@ class StudentProfileDetailsModel extends StudentProfileDetails {
   });
 
   factory StudentProfileDetailsModel.fromJson(Map<String, dynamic> json) {
+    final rawFaculty = json['faculty'] as String? ??
+        json['programName'] as String? ??
+        json['programCode'] as String?;
+    final rawSemester = json['semester']?.toString() ??
+        json['levelNumber']?.toString() ??
+        json['levelName']?.toString();
+
     return StudentProfileDetailsModel(
-      faculty: json['faculty'] as String?,
-      semester: json['semester']?.toString(),
+      faculty: rawFaculty,
+      semester: rawSemester,
       academicClassId: (json['academicClassId'] as num?)?.toInt(),
     );
   }

@@ -29,7 +29,8 @@ class AdminUserRemoteDataSource {
       403 => Exception('You do not have permission to perform this action.'),
       404 => Exception(msg.isNotEmpty ? msg : 'Resource not found.'),
       400 => Exception(msg.isNotEmpty ? msg : 'Invalid input request.'),
-      500 => Exception('Server error. Please try again later.'),
+      409 => Exception(msg.isNotEmpty ? msg : 'This subject is already assigned to another teacher.'),
+      500 => Exception(msg.isNotEmpty ? msg : 'Server error. Please try again later.'),
       _ => Exception(
           e.type == DioExceptionType.connectionTimeout ||
                   e.type == DioExceptionType.receiveTimeout

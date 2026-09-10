@@ -198,7 +198,7 @@ class StudentManagementNotifier extends StateNotifier<StudentManagementState> {
   void clearMessages() =>
       state = state.copyWith(error: null, successMessage: null);
 
-  Future<BulkTransferResult?> bulkTransfer(int targetClassId) async {
+  Future<BulkTransferResult?> bulkTransfer(int targetLevelId) async {
     final studentIds = state.selectedStudentIds.toList();
     if (studentIds.isEmpty) return null;
 
@@ -206,7 +206,7 @@ class StudentManagementNotifier extends StateNotifier<StudentManagementState> {
     try {
       final result = await _ds.bulkTransfer(
         studentIds: studentIds,
-        targetClassId: targetClassId,
+        targetLevelId: targetLevelId,
       );
       state = state.copyWith(
         isTransferring: false,

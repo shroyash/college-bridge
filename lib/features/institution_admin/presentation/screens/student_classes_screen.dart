@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:bridge_mobile/features/auth/presentation/controllers/institution_provider.dart';
 import 'package:bridge_mobile/features/dashboard/domain/entities/subject.dart';
 import 'package:bridge_mobile/features/dashboard/presentation/controllers/dashboard_providers.dart';
 import 'package:bridge_mobile/features/dashboard/presentation/controllers/dashboard_state.dart';
+import 'package:bridge_mobile/features/dashboard/presentation/controllers/profile_notifier.dart';
 import 'package:bridge_mobile/features/institution_admin/presentation/controllers/role_academic_providers.dart';
 import 'package:bridge_mobile/features/institution_admin/data/models/class_detail_model.dart';
 import 'package:bridge_mobile/features/institution_admin/presentation/screens/student_subject_detail_screen.dart';
@@ -31,6 +33,7 @@ class _StudentClassesScreenState extends ConsumerState<StudentClassesScreen> {
     super.initState();
     Future.microtask(() {
       ref.read(studentDashboardNotifierProvider.notifier).fetchMySubjects();
+      ref.read(profileNotifierProvider.notifier).fetchProfile();
     });
   }
 
@@ -38,32 +41,41 @@ class _StudentClassesScreenState extends ConsumerState<StudentClassesScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(studentDashboardNotifierProvider);
     final classDetailAsync = ref.watch(studentClassDetailsProvider);
+    final profileState = ref.watch(profileNotifierProvider);
+    final currentInstitution = ref.watch(currentInstitutionProvider);
 
-    // Resolve dynamic semester & total student count from class detail if available
-    final semesterText = classDetailAsync.when(
-      data: (ClassDetailModel? details) => details != null ? 'Semester ${details.semester}' : 'Semester 3',
-      loading: () => 'Semester 3',
-      error: (_, __) => 'Semester 3',
-    );
+    final profileStudentDetails = profileState is ProfileSuccess ? profileState.profile.studentDetails : null;
+
+    final resolvedInstitutionName = (currentInstitution?.name != null && currentInstitution!.name.isNotEmpty)
+        ? currentInstitution.name
+        : classDetailAsync.when(
+            data: (ClassDetailModel? details) =>
+                (details != null && details.institutionName.isNotEmpty) ? details.institutionName : 'My Institution',
+            loading: () => 'Fetching Institution...',
+            error: (_, __) => 'My Institution',
+          );
+
+    final resolvedFaculty = (profileStudentDetails?.faculty != null && profileStudentDetails!.faculty!.isNotEmpty)
+        ? profileStudentDetails.faculty!
+        : classDetailAsync.when(
+            data: (ClassDetailModel? details) =>
+                (details != null && details.faculty.isNotEmpty) ? details.faculty : 'Enrolled Faculty',
+            loading: () => 'Fetching Faculty...',
+            error: (_, __) => 'Enrolled Faculty',
+          );
+
+    final semesterText = (profileStudentDetails?.semester != null && profileStudentDetails!.semester!.isNotEmpty)
+        ? 'Semester ${profileStudentDetails.semester}'
+        : classDetailAsync.when(
+            data: (ClassDetailModel? details) => details != null ? 'Semester ${details.semester}' : 'Semester 3',
+            loading: () => 'Semester 3',
+            error: (_, __) => 'Semester 3',
+          );
 
     final totalStudentsInClass = classDetailAsync.when(
       data: (ClassDetailModel? details) => details?.totalStudents ?? 24,
       loading: () => 24,
       error: (_, __) => 24,
-    );
-
-    final resolvedInstitutionName = classDetailAsync.when(
-      data: (ClassDetailModel? details) =>
-          (details != null && details.institutionName.isNotEmpty) ? details.institutionName : 'My Institution',
-      loading: () => 'Fetching Institution...',
-      error: (_, __) => 'My Institution',
-    );
-
-    final resolvedFaculty = classDetailAsync.when(
-      data: (ClassDetailModel? details) =>
-          (details != null && details.faculty.isNotEmpty) ? details.faculty : 'Enrolled Faculty',
-      loading: () => 'Fetching Faculty...',
-      error: (_, __) => 'Enrolled Faculty',
     );
 
     return Scaffold(
@@ -335,8 +347,8 @@ class _StudentClassesScreenState extends ConsumerState<StudentClassesScreen> {
           subjectId: subject.subjectId,
           subjectName: subject.name,
           teacherName: teacherName,
-          studentsCount: totalStudents,
           newPostsCount: newPostsCount,
+          studentsCount: totalStudents,
         );
       },
     );
@@ -362,8 +374,8 @@ class _StudentClassesScreenState extends ConsumerState<StudentClassesScreen> {
           subjectId: item['id'] as int,
           subjectName: item['name'] as String,
           teacherName: item['teacher'] as String,
-          studentsCount: totalStudents,
           newPostsCount: item['posts'] as int,
+          studentsCount: totalStudents,
         );
       },
     );
@@ -423,12 +435,15 @@ class _StudentClassesScreenState extends ConsumerState<StudentClassesScreen> {
                     children: [
                       const Icon(Icons.person_outline, size: 16, color: Color(0xFF94A3B8)),
                       const SizedBox(width: 4),
-                      Text(
-                        '$teacherName  •  $studentsCount Students',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF64748B),
-                          fontWeight: FontWeight.w500,
+                      Expanded(
+                        child: Text(
+                          teacherName,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],

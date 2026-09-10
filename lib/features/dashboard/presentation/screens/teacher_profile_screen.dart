@@ -12,8 +12,9 @@ import 'help_and_support_screen.dart';
 
 class TeacherProfileScreen extends ConsumerStatefulWidget {
   final int totalClasses;
+  final VoidCallback? onBack;
   final VoidCallback? onLogout;
-  const TeacherProfileScreen({super.key, this.totalClasses = 0, this.onLogout});
+  const TeacherProfileScreen({super.key, this.totalClasses = 0, this.onBack, this.onLogout});
 
   @override
   ConsumerState<TeacherProfileScreen> createState() =>
@@ -34,51 +35,31 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: Column(
-        children: [
-          // ── Blue header banner ──────────────────────────────────────────
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 52, 20, 20),
-            decoration: const BoxDecoration(
-              color: Color(0xFF2563EB),
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'My Profile',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Manage your personal information',
-                  style: TextStyle(
-                    color: Color(0xFFBFDBFE),
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF2563EB), size: 24),
+          onPressed: widget.onBack ?? () => Navigator.maybePop(context),
+        ),
+        title: const Text(
+          'My Profile',
+          style: TextStyle(
+            color: Color(0xFF0F172A),
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
           ),
-          // ── Body ──────────────────────────────────────────────────────
-          Expanded(
-            child: SafeArea(
-              top: false,
-              child: profileState is ProfileLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : profileState is ProfileFailure
-                      ? _buildError((profileState).message)
-                      : profileState is ProfileSuccess
-                          ? _buildContent(context, profileState)
-                          : const SizedBox.shrink(),
-            ),
-          ),
-        ],
+        ),
+      ),
+      body: SafeArea(
+        child: profileState is ProfileLoading
+            ? const Center(child: CircularProgressIndicator())
+            : profileState is ProfileFailure
+                ? _buildError((profileState).message)
+                : profileState is ProfileSuccess
+                    ? _buildContent(context, profileState)
+                    : const SizedBox.shrink(),
       ),
     );
   }

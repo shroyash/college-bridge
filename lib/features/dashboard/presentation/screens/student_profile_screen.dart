@@ -37,12 +37,10 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
         backgroundColor: Colors.white,
         elevation: 0.5,
         automaticallyImplyLeading: false,
-        leading: widget.onBack != null
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back, color: Color(0xFF2563EB), size: 24),
-                onPressed: widget.onBack,
-              )
-            : null,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF2563EB), size: 24),
+          onPressed: widget.onBack ?? () => Navigator.maybePop(context),
+        ),
         title: const Text(
           'My Profile',
           style: TextStyle(
@@ -84,7 +82,11 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
   Widget _buildContent(BuildContext context, ProfileSuccess state) {
     final p = state.profile;
     final faculty = p.studentDetails?.faculty ?? 'BCA';
-    final semester = p.studentDetails?.semester ?? '1st';
+    final semesterRaw = p.studentDetails?.semester ?? '1';
+    // semesterRaw may be a number string like "3" or a label like "3rd"; normalise to display
+    final semesterDisplay = int.tryParse(semesterRaw) != null
+        ? '${semesterRaw}th Sem'
+        : semesterRaw;
     final rollNo = 'BCA/${DateTime.now().year}/0${p.userId}';
     final email = p.email.isNotEmpty ? p.email : 'student@college.edu';
 
@@ -197,7 +199,7 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
               Expanded(
                 child: _infoTile(
                   label: 'SEMESTER',
-                  value: '${semester}th Sem',
+                  value: semesterDisplay,
                   icon: Icons.layers_outlined,
                 ),
               ),

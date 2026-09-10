@@ -64,6 +64,7 @@ class StudentSummary {
 class BulkTransferResult {
   final bool success;
   final int updatedStudents;
+  final int targetLevelId;
   final int targetClassId;
   final String targetFaculty;
   final int targetSemester;
@@ -72,6 +73,7 @@ class BulkTransferResult {
   const BulkTransferResult({
     required this.success,
     required this.updatedStudents,
+    required this.targetLevelId,
     required this.targetClassId,
     required this.targetFaculty,
     required this.targetSemester,
@@ -79,14 +81,22 @@ class BulkTransferResult {
   });
 
   factory BulkTransferResult.fromJson(Map<String, dynamic> json) {
-    final tc = json['targetClass'] as Map<String, dynamic>? ?? {};
+    final tl = json['targetLevel'] as Map<String, dynamic>? ?? {};
+    final progName = tl['programName'] as String? ?? '';
+    final name = tl['name'] as String? ?? '';
+    final displayName = progName.isNotEmpty && name.isNotEmpty
+        ? '$progName $name'
+        : (name.isNotEmpty ? name : progName);
+    final levelId = (tl['levelId'] as num?)?.toInt() ?? 0;
+
     return BulkTransferResult(
       success: json['success'] as bool? ?? false,
       updatedStudents: (json['updatedStudents'] as num?)?.toInt() ?? 0,
-      targetClassId: (tc['classId'] as num?)?.toInt() ?? 0,
-      targetFaculty: tc['faculty'] as String? ?? '',
-      targetSemester: (tc['semester'] as num?)?.toInt() ?? 0,
-      targetDisplayName: tc['displayName'] as String? ?? '',
+      targetLevelId: levelId,
+      targetClassId: levelId,
+      targetFaculty: progName,
+      targetSemester: (tl['levelNumber'] as num?)?.toInt() ?? 0,
+      targetDisplayName: displayName,
     );
   }
 }
@@ -199,7 +209,7 @@ class StudentAdminRemoteDataSource {
   /// POST /api/admin/students/bulk-transfer
   Future<BulkTransferResult> bulkTransfer({
     required List<int> studentIds,
-    required int targetClassId,
+    required int targetLevelId,
   }) async {
     try {
       final options = await _authOptions();
@@ -207,7 +217,7 @@ class StudentAdminRemoteDataSource {
         ApiConstants.adminStudentsBulkTransfer,
         data: {
           'studentIds': studentIds,
-          'targetClassId': targetClassId,
+          'targetLevelId': targetLevelId,
         },
         options: options,
       );

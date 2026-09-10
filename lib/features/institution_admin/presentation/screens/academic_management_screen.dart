@@ -6,6 +6,7 @@ import '../../domain/entities/academic_level.dart';
 import '../../domain/entities/academic_program.dart';
 import '../controllers/academic_management_providers.dart';
 import '../controllers/academic_management_state.dart';
+import 'class_details_screen.dart';
 
 class AcademicManagementScreen extends ConsumerStatefulWidget {
   const AcademicManagementScreen({super.key});
@@ -160,7 +161,56 @@ class _AcademicManagementScreenState
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    if (state.selectedProgram != null) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1D4ED8),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFF3B82F6)),
+                        ),
+                        child: Theme(
+                          data: Theme.of(context).copyWith(
+                            hoverColor: Colors.white10,
+                          ),
+                          child: PopupMenuButton<String>(
+                            icon: const Icon(Icons.more_vert, color: Colors.white, size: 20),
+                            tooltip: 'Program options',
+                            padding: EdgeInsets.zero,
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                _showEditProgramDialog(context, state.selectedProgram!);
+                              } else if (value == 'delete') {
+                                _confirmDeleteProgram(context, state.selectedProgram!);
+                              }
+                            },
+                            itemBuilder: (_) => const [
+                              PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit_outlined, color: Color(0xFF2563EB), size: 18),
+                                    SizedBox(width: 8),
+                                    Text('Edit Program'),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete_outline, color: Color(0xFFDC2626), size: 18),
+                                    SizedBox(width: 8),
+                                    Text('Delete Program', style: TextStyle(color: Color(0xFFDC2626))),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(width: 6),
                     // Quick add button
                     InkWell(
                       onTap: () => _showAddProgramDialog(context),
@@ -595,24 +645,91 @@ class _AcademicManagementScreenState
               ],
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined, color: Color(0xFF2563EB)),
-            onPressed: () => _showEditSubjectDialog(context, subject),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ClassDetailsScreen(
+                    classId: subject.subjectId,
+                    className: subject.name,
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.visibility_outlined, size: 16),
+            label: const Text('View Class', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF2563EB),
+              side: const BorderSide(color: Color(0xFF2563EB)),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              visualDensity: VisualDensity.compact,
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Color(0xFFDC2626)),
-            onPressed: () => _confirmDeleteSubject(context, subject),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Color(0xFF64748B)),
+            tooltip: 'Subject Actions',
+            onSelected: (value) {
+              if (value == 'view') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ClassDetailsScreen(
+                      classId: subject.subjectId,
+                      className: subject.name,
+                    ),
+                  ),
+                );
+              } else if (value == 'edit') {
+                _showEditSubjectDialog(context, subject);
+              } else if (value == 'delete') {
+                _confirmDeleteSubject(context, subject);
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'view',
+                child: Row(
+                  children: [
+                    Icon(Icons.visibility_outlined, color: Color(0xFF2563EB), size: 18),
+                    SizedBox(width: 8),
+                    Text('View Class Details'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit_outlined, color: Color(0xFF2563EB), size: 18),
+                    SizedBox(width: 8),
+                    Text('Edit Subject'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_outline, color: Color(0xFFDC2626), size: 18),
+                    SizedBox(width: 8),
+                    Text('Delete Subject', style: TextStyle(color: Color(0xFFDC2626))),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  void _showProgramPickerSheet(BuildContext context, AcademicManagementState state) {
+  void _showProgramPickerSheet(BuildContext parentContext, AcademicManagementState state) {
     final searchCtrl = TextEditingController();
 
     showModalBottomSheet(
-      context: context,
+      context: parentContext,
       isScrollControlled: true,
       isDismissible: true,
       enableDrag: true,
@@ -620,7 +737,7 @@ class _AcademicManagementScreenState
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) {
         return StatefulBuilder(
-          builder: (context, setSheetState) {
+          builder: (builderCtx, setSheetState) {
             final query = searchCtrl.text.toLowerCase();
             final filtered = state.programs
                 .where((p) =>
@@ -642,7 +759,7 @@ class _AcademicManagementScreenState
                 // Sheet itself — max 70% screen height
                 ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.70,
+                    maxHeight: MediaQuery.of(builderCtx).size.height * 0.70,
                   ),
                   child: Container(
                     decoration: const BoxDecoration(
@@ -680,7 +797,7 @@ class _AcademicManagementScreenState
                               TextButton.icon(
                                 onPressed: () {
                                   Navigator.pop(sheetCtx);
-                                  _showAddProgramDialog(context);
+                                  _showAddProgramDialog(parentContext);
                                 },
                                 icon: const Icon(Icons.add, size: 16),
                                 label: const Text('Add'),
@@ -771,10 +888,55 @@ class _AcademicManagementScreenState
                                         style: const TextStyle(
                                             color: Color(0xFF64748B), fontSize: 12),
                                       ),
-                                      trailing: isSelected
-                                          ? const Icon(Icons.check_circle,
-                                              color: Color(0xFF2563EB))
-                                          : null,
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (isSelected)
+                                            const Padding(
+                                              padding: EdgeInsets.only(right: 4),
+                                              child: Icon(Icons.check_circle,
+                                                  color: Color(0xFF2563EB), size: 20),
+                                            ),
+                                          PopupMenuButton<String>(
+                                            icon: const Icon(Icons.more_vert,
+                                                color: Color(0xFF64748B), size: 20),
+                                            tooltip: 'Program options',
+                                            onSelected: (action) {
+                                              Navigator.pop(sheetCtx);
+                                              if (action == 'edit') {
+                                                _showEditProgramDialog(parentContext, prog);
+                                              } else if (action == 'delete') {
+                                                _confirmDeleteProgram(parentContext, prog);
+                                              }
+                                            },
+                                            itemBuilder: (_) => const [
+                                              PopupMenuItem(
+                                                value: 'edit',
+                                                child: Row(
+                                                  children: [
+                                                    Icon(Icons.edit_outlined,
+                                                        color: Color(0xFF2563EB), size: 18),
+                                                    SizedBox(width: 8),
+                                                    Text('Edit Program'),
+                                                  ],
+                                                ),
+                                              ),
+                                              PopupMenuItem(
+                                                value: 'delete',
+                                                child: Row(
+                                                  children: [
+                                                    Icon(Icons.delete_outline,
+                                                        color: Color(0xFFDC2626), size: 18),
+                                                    SizedBox(width: 8),
+                                                    Text('Delete Program',
+                                                        style: TextStyle(color: Color(0xFFDC2626))),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                       onTap: () {
                                         ref
                                             .read(academicManagementNotifierProvider.notifier)
@@ -783,7 +945,7 @@ class _AcademicManagementScreenState
                                       },
                                       onLongPress: () {
                                         Navigator.pop(sheetCtx);
-                                        _showProgramActionsSheet(context, prog);
+                                        _showProgramActionsSheet(parentContext, prog);
                                       },
                                     );
                                   },
@@ -793,7 +955,7 @@ class _AcademicManagementScreenState
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                           child: Text(
-                            'Tap to select  •  Long-press for Edit / Delete',
+                            'Tap to select  •  Click 3-dots or long-press for Edit / Delete',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 11,
@@ -814,9 +976,9 @@ class _AcademicManagementScreenState
     );
   }
 
-  void _showProgramActionsSheet(BuildContext context, AcademicProgram prog) {
+  void _showProgramActionsSheet(BuildContext parentContext, AcademicProgram prog) {
     showModalBottomSheet(
-      context: context,
+      context: parentContext,
       isDismissible: true,
       enableDrag: true,
       barrierColor: Colors.black54,
@@ -853,7 +1015,7 @@ class _AcademicManagementScreenState
               subtitle: const Text('Change name or code'),
               onTap: () {
                 Navigator.pop(sheetCtx);
-                _showEditProgramDialog(context, prog);
+                _showEditProgramDialog(parentContext, prog);
               },
             ),
             const Divider(),
@@ -872,7 +1034,7 @@ class _AcademicManagementScreenState
               subtitle: const Text('Removes all levels and subjects'),
               onTap: () {
                 Navigator.pop(sheetCtx);
-                _confirmDeleteProgram(context, prog);
+                _confirmDeleteProgram(parentContext, prog);
               },
             ),
           ],

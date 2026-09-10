@@ -367,8 +367,8 @@ class _StudentManagementScreenState
         currentFaculty: state.selectedFaculty,
         currentSemester: state.selectedSemester,
         dataSource: ref.read(academicAdminRemoteDataSourceProvider),
-        onConfirm: (targetClassId, targetDisplayName) async {
-          final result = await notifier.bulkTransfer(targetClassId);
+        onConfirm: (targetLevelId, targetDisplayName) async {
+          final result = await notifier.bulkTransfer(targetLevelId);
           if (result != null && ctx.mounted) {
             Navigator.pop(ctx);
           }
@@ -577,7 +577,7 @@ class _BulkTransferDialog extends ConsumerStatefulWidget {
   final String? currentFaculty;
   final int? currentSemester;
   final AcademicAdminRemoteDataSource dataSource;
-  final Future<void> Function(int targetClassId, String targetDisplayName)
+  final Future<void> Function(int targetLevelId, String targetDisplayName)
       onConfirm;
 
   const _BulkTransferDialog({

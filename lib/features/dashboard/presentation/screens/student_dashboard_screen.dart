@@ -225,6 +225,7 @@ class _StudentDashboardScreenState
                                           context,
                                           MaterialPageRoute(
                                             builder: (_) => const SubjectMembersScreen(
+                                              subjectId: 0,
                                               subjectName: 'My Enrolled Class',
                                               teacherName: 'Teacher not assigned yet',
                                               isFromDashboard: true,
@@ -395,7 +396,7 @@ class _StudentDashboardScreenState
               onBack: () => setState(() => _selectedBottomNavIndex = 0),
             ),
             // 2 – Alerts (placeholder)
-            const Center(child: Text('Alerts')),
+            const Center(child: Text('Notices')),
             // 3 – Doubts (placeholder)
             const Center(child: Text('Doubts')),
             // 4 – Profile
@@ -417,7 +418,7 @@ class _StudentDashboardScreenState
           BottomNavigationBarItem(
               icon: Icon(Icons.book_outlined), label: 'Classes'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.notifications_none), label: 'Alerts'),
+              icon: Icon(Icons.campaign_outlined), label: 'Notices'),
           BottomNavigationBarItem(
               icon: Icon(Icons.chat_bubble_outline), label: 'Doubts'),
           BottomNavigationBarItem(

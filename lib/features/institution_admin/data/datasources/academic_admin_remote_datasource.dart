@@ -416,7 +416,7 @@ class AcademicAdminRemoteDataSource {
     try {
       final options = await _authOptions();
       final response = await _apiClient.get<Map<String, dynamic>>(
-        '/api/admin/academic/classes/$classId/details',
+        '/api/academic/subjects/$classId/details',
         options: options,
       );
       final data = response.data?['data'] as Map<String, dynamic>? ?? {};
@@ -461,9 +461,65 @@ class AcademicAdminRemoteDataSource {
     try {
       final options = await _authOptions();
       await _apiClient.post<dynamic>(
-        '/api/admin/academic/classes/$classId/students/$studentId',
+        '/api/academic/classes/$classId/students/$studentId',
         options: options,
       );
+    } on DioException catch (e) {
+      throw _mapDioException(e);
+    }
+  }
+
+  Future<ClassDetailModel> suspendClass(int classId) async {
+    try {
+      final options = await _authOptions();
+      final response = await _apiClient.put<Map<String, dynamic>>(
+        '/api/academic/subjects/$classId/suspend',
+        options: options,
+      );
+      final data = response.data?['data'] as Map<String, dynamic>? ?? {};
+      return ClassDetailModel.fromJson(data);
+    } on DioException catch (e) {
+      throw _mapDioException(e);
+    }
+  }
+
+  Future<ClassDetailModel> activateClass(int classId) async {
+    try {
+      final options = await _authOptions();
+      final response = await _apiClient.put<Map<String, dynamic>>(
+        '/api/academic/subjects/$classId/activate',
+        options: options,
+      );
+      final data = response.data?['data'] as Map<String, dynamic>? ?? {};
+      return ClassDetailModel.fromJson(data);
+    } on DioException catch (e) {
+      throw _mapDioException(e);
+    }
+  }
+
+  Future<ClassDetailModel> suspendStudentInSubject(int subjectId, int studentId) async {
+    try {
+      final options = await _authOptions();
+      final response = await _apiClient.put<Map<String, dynamic>>(
+        '/api/academic/subjects/$subjectId/students/$studentId/suspend',
+        options: options,
+      );
+      final data = response.data?['data'] as Map<String, dynamic>? ?? {};
+      return ClassDetailModel.fromJson(data);
+    } on DioException catch (e) {
+      throw _mapDioException(e);
+    }
+  }
+
+  Future<ClassDetailModel> activateStudentInSubject(int subjectId, int studentId) async {
+    try {
+      final options = await _authOptions();
+      final response = await _apiClient.put<Map<String, dynamic>>(
+        '/api/academic/subjects/$subjectId/students/$studentId/activate',
+        options: options,
+      );
+      final data = response.data?['data'] as Map<String, dynamic>? ?? {};
+      return ClassDetailModel.fromJson(data);
     } on DioException catch (e) {
       throw _mapDioException(e);
     }

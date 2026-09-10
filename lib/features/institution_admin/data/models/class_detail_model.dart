@@ -66,6 +66,7 @@ class ClassDetailModel {
   final String institutionName;
   final String createdBy;
   final String createdAt;
+  final String status;
   final List<ClassStudentModel> students;
   final List<ClassTeacherModel> teachers;
 
@@ -86,6 +87,7 @@ class ClassDetailModel {
     required this.institutionName,
     required this.createdBy,
     required this.createdAt,
+    this.status = 'ACTIVE',
     required this.students,
     required this.teachers,
   });
@@ -117,6 +119,7 @@ class ClassDetailModel {
     final tId = (json['classTeacherId'] ?? teacherInfo?['teacherId'] as num?)?.toInt();
     final tName = json['classTeacherName'] ?? teacherInfo?['name'] as String?;
     final totalSt = (json['totalStudents'] ?? json['studentCount'] as num?)?.toInt() ?? 0;
+    final st = json['status'] as String? ?? 'ACTIVE';
 
     return ClassDetailModel(
       levelId: lId,
@@ -130,6 +133,7 @@ class ClassDetailModel {
       institutionName: json['institutionName'] as String? ?? '',
       createdBy: json['createdBy'] as String? ?? 'Institution Admin',
       createdAt: json['createdAt'] as String? ?? '',
+      status: st,
       students: studentsJson,
       teachers: teachersJson,
     );
