@@ -32,9 +32,6 @@ public class Doubt {
     @Column(name = "question", nullable = false, columnDefinition = "TEXT")
     private String question;
 
-    @Column(name = "ai_answer", columnDefinition = "TEXT")
-    private String aiAnswer;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
     private DoubtStatus status;

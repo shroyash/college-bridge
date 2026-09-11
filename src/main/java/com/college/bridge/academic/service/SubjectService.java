@@ -3,7 +3,9 @@ package com.college.bridge.academic.service;
 import com.college.bridge.academic.dto.ClassStudentResponse;
 import com.college.bridge.academic.dto.SubjectDetailResponse;
 import com.college.bridge.academic.dto.SubjectResponse;
+import com.college.bridge.academic.entity.ClassStatus;
 import com.college.bridge.academic.entity.Subject;
+import com.college.bridge.academic.entity.SubjectEnrollment;
 import com.college.bridge.academic.entity.TeacherAssignment;
 import com.college.bridge.academic.mapper.SubjectMapper;
 import com.college.bridge.academic.repository.SubjectEnrollmentRepository;
@@ -155,7 +157,7 @@ public class SubjectService {
         List<ClassStudentResponse> students = subjectEnrollmentRepository
                 .findBySubject_SubjectId(subjectId)
                 .stream()
-                .map(enrollment -> subjectMapper.toClassStudentResponse(enrollment.getStudent()))
+                .map(subjectMapper::toClassStudentResponse)
                 .toList();
 
         TeacherAssignment assignment = teacherAssignmentRepository
@@ -167,6 +169,85 @@ public class SubjectService {
         return subjectMapper.toDetailResponse(subject, teacher, students);
     }
 
+    @Transactional
+    public SubjectDetailResponse suspendSubject(Long subjectId, UserPrincipal principal) {
+        Long tenantId = requireTenant();
+        Subject subject = subjectRepository.findActiveByIdAndInstitutionId(subjectId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subject", subjectId));
+
+        if (subject.getAcademicLevel() != null) {
+            subject.getAcademicLevel().setStatus(ClassStatus.SUSPENDED);
+        }
+        subjectRepository.save(subject);
+
+        return getSubjectDetails(subjectId, principal);
+    }
+
+    @Transactional
+    public SubjectDetailResponse activateSubject(Long subjectId, UserPrincipal principal) {
+        Long tenantId = requireTenant();
+        Subject subject = subjectRepository.findActiveByIdAndInstitutionId(subjectId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subject", subjectId));
+
+        if (subject.getAcademicLevel() != null) {
+            subject.getAcademicLevel().setStatus(ClassStatus.ACTIVE);
+        }
+        subjectRepository.save(subject);
+
+        return getSubjectDetails(subjectId, principal);
+    }
+
+    @Transactional
+    public SubjectDetailResponse suspendStudentInSubject(Long subjectId, Long studentId, UserPrincipal principal) {
+        Long tenantId = requireTenant();
+        subjectRepository.findActiveByIdAndInstitutionId(subjectId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subject", subjectId));
+
+        validateTeacherOrAdminPermission(subjectId, tenantId, principal);
+
+        SubjectEnrollment enrollment = subjectEnrollmentRepository
+                .findBySubject_SubjectIdAndStudent_StudentId(subjectId, studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student is not enrolled in this subject."));
+
+        enrollment.setStatus(ClassStatus.SUSPENDED);
+        subjectEnrollmentRepository.save(enrollment);
+
+        return getSubjectDetails(subjectId, principal);
+    }
+
+    @Transactional
+    public SubjectDetailResponse activateStudentInSubject(Long subjectId, Long studentId, UserPrincipal principal) {
+        Long tenantId = requireTenant();
+        subjectRepository.findActiveByIdAndInstitutionId(subjectId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subject", subjectId));
+
+        validateTeacherOrAdminPermission(subjectId, tenantId, principal);
+
+        SubjectEnrollment enrollment = subjectEnrollmentRepository
+                .findBySubject_SubjectIdAndStudent_StudentId(subjectId, studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student is not enrolled in this subject."));
+
+        enrollment.setStatus(ClassStatus.ACTIVE);
+        subjectEnrollmentRepository.save(enrollment);
+
+        return getSubjectDetails(subjectId, principal);
+    }
+
+    private void validateTeacherOrAdminPermission(Long subjectId, Long tenantId, UserPrincipal principal) {
+        UserRole role = principal.getRole();
+        if (role == UserRole.ADMIN) {
+            return;
+        }
+        if (role == UserRole.TEACHER) {
+            boolean assigned = teacherAssignmentRepository.existsAssignmentForUser(subjectId, principal.getUserId(), tenantId);
+            if (!assigned) {
+                throw new AccessDeniedException("Access denied: Only the assigned teacher or an administrator can manage student suspensions for this subject.");
+            }
+            return;
+        }
+        throw new AccessDeniedException("You are not authorized to suspend or activate students.");
+    }
+
 
     private void validateSubjectAccess(Long subjectId, Long tenantId, UserPrincipal principal) {
         UserRole role = principal.getRole();
@@ -176,10 +257,12 @@ public class SubjectService {
         }
 
         if (role == UserRole.STUDENT) {
-            boolean enrolled = subjectEnrollmentRepository.existsEnrollmentForUser(
-                    subjectId, principal.getUserId(), tenantId);
-            if (!enrolled) {
-                throw new AccessDeniedException("Access denied: You are not enrolled in this subject");
+            SubjectEnrollment enrollment = subjectEnrollmentRepository
+                    .findBySubject_SubjectIdAndStudent_User_UserId(subjectId, principal.getUserId())
+                    .orElseThrow(() -> new AccessDeniedException("Access denied: You are not enrolled in this subject"));
+
+            if (enrollment.getStatus() == ClassStatus.SUSPENDED) {
+                throw new AccessDeniedException("Access denied: You are suspended from this subject class");
             }
             return;
         }

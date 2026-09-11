@@ -12,7 +12,8 @@ import java.time.LocalDateTime;
 @Table(
         name = "teacher_assignments",
         uniqueConstraints = @UniqueConstraint(
-                columnNames = {"teacher_id", "subject_id"}
+                name = "uk_teacher_assignments_subject_id",
+                columnNames = {"subject_id"}
         )
 )
 @Getter

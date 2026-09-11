@@ -8,6 +8,7 @@ import com.college.bridge.institution.service.InstitutionAdminService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -19,7 +20,7 @@ public class InstitutionAdminController {
 
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<InstitutionProfileResponse>> getProfile(
-            UserPrincipal principal
+            @AuthenticationPrincipal UserPrincipal principal
     ) {
 
         InstitutionProfileResponse response =
@@ -35,7 +36,7 @@ public class InstitutionAdminController {
 
     @PutMapping("/profile")
     public ResponseEntity<ApiResponse<InstitutionProfileResponse>> updateProfile(
-            UserPrincipal principal,
+            @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody UpdateInstitutionProfileRequest request
     ) {
 

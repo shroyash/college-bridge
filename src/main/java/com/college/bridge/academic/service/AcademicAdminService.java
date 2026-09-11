@@ -8,6 +8,8 @@ import com.college.bridge.academic.mapper.SubjectMapper;
 import com.college.bridge.academic.repository.AcademicLevelRepository;
 import com.college.bridge.academic.repository.AcademicProgramRepository;
 import com.college.bridge.academic.repository.SubjectRepository;
+import com.college.bridge.auth.entity.Student;
+import com.college.bridge.auth.entity.Teacher;
 import com.college.bridge.auth.repository.StudentRepository;
 import com.college.bridge.common.exception.DuplicateResourceException;
 import com.college.bridge.common.exception.ResourceNotFoundException;
@@ -23,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -111,6 +114,26 @@ public class AcademicAdminService {
         programRepository.save(program);
     }
 
+    @Transactional
+    public AcademicProgramResponse updateProgram(Long programId, AcademicProgramRequest request) {
+        Long tenantId = requireTenantId();
+        AcademicProgram program = programRepository
+                .findByProgramIdAndInstitution_InstitutionIdAndDeletedFalse(programId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Academic program not found with ID: " + programId));
+
+        String code = request.getCode().trim().toUpperCase();
+        if (!program.getCode().equalsIgnoreCase(code) &&
+                programRepository.existsByInstitution_InstitutionIdAndCodeAndDeletedFalse(tenantId, code)) {
+            throw new DuplicateResourceException("Academic program with code '" + code + "' already exists.");
+        }
+
+        program.setName(request.getName().trim());
+        program.setCode(code);
+
+        AcademicProgram saved = programRepository.save(program);
+        return programMapper.toResponse(saved);
+    }
+
     // ── Level Management ──────────────────────────────────────────────────────
 
     @Transactional
@@ -173,6 +196,95 @@ public class AcademicAdminService {
         level.setDeleted(true);
         level.setDeletedAt(now);
         levelRepository.save(level);
+    }
+
+    @Transactional
+    public AcademicLevelResponse updateLevel(Long levelId, AcademicLevelRequest request) {
+        Long tenantId = requireTenantId();
+        AcademicLevel level = levelRepository
+                .findActiveByIdAndInstitutionId(levelId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Academic level not found with ID: " + levelId));
+
+        if (!level.getLevelNumber().equals(request.getLevelNumber()) &&
+                levelRepository.existsByProgram_ProgramIdAndLevelNumberAndDeletedFalse(level.getProgram().getProgramId(), request.getLevelNumber())) {
+            throw new DuplicateResourceException("Academic level number " + request.getLevelNumber() + " already exists for program " + level.getProgram().getCode());
+        }
+
+        level.setName(request.getName().trim());
+        level.setLevelNumber(request.getLevelNumber());
+        if (request.getType() != null) {
+            level.setType(request.getType());
+        }
+
+        AcademicLevel saved = levelRepository.save(level);
+        return levelMapper.toResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public ClassDetailResponse getClassDetails(Long classId) {
+        Long tenantId = requireTenantId();
+
+        AcademicLevel level = levelRepository.findActiveByIdAndInstitutionId(classId, tenantId).orElse(null);
+        if (level == null) {
+            Subject subject = subjectRepository.findActiveByIdAndInstitutionId(classId, tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Class or Subject not found for ID: " + classId));
+            level = subject.getAcademicLevel();
+        }
+
+        List<Student> students = studentRepository
+                .findByAcademicLevel_LevelIdAndUser_Institution_InstitutionId(level.getLevelId(), tenantId);
+        List<ClassStudentResponse> studentResponses = subjectMapper.toClassStudentResponseList(students);
+
+        List<Subject> subjects = subjectRepository.findByAcademicLevel_LevelIdAndDeletedFalse(level.getLevelId());
+
+        List<ClassTeacherResponse> teacherResponses = new ArrayList<>();
+        Map<Teacher, List<Subject>> teacherSubjectMap = subjects.stream()
+                .flatMap(sub -> sub.getAssignments().stream())
+                .collect(Collectors.groupingBy(
+                        TeacherAssignment::getTeacher,
+                        Collectors.mapping(TeacherAssignment::getSubject, Collectors.toList())
+                ));
+
+        for (Map.Entry<Teacher, List<Subject>> entry : teacherSubjectMap.entrySet()) {
+            Teacher teacher = entry.getKey();
+            List<Subject> teacherSubjects = entry.getValue();
+            List<String> subjectNames = teacherSubjects.stream().map(Subject::getName).toList();
+            teacherResponses.add(subjectMapper.toClassTeacherResponse(teacher, subjectNames));
+        }
+
+        return subjectMapper.toClassDetailResponse(level, studentResponses, teacherResponses);
+    }
+
+    @Transactional
+    public ClassDetailResponse suspendClass(Long classId) {
+        Long tenantId = requireTenantId();
+        AcademicLevel level = levelRepository.findActiveByIdAndInstitutionId(classId, tenantId).orElse(null);
+        if (level == null) {
+            Subject subject = subjectRepository.findActiveByIdAndInstitutionId(classId, tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Class or Subject not found for ID: " + classId));
+            level = subject.getAcademicLevel();
+        }
+
+        level.setStatus(ClassStatus.SUSPENDED);
+        levelRepository.save(level);
+
+        return getClassDetails(level.getLevelId());
+    }
+
+    @Transactional
+    public ClassDetailResponse activateClass(Long classId) {
+        Long tenantId = requireTenantId();
+        AcademicLevel level = levelRepository.findActiveByIdAndInstitutionId(classId, tenantId).orElse(null);
+        if (level == null) {
+            Subject subject = subjectRepository.findActiveByIdAndInstitutionId(classId, tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Class or Subject not found for ID: " + classId));
+            level = subject.getAcademicLevel();
+        }
+
+        level.setStatus(ClassStatus.ACTIVE);
+        levelRepository.save(level);
+
+        return getClassDetails(level.getLevelId());
     }
 
     // ── Subject Management ────────────────────────────────────────────────────

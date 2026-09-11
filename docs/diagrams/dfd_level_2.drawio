@@ -1,0 +1,60 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="dfd_level_2" name="DFD Level 2 (Doubt Discussion Subsystem)">
+    <mxGraphModel dx="1200" dy="850" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Subsystem Boundary -->
+        <mxCell id="d2_box" value="Process 4.0: Student &amp; Teacher Doubt Discussion Subsystem" style="shape=swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#F8FAFC;strokeColor=#16A34A;strokeWidth=2;fontStyle=1;fontSize=13;rounded=1;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="220" y="60" width="860" height="720" as="geometry" />
+        </mxCell>
+
+        <!-- External Entities -->
+        <mxCell id="d2_student" value="Student (Author/Peer)" style="html=1;whiteSpace=wrap;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontStyle=1;rounded=1;arcSize=15;" vertex="1" parent="1">
+          <mxGeometry x="20" y="160" width="160" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d2_teacher" value="Teacher (Subject Educator)" style="html=1;whiteSpace=wrap;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontStyle=1;rounded=1;arcSize=15;" vertex="1" parent="1">
+          <mxGeometry x="20" y="540" width="160" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Internal Processes -->
+        <mxCell id="p4_1" value="4.1&#xa;Post Subject&#xa;Doubt Question" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;strokeWidth=2;fontStyle=1;" vertex="1" parent="d2_box">
+          <mxGeometry x="80" y="80" width="140" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p4_2" value="4.2&#xa;Notify Class Members&#xa;&amp; Assigned Teacher" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;strokeWidth=2;fontStyle=1;" vertex="1" parent="d2_box">
+          <mxGeometry x="360" y="80" width="140" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p4_3" value="4.3&#xa;Submit Peer Answer&#xa;(Fellow Student)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;strokeWidth=2;fontStyle=1;" vertex="1" parent="d2_box">
+          <mxGeometry x="100" y="460" width="140" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p4_4" value="4.4&#xa;Review &amp; Answer&#xa;Doubt (Teacher)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;strokeWidth=2;fontStyle=1;" vertex="1" parent="d2_box">
+          <mxGeometry x="580" y="460" width="140" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Stores inside DFD 2 -->
+        <mxCell id="d2_ds_subject" value="D2: Class &amp; Subject Enrolment DB" style="shape=partialRectangle;whiteSpace=wrap;html=1;left=0;right=0;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=2;fontStyle=1;rounded=1;" vertex="1" parent="d2_box">
+          <mxGeometry x="560" y="95" width="240" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d2_ds_doubt" value="D4: Doubt Thread &amp; Replies DB" style="shape=partialRectangle;whiteSpace=wrap;html=1;left=0;right=0;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=2;fontStyle=1;rounded=1;" vertex="1" parent="d2_box">
+          <mxGeometry x="310" y="270" width="240" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Flexible Curved Flows -->
+        <mxCell id="df2_1" edge="1" parent="1" source="d2_student" target="p4_1" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#0284C7;strokeWidth=2;endArrow=classic;" value="Subject ID + Title + Text" />
+        <mxCell id="df2_2" edge="1" parent="1" source="p4_1" target="p4_2" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#16A34A;strokeWidth=2;endArrow=classic;" value="New Doubt Post" />
+        <mxCell id="df2_3" edge="1" parent="1" source="d2_ds_subject" target="p4_2" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#D97706;strokeWidth=2;endArrow=classic;" value="Class Roster &amp; Teacher" />
+        <mxCell id="df2_6" edge="1" parent="1" source="p4_1" target="d2_ds_doubt" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#16A34A;strokeWidth=2;endArrow=classic;" value="Store New Doubt Thread" />
+        <mxCell id="df2_7" edge="1" parent="1" source="d2_student" target="p4_3" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#0284C7;strokeWidth=2;endArrow=classic;" value="Peer Answer Text" />
+        <mxCell id="df2_8" edge="1" parent="1" source="p4_3" target="d2_ds_doubt" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#16A34A;strokeWidth=2;endArrow=classic;" value="Append Student Reply" />
+        <mxCell id="df2_10" edge="1" parent="1" source="d2_teacher" target="p4_4" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#0284C7;strokeWidth=2;endArrow=classic;" value="Teacher Answer / Resolution" />
+        <mxCell id="df2_11" edge="1" parent="1" source="p4_4" target="d2_ds_doubt" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#16A34A;strokeWidth=2;endArrow=classic;" value="Append Answer &amp; Mark RESOLVED" />
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

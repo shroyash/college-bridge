@@ -1,0 +1,117 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="use_case_diagram" name="Use Case Diagram">
+    <mxGraphModel dx="1200" dy="850" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- System Boundary -->
+        <mxCell id="boundary" value="College Bridge System" style="shape=swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=2;fontStyle=1;fontSize=14;align=center;rounded=1;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="260" y="40" width="840" height="820" as="geometry" />
+        </mxCell>
+        
+        <!-- Actors -->
+        <mxCell id="actor_super_admin" value="Super Admin" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#E0E7FF;strokeColor=#3730A3;strokeWidth=2;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="40" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="actor_admin" value="Institution Admin" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#E0E7FF;strokeColor=#3730A3;strokeWidth=2;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="260" width="40" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="actor_teacher" value="Teacher" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#E0E7FF;strokeColor=#3730A3;strokeWidth=2;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="480" width="40" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="actor_student" value="Student" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#E0E7FF;strokeColor=#3730A3;strokeWidth=2;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="700" width="40" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="actor_fcm" value="Firebase (FCM)" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#FFEDD5;strokeColor=#C2410C;strokeWidth=2;fontSize=12;fontStyle=1;size=10;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="280" width="110" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="actor_ai" value="AI Engine (Calendar/Notice)" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#F3E8FF;strokeColor=#6B21A8;strokeWidth=2;fontSize=12;fontStyle=1;size=10;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="140" width="120" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Use Cases inside Boundary -->
+        <mxCell id="uc_super_manage" value="Manage Institutions &amp; Global Audit" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontStyle=1;" vertex="1" parent="boundary">
+          <mxGeometry x="60" y="40" width="220" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_academic_struct" value="Manage Academic Structure&#xa;(Programs, Levels, Subjects)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontStyle=1;" vertex="1" parent="boundary">
+          <mxGeometry x="60" y="130" width="220" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_ai_holiday" value="Detect Holiday &amp; Draft Notice" style="ellipse;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#7C3AED;strokeWidth=2;fontStyle=1;" vertex="1" parent="boundary">
+          <mxGeometry x="560" y="130" width="220" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_assign_teacher" value="Assign Teacher to Subject" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontStyle=1;" vertex="1" parent="boundary">
+          <mxGeometry x="60" y="220" width="220" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_broadcast_notice" value="Send Institution Broadcast Alert" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontStyle=1;" vertex="1" parent="boundary">
+          <mxGeometry x="340" y="220" width="220" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_toggle_status" value="Suspend / Reactivate Subject" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontStyle=1;" vertex="1" parent="boundary">
+          <mxGeometry x="60" y="320" width="220" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_class_notice" value="Send Class Announcement" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontStyle=1;" vertex="1" parent="boundary">
+          <mxGeometry x="340" y="320" width="220" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_manage_student_status" value="Suspend / Activate Student in Class" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontStyle=1;" vertex="1" parent="boundary">
+          <mxGeometry x="60" y="420" width="230" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_view_members" value="View Subject Members &amp; Details" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontStyle=1;" vertex="1" parent="boundary">
+          <mxGeometry x="60" y="520" width="220" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_post_doubt" value="Post Academic Doubt" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontStyle=1;" vertex="1" parent="boundary">
+          <mxGeometry x="340" y="560" width="220" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_student_answer_doubt" value="Answer Fellow Student Doubt (Peer)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontStyle=1;" vertex="1" parent="boundary">
+          <mxGeometry x="340" y="670" width="230" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_resolve_doubt" value="Review &amp; Answer Student Doubt (Teacher)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontStyle=1;" vertex="1" parent="boundary">
+          <mxGeometry x="60" y="670" width="250" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Flexible Curved Connections Super Admin -->
+        <mxCell id="c1" edge="1" parent="1" source="actor_super_admin" target="uc_super_manage" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#2563EB;strokeWidth=2;endArrow=none;" />
+
+        <!-- Flexible Curved Connections Admin -->
+        <mxCell id="c2" edge="1" parent="1" source="actor_admin" target="uc_academic_struct" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#2563EB;strokeWidth=2;endArrow=none;" />
+        <mxCell id="c3" edge="1" parent="1" source="actor_admin" target="uc_assign_teacher" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#2563EB;strokeWidth=2;endArrow=none;" />
+        <mxCell id="c4" edge="1" parent="1" source="actor_admin" target="uc_broadcast_notice" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#2563EB;strokeWidth=2;endArrow=none;" />
+        <mxCell id="c5" edge="1" parent="1" source="actor_admin" target="uc_toggle_status" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#2563EB;strokeWidth=2;endArrow=none;" />
+
+        <!-- Flexible Curved Connections Teacher -->
+        <mxCell id="c6" edge="1" parent="1" source="actor_teacher" target="uc_class_notice" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#2563EB;strokeWidth=2;endArrow=none;" />
+        <mxCell id="c7" edge="1" parent="1" source="actor_teacher" target="uc_manage_student_status" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#2563EB;strokeWidth=2;endArrow=none;" />
+        <mxCell id="c8" edge="1" parent="1" source="actor_teacher" target="uc_view_members" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#2563EB;strokeWidth=2;endArrow=none;" />
+        <mxCell id="c9" edge="1" parent="1" source="actor_teacher" target="uc_resolve_doubt" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#2563EB;strokeWidth=2;endArrow=none;" />
+
+        <!-- Flexible Curved Connections Student -->
+        <mxCell id="c10" edge="1" parent="1" source="actor_student" target="uc_view_members" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#2563EB;strokeWidth=2;endArrow=none;" />
+        <mxCell id="c11" edge="1" parent="1" source="actor_student" target="uc_post_doubt" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#2563EB;strokeWidth=2;endArrow=none;" />
+        <mxCell id="c12" edge="1" parent="1" source="actor_student" target="uc_student_answer_doubt" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#2563EB;strokeWidth=2;endArrow=none;" />
+
+        <!-- FCM Curved Connections -->
+        <mxCell id="c13" edge="1" parent="1" source="uc_broadcast_notice" target="actor_fcm" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#EA580C;strokeWidth=2;dashed=1;endArrow=classic;" value="Trigger Push" />
+        <mxCell id="c14" edge="1" parent="1" source="uc_class_notice" target="actor_fcm" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#EA580C;strokeWidth=2;dashed=1;endArrow=classic;" value="Topic Delivery" />
+
+        <!-- AI Curved Connections -->
+        <mxCell id="c15" edge="1" parent="1" source="uc_broadcast_notice" target="uc_ai_holiday" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#7C3AED;strokeWidth=2;dashed=1;endArrow=classic;" value="&lt;&lt;extend&gt;&gt;" />
+        <mxCell id="c16" edge="1" parent="1" source="uc_ai_holiday" target="actor_ai" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#7C3AED;strokeWidth=2;dashed=1;endArrow=classic;" />
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

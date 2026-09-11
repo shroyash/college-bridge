@@ -18,7 +18,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -40,37 +42,43 @@ public class TeacherAssignmentService {
         Long tenantId = requireTenantId();
 
         Teacher teacher = teacherRepository.findById(teacherId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher not found with ID: " + teacherId));
+                .orElseGet(() -> teacherRepository.findByUser_UserId(teacherId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Teacher not found with ID: " + teacherId)));
 
         validateTeacherBelongsToTenant(teacher, tenantId);
 
-        List<Long> subjectIds = request.getSubjectIds()
-                .stream()
-                .distinct()
-                .toList();
+        List<Long> subjectIds = request.getSubjectIds().stream().distinct().toList();
 
         List<Subject> subjects = subjectRepository.findBySubjectIdsAndTenant(subjectIds, tenantId);
-
         if (subjects.size() != subjectIds.size()) {
             throw new ResourceNotFoundException(
                     "One or more selected subjects do not exist within your institution."
             );
         }
 
-        Set<Long> assignedSubjectIds = teacherAssignmentRepository
-                .findByTeacher_TeacherId(teacherId)
-                .stream()
-                .map(a -> a.getSubject().getSubjectId())
-                .collect(Collectors.toSet());
+        List<TeacherAssignment> existingAssignments =
+                teacherAssignmentRepository.findBySubject_SubjectIdInAndTenantId(subjectIds, tenantId);
 
-        List<String> duplicateSubjects = subjects.stream()
-                .filter(s -> assignedSubjectIds.contains(s.getSubjectId()))
-                .map(Subject::getName)
-                .toList();
+        List<String> assignedToOthers = new ArrayList<>();
+        List<String> assignedToThisTeacher = new ArrayList<>();
 
-        if (!duplicateSubjects.isEmpty()) {
+        for (TeacherAssignment existing : existingAssignments) {
+            String subjectName = existing.getSubject().getName();
+            if (existing.getTeacher().getTeacherId().equals(teacher.getTeacherId())) {
+                assignedToThisTeacher.add(subjectName);
+            } else {
+                assignedToOthers.add(subjectName);
+            }
+        }
+
+        if (!assignedToOthers.isEmpty()) {
             throw new TeacherAssignmentAlreadyExistsException(
-                    "Teacher is already assigned to: " + String.join(", ", duplicateSubjects)
+                    "Already assigned to another teacher: " + String.join(", ", assignedToOthers)
+            );
+        }
+        if (!assignedToThisTeacher.isEmpty()) {
+            throw new TeacherAssignmentAlreadyExistsException(
+                    "Teacher is already assigned to: " + String.join(", ", assignedToThisTeacher)
             );
         }
 
@@ -91,12 +99,13 @@ public class TeacherAssignmentService {
         Long tenantId = requireTenantId();
 
         Teacher teacher = teacherRepository.findById(teacherId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher not found with ID: " + teacherId));
+                .orElseGet(() -> teacherRepository.findByUser_UserId(teacherId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Teacher not found with ID: " + teacherId)));
 
         validateTeacherBelongsToTenant(teacher, tenantId);
 
         return teacherAssignmentRepository
-                .findActiveByTeacherIdAndInstitutionId(teacherId, tenantId)
+                .findActiveByTeacherIdAndInstitutionId(teacher.getTeacherId(), tenantId)
                 .stream()
                 .map(mapper::toResponse)
                 .toList();
@@ -110,12 +119,14 @@ public class TeacherAssignmentService {
     ) {
         Long tenantId = requireTenantId();
         Teacher teacher = teacherRepository.findById(teacherId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher not found with ID: " + teacherId));
+                .orElseGet(() -> teacherRepository.findByUser_UserId(teacherId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Teacher not found with ID: " + teacherId)));
         validateTeacherBelongsToTenant(teacher, tenantId);
 
-        teacherAssignmentRepository.deleteByTeacherTeacherId(teacherId);
+        teacherAssignmentRepository.deleteByTeacherTeacherId(teacher.getTeacherId());
+        teacherAssignmentRepository.flush();
 
-        return assignSubjects(teacherId, request);
+        return assignSubjects(teacher.getTeacherId(), request);
     }
 
 

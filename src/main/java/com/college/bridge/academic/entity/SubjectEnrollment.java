@@ -31,6 +31,11 @@ public class SubjectEnrollment {
     @JoinColumn(name = "subject_id", nullable = false)
     private Subject subject;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
+    private ClassStatus status = ClassStatus.ACTIVE;
+
     @CreationTimestamp
     @Column(name = "enrolled_at", nullable = false, updatable = false)
     @Builder.Default

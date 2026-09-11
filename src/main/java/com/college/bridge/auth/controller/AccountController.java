@@ -3,6 +3,7 @@ package com.college.bridge.auth.controller;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,7 +35,7 @@ public class AccountController {
 
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<UserProfileResponse>> getProfile(
-            UserPrincipal principal) {
+            @AuthenticationPrincipal UserPrincipal principal) {
 
         UserProfileResponse profile =
                 accountService.getProfile(principal.getUserId());
@@ -46,7 +47,7 @@ public class AccountController {
 
     @PutMapping("/profile")
     public ResponseEntity<ApiResponse<UserProfileResponse>> updateProfile(
-            UserPrincipal principal,
+            @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody UpdateProfileRequest request) {
 
         UserProfileResponse updated =
@@ -62,7 +63,7 @@ public class AccountController {
 
     @PostMapping("/password/change")
     public ResponseEntity<ApiResponse<Void>> changePassword(
-            UserPrincipal principal,
+            @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody ChangePasswordRequest request) {
 
         accountService.changePassword(
@@ -77,7 +78,7 @@ public class AccountController {
 
     @PostMapping("/email/initiate")
     public ResponseEntity<ApiResponse<Void>> initiateEmailChange(
-            UserPrincipal principal,
+            @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody InitiateEmailChangeRequest request) {
 
         accountService.initiateEmailChange(
@@ -94,7 +95,7 @@ public class AccountController {
 
     @PostMapping("/email/confirm")
     public ResponseEntity<ApiResponse<Void>> confirmEmailChange(
-            UserPrincipal principal,
+            @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody ConfirmEmailChangeRequest request) {
 
         accountService.confirmEmailChange(
@@ -111,7 +112,7 @@ public class AccountController {
 
     @PostMapping("/profile/image")
     public ResponseEntity<ApiResponse<String>> uploadProfileImage(
-            UserPrincipal principal,
+            @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam("file") MultipartFile file) {
 
         String url =
@@ -127,7 +128,7 @@ public class AccountController {
 
     @DeleteMapping
     public ResponseEntity<ApiResponse<Void>> deleteOwnAccount(
-            UserPrincipal principal,
+            @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody(required = false) Map<String, String> body) {
 
         String password =

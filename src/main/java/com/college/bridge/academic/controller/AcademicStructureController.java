@@ -41,6 +41,15 @@ public class AcademicStructureController {
         return ResponseEntity.ok(ApiResponse.success("Academic program retrieved.", program));
     }
 
+    @PutMapping("/programs/{programId}")
+    public ResponseEntity<ApiResponse<AcademicProgramResponse>> updateProgram(
+            @PathVariable Long programId,
+            @Valid @RequestBody AcademicProgramRequest request
+    ) {
+        AcademicProgramResponse response = academicAdminService.updateProgram(programId, request);
+        return ResponseEntity.ok(ApiResponse.success("Academic program updated successfully.", response));
+    }
+
     @DeleteMapping("/programs/{programId}")
     public ResponseEntity<ApiResponse<Void>> deleteProgram(@PathVariable Long programId) {
         academicAdminService.deleteProgram(programId);
@@ -69,6 +78,15 @@ public class AcademicStructureController {
     public ResponseEntity<ApiResponse<List<AcademicLevelResponse>>> getAllLevels() {
         List<AcademicLevelResponse> levels = academicAdminService.getAllLevelsForInstitution();
         return ResponseEntity.ok(ApiResponse.success("Academic levels retrieved.", levels));
+    }
+
+    @PutMapping("/levels/{levelId}")
+    public ResponseEntity<ApiResponse<AcademicLevelResponse>> updateLevel(
+            @PathVariable Long levelId,
+            @Valid @RequestBody AcademicLevelRequest request
+    ) {
+        AcademicLevelResponse response = academicAdminService.updateLevel(levelId, request);
+        return ResponseEntity.ok(ApiResponse.success("Academic level updated successfully.", response));
     }
 
     @DeleteMapping("/levels/{levelId}")

@@ -1,6 +1,7 @@
 package com.college.bridge.academic.dto;
 
 import com.college.bridge.academic.entity.AcademicLevelType;
+import com.college.bridge.academic.entity.ClassStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -33,6 +34,7 @@ public class SubjectDetailResponse {
         private String name;
         private Integer levelNumber;
         private AcademicLevelType type;
+        private ClassStatus status;
     }
 
     @Data

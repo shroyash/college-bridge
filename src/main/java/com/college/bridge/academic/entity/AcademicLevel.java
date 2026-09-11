@@ -47,6 +47,11 @@ public class AcademicLevel {
     @Column(name = "type", nullable = false, length = 20)
     private AcademicLevelType type;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
+    private ClassStatus status = ClassStatus.ACTIVE;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default

@@ -29,12 +29,14 @@ public class StudentCohortController {
     public ResponseEntity<ApiResponse<Page<UserProfileResponse>>> getStudents(
             @RequestParam(required = false) Long programId,
             @RequestParam(required = false) Long levelId,
+            @RequestParam(required = false) String faculty,
+            @RequestParam(required = false) Integer semester,
             @RequestParam(required = false) String search,
             Pageable pageable,
             Principal principal
     ) {
         Page<UserProfileResponse> page = studentCohortService.getStudentsFiltered(
-                principal, programId, levelId, search, pageable);
+                principal, programId, levelId, faculty, semester, search, pageable);
         return ResponseEntity.ok(ApiResponse.success("Students fetched successfully.", page));
     }
 

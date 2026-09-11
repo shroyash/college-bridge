@@ -36,6 +36,24 @@ public interface TeacherAssignmentRepository extends JpaRepository<TeacherAssign
 
     Optional<TeacherAssignment> findFirstBySubject_SubjectId(Long subjectId);
 
+    @EntityGraph(attributePaths = {"teacher", "subject"})
+    List<TeacherAssignment> findBySubject_SubjectIdIn(List<Long> subjectIds);
+
+    @EntityGraph(attributePaths = {"teacher", "subject"})
+    @Query("""
+        SELECT ta FROM TeacherAssignment ta
+        JOIN ta.subject s
+        JOIN s.academicLevel al
+        JOIN al.program p
+        WHERE s.subjectId IN :subjectIds
+          AND p.institution.institutionId = :tenantId
+          AND s.deleted = false
+    """)
+    List<TeacherAssignment> findBySubject_SubjectIdInAndTenantId(
+            @Param("subjectIds") List<Long> subjectIds,
+            @Param("tenantId") Long tenantId
+    );
+
     @Query("""
     SELECT COUNT(ta) > 0
     FROM TeacherAssignment ta

@@ -77,10 +77,19 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-    @ExceptionHandler(TeacherAssignmentAlreadyExistsException.class)
-    public ResponseEntity<ApiResponse<Void>> handleTeacherAssignmentAlreadyExists(TeacherAssignmentAlreadyExistsException ex) {
+    @ExceptionHandler({
+            TeacherAssignmentAlreadyExistsException.class,
+            org.springframework.dao.DataIntegrityViolationException.class,
+            org.hibernate.exception.ConstraintViolationException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleTeacherAssignmentAlreadyExists(Exception ex) {
+        String message = ex.getMessage();
+        if (ex instanceof org.springframework.dao.DataIntegrityViolationException
+                || ex instanceof org.hibernate.exception.ConstraintViolationException) {
+            message = "This subject is already assigned to another teacher.";
+        }
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error(ex.getMessage()));
+                .body(ApiResponse.error(message != null && !message.isBlank() ? message : "This subject is already assigned to another teacher."));
     }
 
     /**

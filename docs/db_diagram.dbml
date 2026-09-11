@@ -4,32 +4,57 @@
 // ============================================================
 
 // ─────────────────────────────────────────────
+// INSTITUTION MODULE
+// ─────────────────────────────────────────────
+
+Table institutions {
+  institution_id   bigint       [pk, increment, note: "PK"]
+  name             varchar(150) [not null]
+  code             varchar(20)  [not null, unique]
+  status           varchar(20)  [not null, default: "PENDING", note: "PENDING | APPROVED | REJECTED | SUSPENDED"]
+  location         varchar(150)
+  website          varchar(255)
+  profile_image    varchar(255)
+  rejection_reason text
+  submitted_by     bigint       [ref: > users.user_id]
+  reviewed_by      bigint       [ref: > users.user_id]
+  reviewed_at      timestamp
+  created_at       timestamp    [not null]
+  updated_at       timestamp
+}
+
+// ─────────────────────────────────────────────
 // AUTH MODULE
 // ─────────────────────────────────────────────
 
 Table users {
-  user_id       bigint       [pk, increment, note: "PK"]
-  name          varchar(100) [not null]
-  email         varchar(150) [not null, unique]
-  password_hash varchar(255) [not null]
-  role          varchar(20)  [not null, note: "STUDENT | TEACHER | ADMIN"]
-  status        varchar(20)  [not null, default: "ACTIVE", note: "ACTIVE | SUSPENDED | INACTIVE"]
-  image_url     varchar(255)
-  fcm_token     varchar(255)
-  deleted       boolean      [not null, default: false]
-  deleted_at    timestamp
-  created_at    timestamp    [not null]
-  updated_at    timestamp
-  version       bigint       [note: "Optimistic lock"]
+  user_id        bigint       [pk, increment, note: "PK"]
+  institution_id bigint       [ref: > institutions.institution_id]
+  name           varchar(100) [not null]
+  email          varchar(255) [not null, unique]
+  password_hash  varchar(255) [not null]
+  role           varchar(20)  [not null, note: "SUPER_ADMIN | ADMIN | TEACHER | STUDENT"]
+  status         varchar(20)  [not null, default: "ACTIVE", note: "ACTIVE | SUSPENDED | INACTIVE | PENDING_VERIFICATION"]
+  image_url      varchar(255)
+  fcm_token      varchar(255)
+  deleted        boolean      [not null, default: false]
+  deleted_at     timestamp
+  created_at     timestamp    [not null]
+  updated_at     timestamp
+  version        bigint       [note: "Optimistic lock"]
+
+  indexes {
+    (institution_id, email) [unique, name: "uk_users_institution_email"]
+  }
 }
 
 Table students {
-  student_id        bigint  [pk, increment]
-  user_id           bigint  [not null, ref: - users.user_id]
-  academic_class_id bigint  [not null, ref: > academic_classes.class_id]
-  created_at        timestamp [not null]
-  updated_at        timestamp
-  version           bigint
+  student_id bigint    [pk, increment]
+  user_id    bigint    [not null, ref: - users.user_id]
+  level_id   bigint    [ref: > academic_levels.level_id]
+  created_at timestamp [not null]
+  updated_at timestamp
+  version    bigint
 }
 
 Table teachers {
@@ -47,20 +72,20 @@ Table admins {
 }
 
 Table refresh_tokens {
-  id               bigint       [pk, increment]
-  token            varchar(700) [not null, unique]
-  user_id          bigint       [not null, ref: > users.user_id]
-  expiry_date      timestamp    [not null]
-  revoked          boolean      [not null, default: false]
+  id                bigint       [pk, increment]
+  token             varchar(700) [not null, unique]
+  user_id           bigint       [not null, ref: > users.user_id]
+  expiry_date       timestamp    [not null]
+  revoked           boolean      [not null, default: false]
   replaced_by_token varchar(700)
-  created_at       timestamp    [not null]
+  created_at        timestamp    [not null]
 }
 
 Table one_time_passwords {
-  otp_id             bigint      [pk, increment]
+  otp_id             bigint       [pk, increment]
   email              varchar(150) [not null]
   code               varchar(10)  [not null]
-  type               varchar(20)  [not null, note: "REGISTER | FORGOT_PASSWORD | ..."]
+  type               varchar(20)  [not null, note: "REGISTER | FORGOT_PASSWORD | VERIFICATION"]
   expiry_date        timestamp    [not null]
   attempts           int          [not null, default: 0]
   verified           boolean      [not null, default: false]
@@ -77,38 +102,65 @@ Table one_time_passwords {
 // ACADEMIC MODULE
 // ─────────────────────────────────────────────
 
-Table academic_classes {
-  class_id     bigint      [pk, increment]
-  faculty      varchar(20) [not null, note: "BCA | BSC_CSIT | BIT | ..."]
-  semester     int         [not null]
-  display_name varchar(100) [not null]
-  created_at   timestamp   [not null]
+Table academic_programs {
+  program_id     bigint       [pk, increment]
+  institution_id bigint       [not null, ref: > institutions.institution_id]
+  name           varchar(100) [not null]
+  code           varchar(50)  [not null]
+  created_at     timestamp    [not null]
+  updated_at     timestamp
+  deleted        boolean      [not null, default: false]
+  deleted_at     timestamp
 
   indexes {
-    (faculty, semester) [unique]
+    (institution_id, code) [unique, name: "uk_academic_programs_institution_code"]
+  }
+}
+
+Table academic_levels {
+  level_id     bigint       [pk, increment]
+  program_id   bigint       [not null, ref: > academic_programs.program_id]
+  name         varchar(100) [not null]
+  level_number int          [not null]
+  type         varchar(20)  [not null, note: "SEMESTER | YEAR | TERM"]
+  status       varchar(20)  [not null, default: "ACTIVE", note: "ACTIVE | SUSPENDED"]
+  created_at   timestamp    [not null]
+  updated_at   timestamp
+  deleted      boolean      [not null, default: false]
+  deleted_at   timestamp
+
+  indexes {
+    (program_id, level_number) [unique, name: "uk_academic_levels_program_number"]
+    (program_id, name)         [unique, name: "uk_academic_levels_program_name"]
   }
 }
 
 Table subjects {
   subject_id   bigint       [pk, increment]
+  level_id     bigint       [not null, ref: > academic_levels.level_id]
   name         varchar(150) [not null]
-  faculty      varchar(20)  [not null]
-  semester     int          [not null]
+  code         varchar(50)
   credit_hours int
+  fcm_topic_id varchar(100) [note: "FCM topic for push notifications"]
+  created_at   timestamp    [not null]
+  updated_at   timestamp
+  deleted      boolean      [not null, default: false]
+  deleted_at   timestamp
 
   indexes {
-    (faculty, semester, name) [unique]
+    (level_id, name) [unique, name: "uk_subjects_level_name"]
   }
 }
 
 Table subject_enrollments {
-  enrollment_id bigint    [pk, increment]
-  student_id    bigint    [not null, ref: > students.student_id]
-  subject_id    bigint    [not null, ref: > subjects.subject_id]
-  enrolled_at   timestamp [not null]
+  enrollment_id bigint      [pk, increment]
+  student_id    bigint      [not null, ref: > students.student_id]
+  subject_id    bigint      [not null, ref: > subjects.subject_id]
+  status        varchar(20) [not null, default: "ACTIVE", note: "ACTIVE | SUSPENDED"]
+  enrolled_at   timestamp   [not null]
 
   indexes {
-    (student_id, subject_id) [unique]
+    (student_id, subject_id) [unique, name: "uk_subject_enrollments_student_subject"]
   }
 }
 
@@ -120,47 +172,8 @@ Table teacher_assignments {
   version       bigint
 
   indexes {
-    (teacher_id, subject_id) [unique]
+    subject_id [unique, name: "uk_teacher_assignments_subject_id"]
   }
-}
-
-// ─────────────────────────────────────────────
-// CLASS (LIVE CLASS) MODULE
-// ─────────────────────────────────────────────
-
-Table classes {
-  class_id    bigint       [pk, increment]
-  class_name  varchar(100) [not null]
-  subject     varchar(100)
-  semester    int
-  faculty     varchar(20)
-  department  varchar(100)
-  fcm_topic_id varchar(150) [not null, unique, note: "FCM topic for push notifications"]
-  teacher_id  bigint        [ref: > teachers.teacher_id, note: "Nullable until assigned by admin"]
-  created_at  timestamp    [not null]
-}
-
-Table class_enrollments {
-  enrollment_id bigint    [pk, increment]
-  class_id      bigint    [not null, ref: > classes.class_id]
-  student_id    bigint    [not null, ref: > students.student_id]
-  enrolled_at   timestamp [not null]
-
-  indexes {
-    (class_id, student_id) [unique]
-  }
-}
-
-Table calendar_events {
-  event_id        bigint       [pk, increment]
-  event_date      date         [not null]
-  event_name      varchar(200)
-  is_holiday      boolean      [not null]
-  ai_message      text
-  approval_status varchar(20)  [note: "PENDING | APPROVED | REJECTED"]
-  approved_by     bigint       [ref: > admins.admin_id, note: "FK to admins"]
-  approved_at     timestamp
-  created_at      timestamp    [not null]
 }
 
 // ─────────────────────────────────────────────
@@ -168,14 +181,13 @@ Table calendar_events {
 // ─────────────────────────────────────────────
 
 Table doubts {
-  doubt_id   bigint    [pk, increment]
-  student_id bigint    [not null, ref: > students.student_id]
-  class_id   bigint    [not null, ref: > classes.class_id]
-  question   text      [not null]
-  ai_answer  text
-  status     varchar(20) [note: "OPEN | AI_ANSWERED | TEACHER_ANSWERED | CLOSED"]
+  doubt_id   bigint      [pk, increment]
+  student_id bigint      [not null, ref: > students.student_id]
+  subject_id bigint      [not null, ref: > subjects.subject_id]
+  question   text        [not null]
+  status     varchar(20) [not null, default: "OPEN", note: "OPEN | PENDING_TEACHER | RESOLVED | CLOSED"]
   is_helpful boolean
-  created_at timestamp [not null]
+  created_at timestamp   [not null]
 }
 
 Table doubt_answers {
@@ -196,7 +208,7 @@ Table notifications {
   title           varchar(200)
   message         text         [not null]
   sender_id       bigint       [not null, ref: > users.user_id]
-  type            varchar(30)  [note: "ANNOUNCEMENT | ALERT | REMINDER | ..."]
+  type            varchar(30)  [note: "ANNOUNCEMENT | ALERT | REMINDER"]
   status          varchar(20)  [note: "PENDING | SENT | FAILED"]
   priority        varchar(10)  [note: "LOW | NORMAL | HIGH"]
   idempotency_key varchar(255) [unique]
@@ -206,8 +218,8 @@ Table notifications {
 Table notification_targets {
   target_id       bigint      [pk, increment]
   notification_id bigint      [not null, ref: > notifications.notification_id]
-  class_id        bigint      [ref: > classes.class_id]
-  target_type     varchar(20) [note: "CLASS | ALL | INDIVIDUAL"]
+  subject_id      bigint      [ref: > subjects.subject_id]
+  target_type     varchar(20) [note: "SUBJECT | ALL | INDIVIDUAL"]
 }
 
 // ─────────────────────────────────────────────
@@ -253,7 +265,6 @@ Table teacher_verification_requests {
   version          bigint
 }
 
-// Element collection — stored as a child table by Hibernate
 Table verification_documents {
   id           bigint       [pk, increment]
   request_id   bigint       [not null, ref: > teacher_verification_requests.request_id]

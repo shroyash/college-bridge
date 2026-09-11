@@ -23,6 +23,7 @@ public class ClassDetailResponse {
     private Long institutionId;
     private String createdBy;
     private String createdAt;
+    private String status;
     private List<ClassStudentResponse> students;
     private List<ClassTeacherResponse> teachers;
 }

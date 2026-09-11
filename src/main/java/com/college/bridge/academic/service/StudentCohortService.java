@@ -40,11 +40,12 @@ public class StudentCohortService {
 
     @Transactional(readOnly = true)
     public Page<UserProfileResponse> getStudentsFiltered(
-            Principal principal, Long programId, Long levelId, String search, Pageable pageable) {
+            Principal principal, Long programId, Long levelId, String faculty, Integer semester, String search, Pageable pageable) {
         Long tenantId = requireTenantId();
         String searchPattern = (search != null && !search.isBlank()) ? search.trim() : null;
+        String facultyFilter = (faculty != null && !faculty.isBlank()) ? faculty.trim() : null;
 
-        return studentRepository.findStudentsFiltered(tenantId, programId, levelId, searchPattern, pageable)
+        return studentRepository.findStudentsFiltered(tenantId, programId, levelId, facultyFilter, semester, searchPattern, pageable)
                 .map(student -> userMapper.toProfileResponse(student.getUser(), student));
     }
 

@@ -3,6 +3,7 @@ package com.college.bridge.academic.mapper;
 import com.college.bridge.academic.dto.*;
 import com.college.bridge.academic.entity.AcademicLevel;
 import com.college.bridge.academic.entity.Subject;
+import com.college.bridge.academic.entity.SubjectEnrollment;
 import com.college.bridge.auth.entity.Student;
 import com.college.bridge.auth.entity.Teacher;
 import org.mapstruct.Mapper;
@@ -42,6 +43,7 @@ public interface SubjectMapper {
     @Mapping(target = "academicLevel.name", source = "subject.academicLevel.name")
     @Mapping(target = "academicLevel.levelNumber", source = "subject.academicLevel.levelNumber")
     @Mapping(target = "academicLevel.type", source = "subject.academicLevel.type")
+    @Mapping(target = "academicLevel.status", source = "subject.academicLevel.status")
     @Mapping(target = "academicProgram.programId", source = "subject.academicLevel.program.programId")
     @Mapping(target = "academicProgram.name", source = "subject.academicLevel.program.name")
     @Mapping(target = "academicProgram.code", source = "subject.academicLevel.program.code")
@@ -62,13 +64,22 @@ public interface SubjectMapper {
             Teacher teacher
     );
 
-    @Mapping(target = "studentId", source = "studentId")
-    @Mapping(target = "userId", source = "user.userId")
+    @Mapping(target = "studentId", source = "student.studentId")
+    @Mapping(target = "userId", source = "student.user.userId")
     @Mapping(target = "fullName", expression = "java(student.getUser() != null ? student.getUser().getFullName() : \"Unknown\")")
     @Mapping(target = "email", expression = "java(student.getUser() != null ? student.getUser().getEmail() : \"\")")
     @Mapping(target = "status", expression = "java(student.getUser() != null && student.getUser().getStatus() != null ? student.getUser().getStatus().name() : \"ACTIVE\")")
     ClassStudentResponse toClassStudentResponse(
             Student student
+    );
+
+    @Mapping(target = "studentId", source = "student.studentId")
+    @Mapping(target = "userId", source = "student.user.userId")
+    @Mapping(target = "fullName", expression = "java(enrollment.getStudent() != null && enrollment.getStudent().getUser() != null ? enrollment.getStudent().getUser().getFullName() : \"Unknown\")")
+    @Mapping(target = "email", expression = "java(enrollment.getStudent() != null && enrollment.getStudent().getUser() != null ? enrollment.getStudent().getUser().getEmail() : \"\")")
+    @Mapping(target = "status", expression = "java(enrollment.getStatus() != null ? enrollment.getStatus().name() : \"ACTIVE\")")
+    ClassStudentResponse toClassStudentResponse(
+            SubjectEnrollment enrollment
     );
 
     List<ClassStudentResponse> toClassStudentResponseList(List<Student> students);
@@ -90,6 +101,7 @@ public interface SubjectMapper {
     @Mapping(target = "institutionName", expression = "java(level.getProgram() != null && level.getProgram().getInstitution() != null ? level.getProgram().getInstitution().getName() : \"\")")
     @Mapping(target = "createdBy", constant = "Institution Admin")
     @Mapping(target = "createdAt", expression = "java(level.getCreatedAt() != null ? level.getCreatedAt().toString() : \"\")")
+    @Mapping(target = "status", expression = "java(level.getStatus() != null ? level.getStatus().name() : \"ACTIVE\")")
     @Mapping(target = "students", source = "students")
     @Mapping(target = "teachers", source = "teachers")
     ClassDetailResponse toClassDetailResponse(AcademicLevel level, List<ClassStudentResponse> students, List<ClassTeacherResponse> teachers);

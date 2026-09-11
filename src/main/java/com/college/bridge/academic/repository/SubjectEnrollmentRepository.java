@@ -9,11 +9,16 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface SubjectEnrollmentRepository extends JpaRepository<SubjectEnrollment, Long> {
 
     @EntityGraph(attributePaths = {"student", "student.user"})
     List<SubjectEnrollment> findBySubject_SubjectId(Long subjectId);
+
+    Optional<SubjectEnrollment> findBySubject_SubjectIdAndStudent_StudentId(Long subjectId, Long studentId);
+
+    Optional<SubjectEnrollment> findBySubject_SubjectIdAndStudent_User_UserId(Long subjectId, Long userId);
 
     @Modifying
     @Query("DELETE FROM SubjectEnrollment se WHERE se.student.studentId IN :studentIds")

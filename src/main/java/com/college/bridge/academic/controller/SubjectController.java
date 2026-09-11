@@ -98,4 +98,58 @@ public class SubjectController {
                         subjectService.getSubjectsForStudent(studentId))
         );
     }
+
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @PutMapping("/{id}/suspend")
+    public ResponseEntity<ApiResponse<SubjectDetailResponse>> suspendSubject(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Subject suspended successfully.",
+                        subjectService.suspendSubject(id, principal))
+        );
+    }
+
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @PutMapping("/{id}/activate")
+    public ResponseEntity<ApiResponse<SubjectDetailResponse>> activateSubject(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Subject activated successfully.",
+                        subjectService.activateSubject(id, principal))
+        );
+    }
+
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'TEACHER')")
+    @PutMapping("/{subjectId}/students/{studentId}/suspend")
+    public ResponseEntity<ApiResponse<SubjectDetailResponse>> suspendStudentInSubject(
+            @PathVariable Long subjectId,
+            @PathVariable Long studentId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Student suspended from subject successfully.",
+                        subjectService.suspendStudentInSubject(subjectId, studentId, principal))
+        );
+    }
+
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'TEACHER')")
+    @PutMapping("/{subjectId}/students/{studentId}/activate")
+    public ResponseEntity<ApiResponse<SubjectDetailResponse>> activateStudentInSubject(
+            @PathVariable Long subjectId,
+            @PathVariable Long studentId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Student activated in subject successfully.",
+                        subjectService.activateStudentInSubject(subjectId, studentId, principal))
+        );
+    }
 }

@@ -59,11 +59,15 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     @Query("SELECT s FROM Student s WHERE s.user.institution.institutionId = :tenantId " +
            "AND (:programId IS NULL OR s.academicLevel.program.programId = :programId) " +
            "AND (:levelId IS NULL OR s.academicLevel.levelId = :levelId) " +
+           "AND (:faculty IS NULL OR LOWER(s.academicLevel.program.code) = LOWER(:faculty)) " +
+           "AND (:semester IS NULL OR s.academicLevel.levelNumber = :semester) " +
            "AND (:search IS NULL OR LOWER(s.user.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(s.user.email) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Student> findStudentsFiltered(
             @Param("tenantId") Long tenantId,
             @Param("programId") Long programId,
             @Param("levelId") Long levelId,
+            @Param("faculty") String faculty,
+            @Param("semester") Integer semester,
             @Param("search") String search,
             Pageable pageable
     );
