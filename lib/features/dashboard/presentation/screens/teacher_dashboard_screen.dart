@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../admin_users/domain/entities/teacher_assignment.dart';
+import '../../../auth/presentation/controllers/institution_provider.dart';
+import '../../../doubt/presentation/controllers/doubt_providers.dart';
+import '../../../doubt/presentation/screens/doubt_detail_screen.dart';
 import '../../../institution_admin/presentation/screens/teacher_classes_screen.dart';
 import '../../../institution_admin/presentation/screens/teacher_class_detail_screen.dart';
 import '../widgets/subject_card.dart';
@@ -17,7 +20,7 @@ class TeacherDashboardScreen extends ConsumerStatefulWidget {
   const TeacherDashboardScreen({
     super.key,
     required this.userName,
-    this.teacherId =1,
+    this.teacherId = 0,
     this.onLogout,
   });
 
@@ -29,6 +32,19 @@ class TeacherDashboardScreen extends ConsumerStatefulWidget {
 class _TeacherDashboardScreenState
     extends ConsumerState<TeacherDashboardScreen> {
   int _selectedBottomNavIndex = 0;
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _doubtsKey = GlobalKey();
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Good Morning';
+    } else if (hour < 17) {
+      return 'Good Afternoon';
+    } else {
+      return 'Good Evening';
+    }
+  }
 
   @override
   void initState() {
@@ -38,6 +54,23 @@ class _TeacherDashboardScreenState
           .read(teacherDashboardNotifierProvider.notifier)
           .fetchTeacherAssignments(widget.teacherId);
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToDoubts() {
+    final context = _doubtsKey.currentContext;
+    if (context != null) {
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   @override
@@ -52,36 +85,46 @@ class _TeacherDashboardScreenState
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
+        bottom: false,
         child: IndexedStack(
           index: _selectedBottomNavIndex,
           children: [
             // 0 – Home
-            RefreshIndicator(
-              onRefresh: () async {
-                await ref
-                    .read(teacherDashboardNotifierProvider.notifier)
-                    .fetchTeacherAssignments(widget.teacherId);
-              },
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(context),
-                    const SizedBox(height: 24),
-                    _buildQuickActions(),
-                    const SizedBox(height: 28),
-                    _buildMyClassesSection(state),
-                    const SizedBox(height: 28),
-                    _buildRequiresAttentionSection(),
-                    const SizedBox(height: 28),
-                    _buildLatestNoticesSection(),
-                    const SizedBox(height: 24),
-                  ],
+            Column(
+              children: [
+                _buildHeader(context),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: () async {
+                      await ref
+                          .read(teacherDashboardNotifierProvider.notifier)
+                          .fetchTeacherAssignments(widget.teacherId);
+                      ref.invalidate(doubtsListProvider((subjectId: null, search: null)));
+                    },
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildQuickActions(),
+                          const SizedBox(height: 28),
+                          _buildMyClassesSection(state),
+                          const SizedBox(height: 28),
+                          Container(
+                            key: _doubtsKey,
+                            child: _buildRequiresAttentionSection(),
+                          ),
+                          const SizedBox(height: 28),
+                          _buildLatestNoticesSection(),
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
             // 1 – Classes
             const TeacherClassesScreen(),
@@ -99,93 +142,89 @@ class _TeacherDashboardScreenState
 
   // ── 1. Header ───────────────────────────────────────────────────────────────
   Widget _buildHeader(BuildContext context) {
-    final greetingName =
-        widget.userName.isNotEmpty ? widget.userName : 'Teacher';
+    final currentInstitution = ref.watch(currentInstitutionProvider);
+    final dynamicInstitutionName = currentInstitution != null && currentInstitution.name.isNotEmpty
+        ? currentInstitution.name.toUpperCase()
+        : 'MY INSTITUTION';
 
-    return Row(
-      children: [
-        const CircleAvatar(
-          radius: 24,
-          backgroundColor: Color(0xFFCBD5E1),
-          child: Icon(Icons.person, color: Color(0xFF475569), size: 28),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '👋 Good Morning, $greetingName',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F172A),
+    final firstName = widget.userName.isNotEmpty
+        ? widget.userName.split(' ').first
+        : 'Teacher';
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: const BoxDecoration(
+        color: Color(0xFF2563EB),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text('👋', style: TextStyle(fontSize: 22)),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${_getGreeting()}, $firstName',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 2),
-              const Text(
-                'Assistant Professor • BCA',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF64748B),
-                  fontWeight: FontWeight.w500,
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.account_balance, color: Color(0xFFBFDBFE), size: 14),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$dynamicInstitutionName • TEACHER • ${DateTime.now().year}',
+                      style: const TextStyle(
+                        color: Color(0xFFBFDBFE),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        Stack(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: const Icon(
-                Icons.notifications_none_outlined,
-                color: Color(0xFF0F172A),
-                size: 22,
-              ),
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(
+              Icons.notifications_none,
+              color: Colors.white,
             ),
-            Positioned(
-              right: 2,
-              top: 2,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFDC2626),
-                  shape: BoxShape.circle,
-                ),
-                constraints: const BoxConstraints(
-                  minWidth: 16,
-                  minHeight: 16,
-                ),
-                child: const Text(
-                  '8',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
+            onPressed: () {},
+          ),
+        ],
+      ),
     );
   }
 
   // ── 2. Quick Actions ────────────────────────────────────────────────────────
   Widget _buildQuickActions() {
     final actions = [
-      {'title': 'Review Doubts', 'icon': Icons.chat_bubble_outline_rounded},
-      {'title': 'Notices', 'icon': Icons.error_outline_rounded},
-      {'title': 'Members', 'icon': Icons.people_outline_rounded},
-      {'title': 'Broadcast', 'icon': Icons.sensors_rounded},
+      {'title': 'Review Doubts', 'icon': Icons.chat_bubble_outline_rounded, 'action': _scrollToDoubts},
+      {
+        'title': 'My Classes',
+        'icon': Icons.school_outlined,
+        'action': () {
+          setState(() {
+            _selectedBottomNavIndex = 1;
+          });
+        }
+      },
+      {'title': 'Notices', 'icon': Icons.campaign_outlined, 'action': null},
+      {'title': 'Members', 'icon': Icons.people_outline_rounded, 'action': null},
     ];
 
     return Column(
@@ -213,37 +252,48 @@ class _TeacherDashboardScreenState
           ),
           itemBuilder: (context, index) {
             final action = actions[index];
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    action['icon'] as IconData,
-                    color: const Color(0xFF2563EB),
-                    size: 22,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    action['title'] as String,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1E293B),
+            final VoidCallback? onTapAction = action['action'] as VoidCallback?;
+
+            return InkWell(
+              onTap: onTapAction ??
+                  () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${action['title']} coming soon')),
+                    );
+                  },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      action['icon'] as IconData,
+                      color: const Color(0xFF2563EB),
+                      size: 22,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      action['title'] as String,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -294,7 +344,7 @@ class _TeacherDashboardScreenState
                   CircularProgressIndicator(),
                   SizedBox(height: 8),
                   Text(
-                    'Loading classes from backend...',
+                    'Loading classes...',
                     style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                   ),
                 ],
@@ -333,7 +383,7 @@ class _TeacherDashboardScreenState
             ),
           )
         else
-          _buildFallbackClassesGrid(),
+          _buildClassesGrid([]),
       ],
     );
   }
@@ -369,7 +419,7 @@ class _TeacherDashboardScreenState
             Icon(Icons.school_outlined, size: 36, color: Color(0xFF94A3B8)),
             SizedBox(height: 8),
             Text(
-              'No class assignments found from backend.',
+              'No class assigned',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -395,7 +445,7 @@ class _TeacherDashboardScreenState
       itemBuilder: (context, index) {
         final item = assignments[index];
         final facultyStr = item.faculty ?? 'BCA';
-        final semInt = item.semester ?? 3;
+        final semInt = item.semester ?? 1;
 
         return GestureDetector(
           onTap: () {
@@ -413,56 +463,7 @@ class _TeacherDashboardScreenState
             title: item.subjectName,
             teacher: '$facultyStr • Sem $semInt',
             icon: _getSubjectIcon(item.subjectName),
-            hasUpdates: index % 2 == 0,
-            badgeText: index % 2 == 0 ? 'ASSIGNED' : 'ACTIVE',
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildFallbackClassesGrid() {
-    final defaultClasses = [
-      {'id': 101, 'name': 'Mathematics', 'faculty': 'BCA', 'sem': 1},
-      {'id': 102, 'name': 'Database Management System', 'faculty': 'BCA', 'sem': 3},
-      {'id': 103, 'name': 'Operating Systems', 'faculty': 'BCA', 'sem': 3},
-      {'id': 104, 'name': 'Java Programming', 'faculty': 'BCA', 'sem': 5},
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: defaultClasses.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 1.1,
-      ),
-      itemBuilder: (context, index) {
-        final c = defaultClasses[index];
-        final name = c['name'] as String;
-        final faculty = c['faculty'] as String;
-        final sem = c['sem'] as int;
-        final id = c['id'] as int;
-
-        return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => TeacherClassDetailScreen(
-                  classId: id,
-                  className: '$name - $faculty Sem $sem',
-                ),
-              ),
-            );
-          },
-          child: SubjectCard(
-            title: name,
-            teacher: '$faculty • Sem $sem',
-            icon: _getSubjectIcon(name),
-            hasUpdates: index % 2 == 0,
+            hasUpdates: true,
             badgeText: 'ASSIGNED',
           ),
         );
@@ -470,8 +471,10 @@ class _TeacherDashboardScreenState
     );
   }
 
-  // ── 4. Requires Your Attention Section (Static) ────────────────────────────
+  // ── 4. Requires Your Attention Section (Dynamic Doubts Data) ───────────────
   Widget _buildRequiresAttentionSection() {
+    final doubtsAsync = ref.watch(doubtsListProvider((subjectId: null, search: null)));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -487,7 +490,7 @@ class _TeacherDashboardScreenState
               ),
             ),
             GestureDetector(
-              onTap: () {},
+              onTap: _scrollToDoubts,
               child: const Text(
                 'See all',
                 style: TextStyle(
@@ -500,251 +503,224 @@ class _TeacherDashboardScreenState
           ],
         ),
         const SizedBox(height: 14),
+        doubtsAsync.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (err, _) => Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Text(
+              'Could not load doubts: $err',
+              style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+            ),
+          ),
+          data: (doubts) {
+            if (doubts.isEmpty) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: const Column(
+                  children: [
+                    Icon(Icons.check_circle_outline, size: 36, color: Color(0xFF16A34A)),
+                    SizedBox(height: 8),
+                    Text(
+                      'No doubts require attention',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'All student questions in your classes have been addressed.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    ),
+                  ],
+                ),
+              );
+            }
 
-        // Card 1: Doubt Question
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF5F3FF),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFDDD6FE)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const CircleAvatar(
-                    radius: 18,
-                    backgroundColor: Color(0xFFC4B5FD),
-                    child: Icon(Icons.person, color: Colors.white, size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        RichText(
-                          text: const TextSpan(
-                            children: [
-                              TextSpan(
-                                text: '❓ ',
-                                style: TextStyle(fontSize: 14),
-                              ),
-                              TextSpan(
-                                text: 'What is Third Normal Form?',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF0F172A),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'Student: Aarav • DBMS',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFEDE9FE),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.auto_awesome,
-                      color: Color(0xFF7C3AED),
-                      size: 16,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEE2E2),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Row(
-                      children: [
-                        Text('⏳ ', style: TextStyle(fontSize: 11)),
-                        Text(
-                          'Waiting for your reply',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF991B1B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Text(
-                    '15 minutes ago',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF94A3B8),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
+            final itemsToShow = doubts.take(3).toList();
 
-        // Card 2: Student Answer Needs Review
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const CircleAvatar(
-                    radius: 18,
-                    backgroundColor: Color(0xFFE2E8F0),
-                    child: Icon(Icons.person, color: Color(0xFF475569), size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        RichText(
-                          text: const TextSpan(
-                            children: [
-                              TextSpan(
-                                text: '✔ ',
-                                style: TextStyle(
-                                    fontSize: 14, color: Color(0xFF16A34A)),
-                              ),
-                              TextSpan(
-                                text: 'Student Answer Needs Review',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF0F172A),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Topic: Difference between BCNF & 3NF',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF334155),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'Student: Sita • DBMS',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.more_vert, color: Color(0xFF94A3B8)),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.chat_bubble_outline_rounded,
-                          size: 14, color: Color(0xFF2563EB)),
-                      SizedBox(width: 6),
-                      Text(
-                        '3 Community Answers',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF475569),
-                          fontWeight: FontWeight.w500,
-                        ),
+            return ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: itemsToShow.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final doubt = itemsToShow[index];
+                final isSolved = doubt.status == 'RESOLVED' || doubt.status == 'ANSWERED';
+
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
-                  ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0265DC),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Row(
-                      children: [
-                        Text(
-                          'Review Now',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DoubtDetailScreen(doubtId: doubt.doubtId),
                         ),
-                        SizedBox(width: 4),
-                        Icon(Icons.arrow_forward,
-                            size: 14, color: Colors.white),
+                      );
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CircleAvatar(
+                              radius: 18,
+                              backgroundColor: const Color(0xFFE2E8F0),
+                              child: Text(
+                                doubt.studentName.isNotEmpty
+                                    ? doubt.studentName.substring(0, 1).toUpperCase()
+                                    : 'S',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF475569),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    doubt.question,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Student: ${doubt.studentName} • ${doubt.subjectName}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF64748B),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isSolved ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                doubt.status,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: isSolved ? const Color(0xFF15803D) : const Color(0xFFB45309),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.chat_bubble_outline_rounded,
+                                    size: 14, color: Color(0xFF2563EB)),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '${doubt.answerCount} Answers',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF475569),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => DoubtDetailScreen(doubtId: doubt.doubtId),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF2563EB),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: const Row(
+                                children: [
+                                  Text(
+                                    'Solve / Verify',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Icon(Icons.arrow_forward,
+                                      size: 14, color: Colors.white),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ],
-          ),
+                );
+              },
+            );
+          },
         ),
       ],
     );
   }
 
-  // ── 5. Latest Notices Section (Static) ──────────────────────────────────────
+  // ── 5. Latest Notices Section ──────────────────────────────────────────────
   Widget _buildLatestNoticesSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        const Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Latest Notices',
               style: TextStyle(
                 fontSize: 18,
@@ -752,93 +728,29 @@ class _TeacherDashboardScreenState
                 color: Color(0xFF0F172A),
               ),
             ),
-            GestureDetector(
-              onTap: () {},
-              child: const Text(
-                'See all',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF2563EB),
-                ),
-              ),
-            ),
           ],
         ),
         const SizedBox(height: 14),
-
-        // Notice Item 1
-        _buildNoticeTile(
-          icon: Icons.campaign_outlined,
-          iconBg: const Color(0xFFE0F2FE),
-          iconColor: const Color(0xFF0284C7),
-          title: '📢 Mid-Term Exam Schedule',
-          subtitle: 'Posted by You • Yesterday',
-        ),
-        const SizedBox(height: 10),
-
-        // Notice Item 2
-        _buildNoticeTile(
-          icon: Icons.celebration_outlined,
-          iconBg: const Color(0xFFF3E8FF),
-          iconColor: const Color(0xFF9333EA),
-          title: '🎉 Dashain Holiday Notice',
-          subtitle: 'College Administration • 2 days ago',
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: const Column(
+            children: [
+              Icon(Icons.campaign_outlined, size: 36, color: Color(0xFF94A3B8)),
+              SizedBox(height: 8),
+              Text(
+                'No notices posted',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+              ),
+            ],
+          ),
         ),
       ],
-    );
-  }
-
-  Widget _buildNoticeTile({
-    required IconData icon,
-    required Color iconBg,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: iconBg,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 

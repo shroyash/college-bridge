@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:bridge_mobile/features/institution_admin/data/models/class_detail_model.dart';
 import 'package:bridge_mobile/features/institution_admin/presentation/controllers/role_academic_providers.dart';
 import 'subject_members_screen.dart';
+import 'package:bridge_mobile/features/doubt/presentation/controllers/doubt_providers.dart';
+import 'package:bridge_mobile/features/doubt/presentation/widgets/subject_doubts_view.dart';
+import 'package:bridge_mobile/features/doubt/presentation/widgets/ask_doubt_dialog.dart';
 
 class StudentSubjectDetailScreen extends ConsumerStatefulWidget {
   final int subjectId;
@@ -28,11 +30,18 @@ class StudentSubjectDetailScreen extends ConsumerStatefulWidget {
 
 class _StudentSubjectDetailScreenState
     extends ConsumerState<StudentSubjectDetailScreen> {
-  String _selectedDoubtFilter = 'All';
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final detailsAsync = ref.watch(subjectDetailsProvider(widget.subjectId));
+    final doubtSummaryAsync = ref.watch(subjectDoubtSummaryProvider(widget.subjectId));
 
     final dynamicStudentsCount = detailsAsync.when(
       data: (ClassDetailModel? details) => details?.totalStudents ?? widget.studentsCount,
@@ -55,6 +64,18 @@ class _StudentSubjectDetailScreenState
       data: (ClassDetailModel? details) => details?.classTeacherId != null,
       loading: () => false,
       error: (_, __) => false,
+    );
+
+    final totalDoubtsText = doubtSummaryAsync.when(
+      data: (summary) => '${summary.total}',
+      loading: () => '...',
+      error: (_, __) => '0',
+    );
+
+    final unsolvedDoubtsText = doubtSummaryAsync.when(
+      data: (summary) => '${summary.unsolved}',
+      loading: () => '...',
+      error: (_, __) => '0',
     );
 
     final displaySubjectName =
@@ -93,17 +114,18 @@ class _StudentSubjectDetailScreenState
           ],
         ),
         actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Color(0xFF64748B)),
-            onSelected: (val) {},
-            itemBuilder: (ctx) => [
-              const PopupMenuItem(value: 'refresh', child: Text('Refresh Data')),
-              const PopupMenuItem(value: 'share', child: Text('Share Subject')),
-            ],
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Color(0xFF2563EB)),
+            onPressed: () {
+              ref.invalidate(subjectDetailsProvider(widget.subjectId));
+              ref.invalidate(subjectDoubtSummaryProvider(widget.subjectId));
+              ref.invalidate(doubtsListProvider);
+            },
           ),
         ],
       ),
       body: SingleChildScrollView(
+        controller: _scrollController,
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,14 +157,14 @@ class _StudentSubjectDetailScreenState
                   icon: Icons.chat_bubble_outline,
                   iconBg: const Color(0xFFECFDF5),
                   iconColor: const Color(0xFF10B981),
-                  value: '128',
-                  label: 'Discussions',
+                  value: totalDoubtsText,
+                  label: 'Total Doubts',
                 ),
                 _buildStatCard(
                   icon: Icons.access_time,
                   iconBg: const Color(0xFFFFF7ED),
                   iconColor: const Color(0xFFF59E0B),
-                  value: '26',
+                  value: unsolvedDoubtsText,
                   label: 'Unresolved',
                 ),
               ],
@@ -173,14 +195,37 @@ class _StudentSubjectDetailScreenState
                   iconBg: const Color(0xFFEFF6FF),
                   iconColor: const Color(0xFF2563EB),
                   title: 'Ask Doubt',
-                  onTap: () {},
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => AskDoubtDialog(
+                        initialSubjectId: widget.subjectId,
+                        initialSubjectName: displaySubjectName,
+                      ),
+                    ).then((posted) {
+                      if (posted == true) {
+                        ref.invalidate(subjectDoubtSummaryProvider(widget.subjectId));
+                        ref.invalidate(doubtsListProvider);
+                      }
+                    });
+                  },
                 ),
                 _buildQuickActionCard(
                   icon: Icons.chat_bubble_outline,
                   iconBg: const Color(0xFFEFF6FF),
                   iconColor: const Color(0xFF2563EB),
                   title: 'View Doubts',
-                  onTap: () {},
+                  onTap: () {
+                    ref.invalidate(subjectDoubtSummaryProvider(widget.subjectId));
+                    ref.invalidate(doubtsListProvider);
+                    if (_scrollController.hasClients) {
+                      _scrollController.animateTo(
+                        _scrollController.position.maxScrollExtent,
+                        duration: const Duration(milliseconds: 400),
+                        curve: Curves.easeInOut,
+                      );
+                    }
+                  },
                 ),
                 _buildQuickActionCard(
                   icon: Icons.campaign_outlined,
@@ -211,128 +256,13 @@ class _StudentSubjectDetailScreenState
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
-            // ── 3. Latest Teacher Announcement ─────────────────────────────────
-            const Text(
-              'Latest Teacher Announcement',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0F172A),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFEFF6FF),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.campaign_outlined,
-                      color: Color(0xFF2563EB),
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Mid-term exam on Monday',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '$dynamicTeacherName  •  Yesterday',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // ── 4. Recent Doubts ──────────────────────────────────────────────
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Recent Doubts',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                Row(
-                  children: [
-                    _buildDoubtFilterChip('All', _selectedDoubtFilter == 'All', () {
-                      setState(() => _selectedDoubtFilter = 'All');
-                    }),
-                    const SizedBox(width: 6),
-                    _buildDoubtFilterChip('Unsolved', _selectedDoubtFilter == 'Unsolved', () {
-                      setState(() => _selectedDoubtFilter = 'Unsolved');
-                    }),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            // Doubts Cards
-            _buildDoubtCard(
-              title: 'What is Third Normal Form?',
-              author: 'Aarav',
-              badgeText: '✓ Verified Answer',
-              badgeBg: const Color(0xFFDCFCE7),
-              badgeTextColor: const Color(0xFF15803D),
-              repliesCount: '8',
-              likesCount: '21',
-            ),
-            const SizedBox(height: 10),
-            _buildDoubtCard(
-              title: 'Explain BCNF',
-              author: 'Sita',
-              badgeText: '🕒 Waiting for Teacher',
-              badgeBg: const Color(0xFFFFEDD5),
-              badgeTextColor: const Color(0xFFC2410C),
-              repliesCount: '4',
-            ),
-            const SizedBox(height: 10),
-            _buildDoubtCard(
-              title: 'Difference between 2NF and 3NF',
-              author: 'Ram',
-              badgeText: '👥 Community Discussion',
-              badgeBg: const Color(0xFFDBEAFE),
-              badgeTextColor: const Color(0xFF1D4ED8),
+            // ── 3. Doubts Section ─────────────────────────────────────────────
+            SubjectDoubtsView(
+              subjectId: widget.subjectId,
+              subjectName: displaySubjectName,
+              isTeacher: false,
             ),
             const SizedBox(height: 24),
           ],
@@ -454,121 +384,6 @@ class _StudentSubjectDetailScreenState
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildDoubtFilterChip(String label, bool isSelected, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: isSelected ? Colors.white : const Color(0xFF64748B),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDoubtCard({
-    required String title,
-    required String author,
-    required String badgeText,
-    required Color badgeBg,
-    required Color badgeTextColor,
-    String? repliesCount,
-    String? likesCount,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.015),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: badgeBg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  badgeText,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: badgeTextColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            author,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF64748B),
-            ),
-          ),
-          if (repliesCount != null || likesCount != null) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                if (repliesCount != null) ...[
-                  const Icon(Icons.chat_bubble_outline, size: 14, color: Color(0xFF64748B)),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$repliesCount Replies',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                  ),
-                ],
-                if (likesCount != null) ...[
-                  const SizedBox(width: 16),
-                  const Icon(Icons.thumb_up_alt_outlined, size: 14, color: Color(0xFF64748B)),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$likesCount Likes',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ],
       ),
     );
   }

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:bridge_mobile/features/institution_admin/data/models/class_detail_model.dart';
 import 'package:bridge_mobile/features/institution_admin/presentation/controllers/role_academic_providers.dart';
 import 'subject_members_screen.dart';
+import 'package:bridge_mobile/features/doubt/presentation/controllers/doubt_providers.dart';
+import 'package:bridge_mobile/features/doubt/presentation/widgets/subject_doubts_view.dart';
 
 class ClassDetailsScreen extends ConsumerStatefulWidget {
   final int classId;
@@ -20,8 +21,14 @@ class ClassDetailsScreen extends ConsumerStatefulWidget {
 }
 
 class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen> {
-  String _selectedDoubtFilter = 'All';
   bool _isActionLoading = false;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   /// Overrides the provider data locally after a suspend/activate action
   /// so the UI flips immediately without waiting on a re-fetch.
@@ -79,6 +86,19 @@ class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen> {
         widget.className.isNotEmpty ? widget.className : 'Untitled Class';
 
     final detailsAsync = ref.watch(subjectDetailsProvider(widget.classId));
+    final doubtSummaryAsync = ref.watch(subjectDoubtSummaryProvider(widget.classId));
+
+    final totalDoubtsText = doubtSummaryAsync.when(
+      data: (summary) => '${summary.total}',
+      loading: () => '...',
+      error: (_, __) => '0',
+    );
+
+    final unsolvedDoubtsText = doubtSummaryAsync.when(
+      data: (summary) => '${summary.unsolved}',
+      loading: () => '...',
+      error: (_, __) => '0',
+    );
 
     // _localDetailsOverride is set immediately after a suspend/activate API call
     // using the response body — so the banner flips without waiting for a re-fetch.
@@ -125,6 +145,14 @@ class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Color(0xFF2563EB)),
+            onPressed: () {
+              ref.invalidate(subjectDetailsProvider(widget.classId));
+              ref.invalidate(subjectDoubtSummaryProvider(widget.classId));
+              ref.invalidate(doubtsListProvider);
+            },
+          ),
           if (effectiveDetails != null)
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, color: Color(0xFF64748B)),
@@ -147,7 +175,7 @@ class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen> {
         ],
       ),
       body: effectiveDetails != null
-          ? _buildBody(context, effectiveDetails, displayClassName)
+          ? _buildBody(context, effectiveDetails, displayClassName, totalDoubtsText, unsolvedDoubtsText)
           : detailsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => _buildErrorState(e.toString()),
@@ -186,6 +214,8 @@ class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen> {
     BuildContext context,
     ClassDetailModel? details,
     String displayClassName,
+    String totalDoubtsText,
+    String unsolvedDoubtsText,
   ) {
     final studentsCount = details?.totalStudents ?? 0;
     final hasAssignedTeacher = details?.classTeacherId != null;
@@ -193,6 +223,7 @@ class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen> {
     final isActive = details?.status.toUpperCase() == 'ACTIVE';
 
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -282,14 +313,14 @@ class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen> {
                 icon: Icons.chat_bubble_outline,
                 iconBg: const Color(0xFFECFDF5),
                 iconColor: const Color(0xFF10B981),
-                value: '—',
-                label: 'Discussions',
+                value: totalDoubtsText,
+                label: 'Total Doubts',
               ),
               _buildStatCard(
                 icon: Icons.access_time,
                 iconBg: const Color(0xFFFFF7ED),
                 iconColor: const Color(0xFFF59E0B),
-                value: '—',
+                value: unsolvedDoubtsText,
                 label: 'Unresolved',
               ),
             ],
@@ -327,7 +358,17 @@ class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen> {
                 iconBg: const Color(0xFFEFF6FF),
                 iconColor: const Color(0xFF2563EB),
                 title: 'Review Doubts',
-                onTap: () {},
+                onTap: () {
+                  ref.invalidate(subjectDoubtSummaryProvider(widget.classId));
+                  ref.invalidate(doubtsListProvider);
+                  if (_scrollController.hasClients) {
+                    _scrollController.animateTo(
+                      _scrollController.position.maxScrollExtent,
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeInOut,
+                    );
+                  }
+                },
               ),
               _buildQuickActionCard(
                 icon: Icons.campaign_outlined,
@@ -442,53 +483,13 @@ class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
-          // ── 4. Recent Doubts ──────────────────────────────────────────────
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Recent Doubts',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-              Row(
-                children: [
-                  _buildDoubtFilterChip('All', _selectedDoubtFilter == 'All', () {
-                    setState(() => _selectedDoubtFilter = 'All');
-                  }),
-                  const SizedBox(width: 6),
-                  _buildDoubtFilterChip('Unsolved', _selectedDoubtFilter == 'Unsolved', () {
-                    setState(() => _selectedDoubtFilter = 'Unsolved');
-                  }),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: const Center(
-              child: Column(
-                children: [
-                  Icon(Icons.question_answer_outlined, color: Color(0xFFCBD5E1), size: 36),
-                  SizedBox(height: 8),
-                  Text(
-                    'Doubts feature coming soon',
-                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
+          // ── 4. Doubts Section ─────────────────────────────────────────────
+          SubjectDoubtsView(
+            subjectId: widget.classId,
+            subjectName: displayClassName,
+            isTeacher: true,
           ),
           const SizedBox(height: 24),
         ],
@@ -607,27 +608,6 @@ class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen> {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDoubtFilterChip(String label, bool isSelected, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: isSelected ? Colors.white : const Color(0xFF64748B),
           ),
         ),
       ),

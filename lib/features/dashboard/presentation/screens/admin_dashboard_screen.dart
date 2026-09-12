@@ -31,6 +31,17 @@ class AdminDashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Good Morning';
+    } else if (hour < 17) {
+      return 'Good Afternoon';
+    } else {
+      return 'Good Evening';
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -43,7 +54,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(adminDashboardNotifierProvider);
     final currentInstitution = ref.watch(currentInstitutionProvider);
-    final displayInstitution = currentInstitution?.name;
+    final dynamicInstitutionName = currentInstitution != null && currentInstitution.name.isNotEmpty
+        ? currentInstitution.name.toUpperCase()
+        : 'MY INSTITUTION';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -55,7 +68,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: const BoxDecoration(
-                color: Color(0xFF1E40AF), // Dark blue header
+                color: Color(0xFF2563EB),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -64,24 +77,35 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Admin Dashboard',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            const Text('👋', style: TextStyle(fontSize: 22)),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${_getGreeting()}, ${widget.userName.split(' ').first}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          '${widget.userName} • ${displayInstitution != null && displayInstitution.isNotEmpty ? displayInstitution : 'Administrator'}',
-                          style: TextStyle(
-                            color: Colors.blue[100],
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        Row(
+                          children: [
+                            const Icon(Icons.account_balance, color: Color(0xFFBFDBFE), size: 14),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$dynamicInstitutionName • ADMIN • ${DateTime.now().year}',
+                              style: const TextStyle(
+                                color: Color(0xFFBFDBFE),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

@@ -126,7 +126,7 @@ class StudentDetailsDialog extends ConsumerWidget {
                   return const Padding(
                     padding: EdgeInsets.symmetric(vertical: 8),
                     child: Text(
-                      'No classes currently enrolled.',
+                      'No enrollment',
                       style: TextStyle(color: Color(0xFF64748B)),
                     ),
                   );
@@ -136,7 +136,7 @@ class StudentDetailsDialog extends ConsumerWidget {
                   return const Padding(
                     padding: EdgeInsets.symmetric(vertical: 8),
                     child: Text(
-                      'No classes currently enrolled.',
+                      'No enrollment',
                       style: TextStyle(color: Color(0xFF64748B)),
                     ),
                   );
@@ -148,19 +148,20 @@ class StudentDetailsDialog extends ConsumerWidget {
                     itemCount: subjects.length,
                     itemBuilder: (context, index) {
                       final sub = subjects[index];
+                      final codeText = sub.code != null && sub.code!.isNotEmpty ? ' (${sub.code})' : '';
                       return ListTile(
                         dense: true,
                         contentPadding: EdgeInsets.zero,
                         leading: const Icon(Icons.school,
                             color: Color(0xFF2563EB), size: 20),
                         title: Text(
-                          '${sub.faculty} - ${sub.name}',
+                          '${sub.name}$codeText',
                           style: const TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
                           ),
                         ),
-                        subtitle: Text('${sub.creditHours} Credits'),
+                        subtitle: Text('${sub.programName} • ${sub.creditHours} Credits'),
                       );
                     },
                   ),

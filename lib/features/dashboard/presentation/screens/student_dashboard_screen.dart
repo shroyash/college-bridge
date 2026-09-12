@@ -7,11 +7,14 @@ import '../controllers/dashboard_state.dart';
 import '../../domain/entities/subject.dart';
 import '../widgets/subject_card.dart';
 import 'student_profile_screen.dart';
-import 'help_and_support_screen.dart';
 import 'package:bridge_mobile/features/institution_admin/presentation/controllers/role_academic_providers.dart';
 import 'package:bridge_mobile/features/institution_admin/presentation/screens/student_classes_screen.dart';
 import 'package:bridge_mobile/features/institution_admin/presentation/screens/student_subject_detail_screen.dart';
 import 'package:bridge_mobile/features/institution_admin/presentation/screens/subject_members_screen.dart';
+import 'package:bridge_mobile/features/doubt/presentation/screens/student_doubts_screen.dart';
+import 'package:bridge_mobile/features/doubt/presentation/widgets/ask_doubt_dialog.dart';
+import 'package:bridge_mobile/features/doubt/presentation/controllers/doubt_providers.dart';
+import 'package:bridge_mobile/features/doubt/presentation/screens/doubt_detail_screen.dart';
 
 class StudentDashboardScreen extends ConsumerStatefulWidget {
   final String userName;
@@ -51,6 +54,7 @@ class _StudentDashboardScreenState
     final state = ref.watch(studentDashboardNotifierProvider);
     final classDetailAsync = ref.watch(studentClassDetailsProvider);
     final currentInstitution = ref.watch(currentInstitutionProvider);
+    final recentDoubtsAsync = ref.watch(doubtsListProvider((subjectId: null, search: null)));
 
     final dynamicInstitutionName = currentInstitution != null && currentInstitution.name.isNotEmpty
         ? currentInstitution.name.toUpperCase()
@@ -164,9 +168,10 @@ class _StudentDashboardScreenState
                 // Content
                 Expanded(
                   child: RefreshIndicator(
-                    onRefresh: () => ref
-                        .read(studentDashboardNotifierProvider.notifier)
-                        .fetchMySubjects(),
+                    onRefresh: () async {
+                      ref.read(studentDashboardNotifierProvider.notifier).fetchMySubjects();
+                      ref.invalidate(doubtsListProvider);
+                    },
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(24),
                       physics: const AlwaysScrollableScrollPhysics(),
@@ -191,19 +196,24 @@ class _StudentDashboardScreenState
                                       'Ask Doubt',
                                       const Color(0xFF2563EB),
                                       onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => const HelpAndSupportScreen(),
-                                          ),
-                                        );
+                                        showDialog(
+                                          context: context,
+                                          builder: (_) => const AskDoubtDialog(),
+                                        ).then((posted) {
+                                          if (posted == true) {
+                                            ref.invalidate(doubtsListProvider);
+                                          }
+                                        });
                                       })),
                               const SizedBox(width: 16),
                               Expanded(
                                   child: _buildActionBtn(
                                       Icons.chat_bubble_outline,
                                       'View Doubts',
-                                      const Color(0xFF2563EB))),
+                                      const Color(0xFF2563EB),
+                                      onTap: () {
+                                        setState(() => _selectedBottomNavIndex = 3);
+                                      })),
                             ],
                           ),
                           const SizedBox(height: 16),
@@ -328,7 +338,9 @@ class _StudentDashboardScreenState
                                 ),
                               ),
                               TextButton(
-                                onPressed: () {},
+                                onPressed: () {
+                                  setState(() => _selectedBottomNavIndex = 3);
+                                },
                                 child: const Text('See all >',
                                     style: TextStyle(
                                         color: Color(0xFF2563EB),
@@ -337,53 +349,129 @@ class _StudentDashboardScreenState
                             ],
                           ),
                           const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                  color: const Color(0xFFE2E8F0)),
+                          recentDoubtsAsync.when(
+                            loading: () => const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(16),
+                                child: CircularProgressIndicator(),
+                              ),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text('DBMS',
-                                        style: TextStyle(
-                                            color: Color(0xFF2563EB),
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12)),
-                                    Text('Asked • 2 hours ago',
-                                        style: TextStyle(
-                                            color: Colors.grey[500],
-                                            fontSize: 10)),
-                                  ],
+                            error: (err, _) => Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: Text(
+                                'Could not load recent doubts',
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                            ),
+                            data: (doubts) {
+                              if (doubts.isEmpty) {
+                                return Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      const Text(
+                                        'No doubts asked yet',
+                                        style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      const Text(
+                                        'Ask a question to start peer learning!',
+                                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+
+                              final latestDoubt = doubts.first;
+                              final isSolved = latestDoubt.status == 'RESOLVED' || latestDoubt.status == 'ANSWERED';
+
+                              return Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: const Color(0xFFE2E8F0)),
                                 ),
-                                const SizedBox(height: 8),
-                                const Text('What is Database Normalization?',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 15)),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.hourglass_empty,
-                                        color: Color(0xFFF59E0B), size: 14),
-                                    const SizedBox(width: 4),
-                                    Text('Waiting for teacher reply',
-                                        style: TextStyle(
-                                            color: Colors.orange[600],
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500)),
-                                  ],
-                                )
-                              ],
-                            ),
-                          )
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => DoubtDetailScreen(doubtId: latestDoubt.doubtId),
+                                      ),
+                                    );
+                                  },
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(latestDoubt.subjectName,
+                                              style: const TextStyle(
+                                                  color: Color(0xFF2563EB),
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12)),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: isSolved ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              latestDoubt.status,
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: isSolved ? const Color(0xFF15803D) : const Color(0xFFB45309),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(latestDoubt.question,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 15)),
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            isSolved ? Icons.check_circle : Icons.hourglass_empty,
+                                            color: isSolved ? const Color(0xFF16A34A) : const Color(0xFFF59E0B),
+                                            size: 14,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '${latestDoubt.answerCount} answers • ${latestDoubt.verifiedAnswerCount} verified',
+                                            style: TextStyle(
+                                                color: isSolved ? Colors.green[700] : Colors.orange[600],
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                         ],
                       ),
                     ),
@@ -397,8 +485,8 @@ class _StudentDashboardScreenState
             ),
             // 2 – Alerts (placeholder)
             const Center(child: Text('Notices')),
-            // 3 – Doubts (placeholder)
-            const Center(child: Text('Doubts')),
+            // 3 – Doubts
+            const StudentDoubtsScreen(),
             // 4 – Profile
             StudentProfileScreen(onLogout: widget.onLogout),
 
