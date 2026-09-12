@@ -91,4 +91,10 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
                OR LOWER(u.name) LIKE LOWER(CONCAT('%', :query, '%')))
     """)
     Page<User> searchAllInstitutions(@Param("query") String query, Pageable pageable);
+
+    @Query("SELECT u FROM User u WHERE u.userId = :userId AND u.institution.institutionId = :institutionId AND u.deleted = false")
+    Optional<User> findByIdAndInstitutionId(
+            @Param("userId") Long userId,
+            @Param("institutionId") Long institutionId
+    );
 }

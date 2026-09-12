@@ -73,6 +73,16 @@ public class SecurityConfig {
                         .requestMatchers("/api/account/**").authenticated()
 
                         .requestMatchers(HttpMethod.GET, "/api/classes/my-classes").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/doubts")
+                        .hasRole("STUDENT")
+
+                        .requestMatchers(HttpMethod.POST, "/api/doubts/*/answers")
+                        .hasAnyRole("STUDENT", "TEACHER")
+
+                        .requestMatchers(HttpMethod.PATCH, "/api/doubt-answers/*/verify")
+                        .hasRole("TEACHER")
+                        .requestMatchers(HttpMethod.PATCH, "/api/doubts/*/answers/*/verify")
+                        .hasRole("TEACHER")
 
                         .anyRequest().authenticated()
                 )

@@ -10,7 +10,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "doubts")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -33,14 +34,15 @@ public class Doubt {
     private String question;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", length = 20)
-    private DoubtStatus status;
+    @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
+    private DoubtStatus status = DoubtStatus.OPEN;
 
-    @Column(name = "is_helpful")
-    private Boolean isHelpful;
+    @Column(name = "is_helpful", nullable = false)
+    @Builder.Default
+    private Boolean isHelpful = false;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 }

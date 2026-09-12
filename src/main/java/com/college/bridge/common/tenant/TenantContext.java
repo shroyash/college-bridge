@@ -15,6 +15,14 @@ public class TenantContext {
         return CURRENT_TENANT.get();
     }
 
+    public static Long requireTenant() {
+        Long tenantId = CURRENT_TENANT.get();
+        if (tenantId == null) {
+            throw new com.college.bridge.common.exception.AccessDeniedException("Tenant context required");
+        }
+        return tenantId;
+    }
+
     public static void clear() {
         CURRENT_TENANT.remove();
     }

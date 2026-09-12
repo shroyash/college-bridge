@@ -131,4 +131,19 @@ public interface SubjectRepository extends JpaRepository<Subject, Long> {
             @Param("subjectIds") List<Long> subjectIds,
             @Param("tenantId") Long tenantId
     );
+    @Query("""
+    SELECT COUNT(s) > 0
+    FROM Subject s
+    JOIN s.academicLevel al
+    JOIN al.program p
+    WHERE s.subjectId = :subjectId
+      AND p.institution.institutionId = :tenantId
+      AND s.deleted = false
+      AND al.deleted = false
+      AND p.deleted = false
+""")
+    boolean existsActiveByIdAndInstitutionId(
+            @Param("subjectId") Long subjectId,
+            @Param("tenantId") Long tenantId
+    );
 }

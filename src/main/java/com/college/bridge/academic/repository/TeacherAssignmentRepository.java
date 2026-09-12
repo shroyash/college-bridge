@@ -84,4 +84,27 @@ public interface TeacherAssignmentRepository extends JpaRepository<TeacherAssign
             @Param("assignmentId") Long assignmentId,
             @Param("tenantId") Long tenantId
     );
+
+
+    @Query("""
+    SELECT CASE WHEN COUNT(ta) > 0 THEN true ELSE false END
+    FROM TeacherAssignment ta
+    JOIN ta.teacher t
+    JOIN t.user u
+    JOIN ta.subject s
+    JOIN s.academicLevel al
+    JOIN al.program p
+    WHERE t.teacherId = :teacherId
+      AND s.subjectId = :subjectId
+      AND u.institution.institutionId = :tenantId
+      AND p.institution.institutionId = :tenantId
+      AND s.deleted = false
+      AND al.deleted = false
+      AND p.deleted = false
+""")
+    boolean existsByTeacherSubjectAndTenant(
+            @Param("teacherId") Long teacherId,
+            @Param("subjectId") Long subjectId,
+            @Param("tenantId") Long tenantId
+    );
 }

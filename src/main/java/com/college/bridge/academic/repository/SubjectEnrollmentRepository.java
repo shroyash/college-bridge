@@ -1,6 +1,7 @@
 package com.college.bridge.academic.repository;
 
 import com.college.bridge.academic.dto.SubjectResponse;
+import com.college.bridge.academic.entity.ClassStatus;
 import com.college.bridge.academic.entity.SubjectEnrollment;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -98,5 +99,46 @@ public interface SubjectEnrollmentRepository extends JpaRepository<SubjectEnroll
     List<SubjectResponse> findSubjectsForStudent(
             @Param("studentId") Long studentId,
             @Param("tenantId") Long tenantId
+    );
+    @Query("""
+        SELECT CASE WHEN COUNT(se) > 0 THEN true ELSE false END
+        FROM SubjectEnrollment se
+        JOIN se.subject s
+        JOIN s.academicLevel al
+        JOIN al.program p
+        WHERE se.student.studentId = :studentId
+          AND s.subjectId = :subjectId
+          AND p.institution.institutionId = :tenantId
+          AND s.deleted = false
+          AND al.deleted = false
+          AND p.deleted = false
+          AND se.status = :status
+    """)
+    boolean existsByStudentSubjectAndTenantAndStatus(
+            @Param("studentId") Long studentId,
+            @Param("subjectId") Long subjectId,
+            @Param("tenantId") Long tenantId,
+            @Param("status") ClassStatus status
+    );
+
+    @Query("""
+        SELECT se
+        FROM SubjectEnrollment se
+        JOIN FETCH se.subject s
+        JOIN FETCH s.academicLevel al
+        JOIN FETCH al.program p
+        WHERE se.student.studentId = :studentId
+          AND s.subjectId = :subjectId
+          AND p.institution.institutionId = :tenantId
+          AND s.deleted = false
+          AND al.deleted = false
+          AND p.deleted = false
+          AND se.status = :status
+    """)
+    Optional<SubjectEnrollment> findActiveEnrollment(
+            @Param("studentId") Long studentId,
+            @Param("subjectId") Long subjectId,
+            @Param("tenantId") Long tenantId,
+            @Param("status") ClassStatus status
     );
 }
