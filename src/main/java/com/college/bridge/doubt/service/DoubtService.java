@@ -29,11 +29,7 @@ import com.college.bridge.doubt.dto.DoubtAnswerResponse;
 import com.college.bridge.doubt.dto.DoubtSummaryResponse;
 import com.college.bridge.doubt.mapper.DoubtAnswerMapper;
 import com.college.bridge.doubt.entity.DoubtAnswer;
-import com.college.bridge.auth.entity.UserRole;
 
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
