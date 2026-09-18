@@ -131,7 +131,7 @@ public class DoubtService {
 
         } else {
             throw new AccessDeniedException(
-                    "You cannot access doubts"
+                    "You cannot access this doubts"
             );
         }
 
