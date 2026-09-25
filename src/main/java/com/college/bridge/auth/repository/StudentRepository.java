@@ -21,6 +21,8 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     @EntityGraph(attributePaths = {"academicLevel", "academicLevel.program", "user"})
     Optional<Student> findByUser_UserId(Long userId);
 
+    @EntityGraph(attributePaths = {"academicLevel", "academicLevel.program", "user"})
+    Optional<Student> findByUser_UserIdAndUser_Institution_InstitutionId(Long userId, Long institutionId);
 
     @EntityGraph(attributePaths = {"academicLevel", "academicLevel.program", "user"})
     Optional<Student> findByStudentIdAndUser_Institution_InstitutionId(Long studentId, Long institutionId);

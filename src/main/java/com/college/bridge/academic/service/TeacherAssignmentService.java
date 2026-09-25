@@ -59,26 +59,15 @@ public class TeacherAssignmentService {
         List<TeacherAssignment> existingAssignments =
                 teacherAssignmentRepository.findBySubject_SubjectIdInAndTenantId(subjectIds, tenantId);
 
-        List<String> assignedToOthers = new ArrayList<>();
-        List<String> assignedToThisTeacher = new ArrayList<>();
 
-        for (TeacherAssignment existing : existingAssignments) {
-            String subjectName = existing.getSubject().getName();
-            if (existing.getTeacher().getTeacherId().equals(teacher.getTeacherId())) {
-                assignedToThisTeacher.add(subjectName);
-            } else {
-                assignedToOthers.add(subjectName);
-            }
-        }
+        List<String> alreadyAssignedSubjects = existingAssignments.stream()
+                .map(assignment -> assignment.getSubject().getName())
+                .toList();
 
-        if (!assignedToOthers.isEmpty()) {
+        if (!alreadyAssignedSubjects.isEmpty()) {
             throw new TeacherAssignmentAlreadyExistsException(
-                    "Already assigned to another teacher: " + String.join(", ", assignedToOthers)
-            );
-        }
-        if (!assignedToThisTeacher.isEmpty()) {
-            throw new TeacherAssignmentAlreadyExistsException(
-                    "Teacher is already assigned to: " + String.join(", ", assignedToThisTeacher)
+                    "Teacher already assigned to: " +
+                            String.join(", ", alreadyAssignedSubjects)
             );
         }
 

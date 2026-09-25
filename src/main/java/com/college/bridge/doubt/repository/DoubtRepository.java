@@ -346,4 +346,146 @@ public interface DoubtRepository extends JpaRepository<Doubt, Long> {
             @Param("subjectId") Long subjectId,
             @Param("tenantId") Long tenantId
     );
+
+    @Query("""
+        SELECT COUNT(d)
+        FROM Doubt d
+        JOIN d.subject s
+        JOIN s.academicLevel al
+        JOIN al.program p
+        WHERE (:subjectId IS NULL OR s.subjectId = :subjectId)
+          AND p.institution.institutionId = :tenantId
+          AND EXISTS (
+              SELECT 1
+              FROM TeacherAssignment ta
+              JOIN ta.teacher t
+              JOIN t.user teacherUser
+              WHERE t.teacherId = :teacherId
+                AND teacherUser.institution.institutionId = :tenantId
+                AND ta.subject.subjectId = s.subjectId
+          )
+    """)
+    long countTotalForTeacher(
+            @Param("teacherId") Long teacherId,
+            @Param("subjectId") Long subjectId,
+            @Param("tenantId") Long tenantId
+    );
+
+    @Query("""
+        SELECT COUNT(d)
+        FROM Doubt d
+        JOIN d.subject s
+        JOIN s.academicLevel al
+        JOIN al.program p
+        WHERE (:subjectId IS NULL OR s.subjectId = :subjectId)
+          AND p.institution.institutionId = :tenantId
+          AND (d.status = com.college.bridge.doubt.entity.DoubtStatus.ANSWERED OR d.status = com.college.bridge.doubt.entity.DoubtStatus.RESOLVED)
+          AND EXISTS (
+              SELECT 1
+              FROM TeacherAssignment ta
+              JOIN ta.teacher t
+              JOIN t.user teacherUser
+              WHERE t.teacherId = :teacherId
+                AND teacherUser.institution.institutionId = :tenantId
+                AND ta.subject.subjectId = s.subjectId
+          )
+    """)
+    long countSolvedForTeacher(
+            @Param("teacherId") Long teacherId,
+            @Param("subjectId") Long subjectId,
+            @Param("tenantId") Long tenantId
+    );
+
+    @Query("""
+        SELECT COUNT(d)
+        FROM Doubt d
+        JOIN d.subject s
+        JOIN s.academicLevel al
+        JOIN al.program p
+        WHERE (:subjectId IS NULL OR s.subjectId = :subjectId)
+          AND p.institution.institutionId = :tenantId
+          AND d.status = com.college.bridge.doubt.entity.DoubtStatus.OPEN
+          AND EXISTS (
+              SELECT 1
+              FROM TeacherAssignment ta
+              JOIN ta.teacher t
+              JOIN t.user teacherUser
+              WHERE t.teacherId = :teacherId
+                AND teacherUser.institution.institutionId = :tenantId
+                AND ta.subject.subjectId = s.subjectId
+          )
+    """)
+    long countUnsolvedForTeacher(
+            @Param("teacherId") Long teacherId,
+            @Param("subjectId") Long subjectId,
+            @Param("tenantId") Long tenantId
+    );
+
+    @Query("""
+        SELECT COUNT(d)
+        FROM Doubt d
+        JOIN d.subject s
+        JOIN s.academicLevel al
+        JOIN al.program p
+        WHERE (:subjectId IS NULL OR s.subjectId = :subjectId)
+          AND p.institution.institutionId = :tenantId
+          AND EXISTS (
+              SELECT 1
+              FROM SubjectEnrollment se
+              WHERE se.student.studentId = :studentId
+                AND se.subject.subjectId = s.subjectId
+                AND se.status = com.college.bridge.academic.entity.ClassStatus.ACTIVE
+          )
+    """)
+    long countTotalForStudent(
+            @Param("studentId") Long studentId,
+            @Param("subjectId") Long subjectId,
+            @Param("tenantId") Long tenantId
+    );
+
+    @Query("""
+        SELECT COUNT(d)
+        FROM Doubt d
+        JOIN d.subject s
+        JOIN s.academicLevel al
+        JOIN al.program p
+        WHERE (:subjectId IS NULL OR s.subjectId = :subjectId)
+          AND p.institution.institutionId = :tenantId
+          AND (d.status = com.college.bridge.doubt.entity.DoubtStatus.ANSWERED OR d.status = com.college.bridge.doubt.entity.DoubtStatus.RESOLVED)
+          AND EXISTS (
+              SELECT 1
+              FROM SubjectEnrollment se
+              WHERE se.student.studentId = :studentId
+                AND se.subject.subjectId = s.subjectId
+                AND se.status = com.college.bridge.academic.entity.ClassStatus.ACTIVE
+          )
+    """)
+    long countSolvedForStudent(
+            @Param("studentId") Long studentId,
+            @Param("subjectId") Long subjectId,
+            @Param("tenantId") Long tenantId
+    );
+
+    @Query("""
+        SELECT COUNT(d)
+        FROM Doubt d
+        JOIN d.subject s
+        JOIN s.academicLevel al
+        JOIN al.program p
+        WHERE (:subjectId IS NULL OR s.subjectId = :subjectId)
+          AND p.institution.institutionId = :tenantId
+          AND d.status = com.college.bridge.doubt.entity.DoubtStatus.OPEN
+          AND EXISTS (
+              SELECT 1
+              FROM SubjectEnrollment se
+              WHERE se.student.studentId = :studentId
+                AND se.subject.subjectId = s.subjectId
+                AND se.status = com.college.bridge.academic.entity.ClassStatus.ACTIVE
+          )
+    """)
+    long countUnsolvedForStudent(
+            @Param("studentId") Long studentId,
+            @Param("subjectId") Long subjectId,
+            @Param("tenantId") Long tenantId
+    );
 }

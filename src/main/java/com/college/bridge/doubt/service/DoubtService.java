@@ -3,6 +3,7 @@ package com.college.bridge.doubt.service;
 import com.college.bridge.academic.entity.ClassStatus;
 import com.college.bridge.academic.entity.SubjectEnrollment;
 import com.college.bridge.academic.repository.SubjectEnrollmentRepository;
+import com.college.bridge.academic.repository.TeacherAssignmentRepository;
 import com.college.bridge.auth.security.UserPrincipal;
 import com.college.bridge.common.exception.AccessDeniedException;
 import com.college.bridge.common.exception.ResourceNotFoundException;
@@ -39,6 +40,7 @@ public class DoubtService {
     private final DoubtRepository doubtRepository;
     private final DoubtAnswerRepository doubtAnswerRepository;
     private final SubjectEnrollmentRepository subjectEnrollmentRepository;
+    private final TeacherAssignmentRepository teacherAssignmentRepository;
     private final DoubtMapper doubtMapper;
     private final DoubtAnswerMapper doubtAnswerMapper;
 
@@ -193,6 +195,34 @@ public class DoubtService {
             UserPrincipal principal
     ) {
         Long tenantId = TenantContext.requireTenant();
+
+        if (principal.getTeacherId() != null) {
+            if (subjectId != null) {
+                boolean assigned = teacherAssignmentRepository.existsByTeacherSubjectAndTenant(
+                        principal.getTeacherId(), subjectId, tenantId);
+                if (!assigned) {
+                    throw new AccessDeniedException("Access denied: You are not assigned to this subject");
+                }
+            }
+            long total = doubtRepository.countTotalForTeacher(principal.getTeacherId(), subjectId, tenantId);
+            long solved = doubtRepository.countSolvedForTeacher(principal.getTeacherId(), subjectId, tenantId);
+            long unsolved = doubtRepository.countUnsolvedForTeacher(principal.getTeacherId(), subjectId, tenantId);
+            return new DoubtSummaryResponse(total, solved, unsolved);
+        }
+
+        if (principal.getStudentId() != null) {
+            if (subjectId != null) {
+                boolean enrolled = subjectEnrollmentRepository.existsByStudentSubjectAndTenantAndStatus(
+                        principal.getStudentId(), subjectId, tenantId, ClassStatus.ACTIVE);
+                if (!enrolled) {
+                    throw new AccessDeniedException("Access denied: You are not enrolled in this subject");
+                }
+            }
+            long total = doubtRepository.countTotalForStudent(principal.getStudentId(), subjectId, tenantId);
+            long solved = doubtRepository.countSolvedForStudent(principal.getStudentId(), subjectId, tenantId);
+            long unsolved = doubtRepository.countUnsolvedForStudent(principal.getStudentId(), subjectId, tenantId);
+            return new DoubtSummaryResponse(total, solved, unsolved);
+        }
 
         long total = doubtRepository.countTotalBySubjectAndTenant(subjectId, tenantId);
         long solved = doubtRepository.countSolvedBySubjectAndTenant(subjectId, tenantId);

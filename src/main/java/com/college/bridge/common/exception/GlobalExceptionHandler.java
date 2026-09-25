@@ -24,9 +24,7 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    /**
-     * Handles DTO field validation errors (@Valid on @RequestBody).
-     */
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException ex) {
         List<FieldError> errors = ex.getBindingResult()
@@ -42,9 +40,7 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Validation failed.", errors));
     }
 
-    /**
-     * Handles URL parameter and path variable validation errors (@Validated).
-     */
+
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(ConstraintViolationException ex) {
         List<FieldError> errors = ex.getConstraintViolations()
@@ -59,18 +55,14 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Validation failed.", errors));
     }
 
-    /**
-     * Handles missing entities or resources.
-     */
+
     @ExceptionHandler({EntityNotFoundException.class, ResourceNotFoundException.class})
     public ResponseEntity<ApiResponse<Void>> handleEntityNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-    /**
-     * Handles cross-tenant access attempts or tenant mismatch errors (mapped to 404 Not Found).
-     */
+
     @ExceptionHandler(TenantMismatchException.class)
     public ResponseEntity<ApiResponse<Void>> handleTenantMismatch(TenantMismatchException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -92,9 +84,8 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(message != null && !message.isBlank() ? message : "This subject is already assigned to another teacher."));
     }
 
-    /**
-     * Handles institution & user status rejection exceptions during login / access.
-     */
+
+
     @ExceptionHandler({
             InstitutionPendingException.class,
             InstitutionRejectedException.class,
@@ -107,18 +98,14 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-    /**
-     * Handles malformed JSON payloads or invalid request body formatting.
-     */
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error("Malformed JSON request or invalid request body format."));
     }
 
-    /**
-     * Handles method argument type mismatch (e.g., passing a string where an integer ID is expected).
-     */
+
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         String message = String.format("Parameter '%s' should be of type %s",
@@ -127,46 +114,34 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(ApiResponse.error(message));
     }
 
-    /**
-     * Handles invalid business logic parameters.
-     */
+
     @ExceptionHandler({IllegalArgumentException.class, BusinessRuleException.class, DuplicateResourceException.class})
     public ResponseEntity<ApiResponse<Void>> handleBusinessRuleExceptions(RuntimeException ex) {
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-    /**
-     * Handles HTTP method not allowed (e.g., sending POST to a GET-only endpoint).
-     */
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-    /**
-     * Handles unauthorized access attempts.
-     */
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ApiResponse.error("You do not have permission to perform this action."));
     }
 
-    /**
-     * Handles Spring's ResponseStatusException (including TenantMismatchException).
-     * Relays the HTTP status embedded in the exception.
-     */
+
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiResponse<Void>> handleResponseStatus(ResponseStatusException ex) {
         return ResponseEntity.status(ex.getStatusCode())
                 .body(ApiResponse.error(ex.getReason() != null ? ex.getReason() : ex.getMessage()));
     }
 
-    /**
-     * Fallback handler for unhandled exceptions.
-     */
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnhandledException(Exception ex) {
         log.error("Unhandled exception caught in GlobalExceptionHandler", ex);

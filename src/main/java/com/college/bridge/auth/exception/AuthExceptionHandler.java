@@ -17,7 +17,7 @@ import org.springframework.http.HttpStatus;
 import java.util.List;
 
 @Slf4j
-@RestControllerAdvice
+@RestControllerAdvice(basePackages = "com.college.bridge.auth")
 public class AuthExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -69,7 +69,7 @@ public interface SubjectEnrollmentRepository extends JpaRepository<SubjectEnroll
     );
 
     @Query("""
-    SELECT new com.college.bridge.academic.dto.SubjectResponse(
+    SELECT DISTINCT new com.college.bridge.academic.dto.SubjectResponse(
         s.subjectId,
         al.levelId,
         al.name,
@@ -81,17 +81,18 @@ public interface SubjectEnrollmentRepository extends JpaRepository<SubjectEnroll
         s.fcmTopicId,
         u.name
     )
-    FROM SubjectEnrollment se
-    JOIN se.student st
+    FROM Student st
     JOIN st.user studentUser
-    JOIN se.subject s
-    JOIN s.academicLevel al
-    JOIN al.program p
+    LEFT JOIN SubjectEnrollment se ON se.student = st
+    LEFT JOIN Subject s ON (s = se.subject OR (st.academicLevel IS NOT NULL AND s.academicLevel = st.academicLevel))
+    LEFT JOIN s.academicLevel al
+    LEFT JOIN al.program p
     LEFT JOIN s.assignments ta
     LEFT JOIN ta.teacher t
     LEFT JOIN t.user u
     WHERE st.studentId = :studentId
       AND studentUser.institution.institutionId = :tenantId
+      AND s.subjectId IS NOT NULL
       AND s.deleted = false
       AND al.deleted = false
       AND p.deleted = false

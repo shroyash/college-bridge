@@ -117,30 +117,25 @@ public class SubjectService {
     }
 
     @Transactional(readOnly = true)
-    public List<SubjectResponse> getSubjectsForStudent(Long id) {
+    public List<SubjectResponse> getSubjectsForStudent(Long studenttId) {
 
         Long tenantId = requireTenant();
 
-        if (id == null) {
+        if (studenttId == null) {
             throw new AccessDeniedException("Student information not available");
         }
 
-        Long targetStudentId = id;
         boolean studentExists = studentRepository
                 .existsByStudentIdAndUser_Institution_InstitutionId(
-                        id,
+                        studenttId,
                         tenantId
                 );
-
-        if (!studentExists) {
-            targetStudentId = studentRepository
-                    .findByUser_UserId(id)
-                    .map(com.college.bridge.auth.entity.Student::getStudentId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+        if(!studentExists){
+            throw new TenantMismatchException("Student does not belong to your institution");
         }
 
         return subjectEnrollmentRepository
-                .findSubjectsForStudent(targetStudentId, tenantId);
+                .findSubjectsForStudent(studenttId, tenantId);
     }
 
 
