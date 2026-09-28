@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../admin_users/domain/entities/teacher_assignment.dart';
 import '../../../auth/presentation/controllers/institution_provider.dart';
-import '../../../doubt/presentation/controllers/doubt_providers.dart';
-import '../../../doubt/presentation/screens/doubt_detail_screen.dart';
+import '../../../doubts/presentation/controllers/doubt_providers.dart';
+import '../../../doubts/presentation/screens/doubt_detail_screen.dart';
 import '../../../institution_admin/presentation/screens/teacher_classes_screen.dart';
 import '../../../institution_admin/presentation/screens/teacher_class_detail_screen.dart';
 import '../widgets/subject_card.dart';

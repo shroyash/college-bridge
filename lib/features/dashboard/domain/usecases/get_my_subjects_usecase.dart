@@ -1,11 +1,2 @@
-import '../entities/subject.dart';
-import '../repositories/dashboard_repository.dart';
-
-/// Single-responsibility use-case: fetch the current student's subjects.
-class GetMySubjectsUseCase {
-  final DashboardRepository _repository;
-
-  const GetMySubjectsUseCase(this._repository);
-
-  Future<List<Subject>> call() => _repository.getMySubjects();
-}
+// Re-exported from the canonical subjects feature.
+export 'package:bridge_mobile/features/subjects/domain/usecases/get_my_subjects_usecase.dart';

@@ -1,11 +1,2 @@
-import '../repositories/admin_user_repository.dart';
-
-class ActivateUserUseCase {
-  final AdminUserRepository _repository;
-
-  ActivateUserUseCase(this._repository);
-
-  Future<void> call(int userId) {
-    return _repository.activateUser(userId);
-  }
-}
+// Re-exported from the canonical users feature.
+export 'package:bridge_mobile/features/users/domain/usecases/activate_user_usecase.dart';

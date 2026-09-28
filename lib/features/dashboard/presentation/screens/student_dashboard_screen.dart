@@ -11,10 +11,10 @@ import 'package:bridge_mobile/features/institution_admin/presentation/controller
 import 'package:bridge_mobile/features/institution_admin/presentation/screens/student_classes_screen.dart';
 import 'package:bridge_mobile/features/institution_admin/presentation/screens/student_subject_detail_screen.dart';
 import 'package:bridge_mobile/features/institution_admin/presentation/screens/subject_members_screen.dart';
-import 'package:bridge_mobile/features/doubt/presentation/screens/student_doubts_screen.dart';
-import 'package:bridge_mobile/features/doubt/presentation/widgets/ask_doubt_dialog.dart';
-import 'package:bridge_mobile/features/doubt/presentation/controllers/doubt_providers.dart';
-import 'package:bridge_mobile/features/doubt/presentation/screens/doubt_detail_screen.dart';
+import 'package:bridge_mobile/features/doubts/presentation/screens/student_doubts_screen.dart';
+import 'package:bridge_mobile/features/doubts/presentation/widgets/ask_doubt_dialog.dart';
+import 'package:bridge_mobile/features/doubts/presentation/controllers/doubt_providers.dart';
+import 'package:bridge_mobile/features/doubts/presentation/screens/doubt_detail_screen.dart';
 
 class StudentDashboardScreen extends ConsumerStatefulWidget {
   final String userName;
@@ -378,14 +378,14 @@ class _StudentDashboardScreenState
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(color: const Color(0xFFE2E8F0)),
                                   ),
-                                  child: Column(
+                                  child: const Column(
                                     children: [
-                                      const Text(
+                                      Text(
                                         'No doubts asked yet',
                                         style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                                       ),
-                                      const SizedBox(height: 4),
-                                      const Text(
+                                      SizedBox(height: 4),
+                                      Text(
                                         'Ask a question to start peer learning!',
                                         style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                                       ),

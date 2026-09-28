@@ -1,19 +1,2 @@
-import '../repositories/admin_user_repository.dart';
-
-class RegisterTeacherUseCase {
-  final AdminUserRepository _repository;
-
-  RegisterTeacherUseCase(this._repository);
-
-  Future<void> call({
-    required String name,
-    required String email,
-    required String password,
-  }) {
-    return _repository.registerTeacher(
-      name: name,
-      email: email,
-      password: password,
-    );
-  }
-}
+// Re-exported from the canonical teachers feature.
+export 'package:bridge_mobile/features/teachers/domain/usecases/register_teacher_usecase.dart';

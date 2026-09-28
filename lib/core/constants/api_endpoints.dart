@@ -40,7 +40,7 @@ abstract class ApiEndpoints {
   static String publicInstitutionPrograms(String code) =>
       '/api/public/academic/institutions/$code/programs';
   static String publicProgramLevels(int programId) =>
-      '/api/public/academic/programs/$programId/levels';
+      '/api/public/academic/pograms/$programId/levels';
 
   // --- ACADEMIC STRUCTURE (ADMIN) ---
   static const String adminAcademicPrograms = '/api/admin/academic/programs';
