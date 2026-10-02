@@ -55,17 +55,17 @@ public interface TeacherAssignmentRepository extends JpaRepository<TeacherAssign
     );
 
     @Query("""
-    SELECT COUNT(ta) > 0
-    FROM TeacherAssignment ta
-    JOIN ta.teacher t
-    JOIN t.user u
-    JOIN ta.subject s
-    JOIN s.academicLevel al
-    JOIN al.program p
-    WHERE s.subjectId = :subjectId
-      AND u.userId = :userId
-      AND p.institution.institutionId = :tenantId
-""")
+        SELECT COUNT(ta) > 0
+        FROM TeacherAssignment ta
+        JOIN ta.teacher t
+        JOIN t.user u
+        JOIN ta.subject s
+        JOIN s.academicLevel al
+        JOIN al.program p
+        WHERE s.subjectId = :subjectId
+          AND u.userId = :userId
+          AND p.institution.institutionId = :tenantId
+    """)
     boolean existsAssignmentForUser(
             @Param("subjectId") Long subjectId,
             @Param("userId") Long userId,
@@ -73,35 +73,74 @@ public interface TeacherAssignmentRepository extends JpaRepository<TeacherAssign
     );
 
     @Query("""
-    SELECT ta FROM TeacherAssignment ta
-    JOIN ta.subject s
-    JOIN s.academicLevel al
-    JOIN al.program p
-    WHERE ta.assignmentId = :assignmentId
-      AND p.institution.institutionId = :tenantId
-""")
+        SELECT COUNT(ta) > 0
+        FROM TeacherAssignment ta
+        JOIN ta.teacher t
+        JOIN t.user u
+        JOIN ta.subject s
+        JOIN s.academicLevel al
+        JOIN al.program p
+        WHERE u.userId = :userId
+          AND al.levelId = :levelId
+          AND p.institution.institutionId = :tenantId
+          AND s.deleted = false
+          AND al.deleted = false
+          AND p.deleted = false
+    """)
+    boolean existsAssignmentForUserAndLevel(
+            @Param("userId") Long userId,
+            @Param("levelId") Long levelId,
+            @Param("tenantId") Long tenantId
+    );
+
+    @Query("""
+        SELECT COUNT(DISTINCT se.student.user.userId)
+        FROM SubjectEnrollment se
+        JOIN se.subject s
+        JOIN TeacherAssignment ta ON ta.subject = s
+        JOIN ta.teacher t
+        WHERE t.user.userId = :teacherUserId
+          AND se.student.user.userId IN :userIds
+          AND se.student.user.institution.institutionId = :tenantId
+          AND se.student.user.role = com.college.bridge.auth.entity.UserRole.STUDENT
+          AND se.status = com.college.bridge.academic.entity.ClassStatus.ACTIVE
+          AND s.deleted = false
+    """)
+    long countAuthorizedStudentsForTeacher(
+            @Param("teacherUserId") Long teacherUserId,
+            @Param("userIds") List<Long> userIds,
+            @Param("tenantId") Long tenantId
+    );
+
+    @Query("""
+        SELECT ta FROM TeacherAssignment ta
+        JOIN ta.subject s
+        JOIN s.academicLevel al
+        JOIN al.program p
+        WHERE ta.assignmentId = :assignmentId
+          AND p.institution.institutionId = :tenantId
+    """)
     Optional<TeacherAssignment> findByAssignmentIdAndTenant(
             @Param("assignmentId") Long assignmentId,
             @Param("tenantId") Long tenantId
     );
 
-
     @Query("""
-    SELECT CASE WHEN COUNT(ta) > 0 THEN true ELSE false END
-    FROM TeacherAssignment ta
-    JOIN ta.teacher t
-    JOIN t.user u
-    JOIN ta.subject s
-    JOIN s.academicLevel al
-    JOIN al.program p
-    WHERE t.teacherId = :teacherId
-      AND s.subjectId = :subjectId
-      AND u.institution.institutionId = :tenantId
-      AND p.institution.institutionId = :tenantId
-      AND s.deleted = false
-      AND al.deleted = false
-      AND p.deleted = false
-""")
+        SELECT CASE WHEN COUNT(ta) > 0 THEN true ELSE false END
+        FROM TeacherAssignment ta
+        JOIN ta.teacher t
+        JOIN t.user u
+        JOIN ta.subject s
+        JOIN s.academicLevel al
+        JOIN al.program p
+        WHERE t.teacherId = :teacherId
+          AND s.subjectId = :subjectId
+          AND u.institution.institutionId = :tenantId
+          AND p.institution.institutionId = :tenantId
+          AND s.deleted = false
+          AND al.deleted = false
+          AND p.deleted = false
+    """)
     boolean existsByTeacherSubjectAndTenant(
             @Param("teacherId") Long teacherId,
             @Param("subjectId") Long subjectId,

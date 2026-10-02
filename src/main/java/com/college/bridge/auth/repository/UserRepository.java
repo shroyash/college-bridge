@@ -97,4 +97,26 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
             @Param("userId") Long userId,
             @Param("institutionId") Long institutionId
     );
+
+    @Query("""
+        SELECT COUNT(u) FROM User u
+        WHERE u.userId IN :userIds
+          AND u.institution.institutionId = :institutionId
+          AND u.deleted = false
+    """)
+    long countByUserIdInAndInstitutionId(
+            @Param("userIds") List<Long> userIds,
+            @Param("institutionId") Long institutionId
+    );
+
+    @Query("""
+        SELECT u FROM User u
+        WHERE u.userId IN :userIds
+          AND u.institution.institutionId = :institutionId
+          AND u.deleted = false
+    """)
+    List<User> findByUserIdInAndInstitutionId(
+            @Param("userIds") List<Long> userIds,
+            @Param("institutionId") Long institutionId
+    );
 }
