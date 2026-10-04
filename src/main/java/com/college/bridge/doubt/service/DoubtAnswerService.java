@@ -30,6 +30,7 @@ public class DoubtAnswerService {
     private final UserRepository userRepository;
     private final TeacherAssignmentRepository teacherAssignmentRepository;
     private final DoubtAnswerMapper doubtAnswerMapper;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public DoubtAnswerResponse answerDoubt(
@@ -160,6 +161,14 @@ public class DoubtAnswerService {
 
         if (!answer.isVerified()) {
             answer.setVerified(true);
+            long approvedVersion = System.currentTimeMillis();
+            Long answerAuthorUserId = (answer.getAnsweredBy() != null) ? answer.getAnsweredBy().getUserId() : null;
+            Long doubtAuthorUserId = (answer.getDoubt() != null && answer.getDoubt().getStudent() != null && answer.getDoubt().getStudent().getUser() != null)
+                    ? answer.getDoubt().getStudent().getUser().getUserId()
+                    : null;
+            eventPublisher.publishEvent(new com.college.bridge.notification.event.AnswerApprovedEvent(
+                    doubtId, answerId, principal.getUserId(), answerAuthorUserId, doubtAuthorUserId, tenantId, approvedVersion
+            ));
         }
     }
 

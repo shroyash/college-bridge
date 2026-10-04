@@ -1,6 +1,5 @@
 package com.college.bridge.notification.service;
 
-
 import com.college.bridge.academic.entity.ClassStatus;
 import com.college.bridge.academic.entity.SubjectEnrollment;
 import com.college.bridge.academic.entity.TeacherAssignment;
@@ -24,7 +23,9 @@ import com.college.bridge.institution.repository.InstitutionRepository;
 import com.college.bridge.notification.dto.CreateNotificationRequest;
 import com.college.bridge.notification.dto.NotificationInboxResponse;
 import com.college.bridge.notification.dto.NotificationResponse;
+import com.college.bridge.notification.dto.UnreadCountResponse;
 import com.college.bridge.notification.entity.*;
+import com.college.bridge.notification.repository.NotificationInboxReadRepository;
 import com.college.bridge.notification.repository.NotificationJobRepository;
 import com.college.bridge.notification.repository.NotificationRecipientRepository;
 import com.college.bridge.notification.repository.NotificationRepository;
@@ -37,6 +38,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.*;
 
 @Service
@@ -47,6 +49,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final NotificationJobRepository jobRepository;
     private final NotificationRecipientRepository recipientRepository;
+    private final NotificationInboxReadRepository inboxReadRepository;
     private final UserRepository userRepository;
     private final InstitutionRepository institutionRepository;
     private final AcademicLevelRepository academicLevelRepository;
@@ -66,15 +69,11 @@ public class NotificationService {
             }
         }
 
-        Long tenantId;
-        Institution institution;
-
-            tenantId = TenantContext.get() != null ? TenantContext.get() : principal.getInstitutionId();
-            if (tenantId == null) {
-                throw new TenantMismatchException("Tenant context required");
-            }
-            institution = principal.getUser().getInstitution();
-
+        Long tenantId = TenantContext.get() != null ? TenantContext.get() : principal.getInstitutionId();
+        if (tenantId == null) {
+            throw new TenantMismatchException("Tenant context required");
+        }
+        Institution institution = principal.getUser().getInstitution();
 
         validateAuthorizationAndTarget(request, principal, tenantId);
 
@@ -127,12 +126,97 @@ public class NotificationService {
     public Page<NotificationInboxResponse> getUserInbox(UserPrincipal principal, Pageable pageable) {
         Long tenantId = TenantContext.get() != null ? TenantContext.get() : principal.getInstitutionId();
         if (tenantId == null) {
-            throw new TenantMismatchException("Tenant context required to access inbox");
+            return Page.empty(pageable);
         }
 
         Long userId = principal.getUserId();
-        Long levelId = null;
+        InboxScope scope = resolveScope(principal, tenantId);
+
+        Page<Notification> page = notificationRepository.findUserInbox(
+                tenantId,
+                userId,
+                scope.levelId,
+                scope.subjectIds,
+                scope.userCreatedAt,
+                pageable);
+
+        List<Long> ids = page.getContent().stream()
+                .map(Notification::getNotificationId)
+                .toList();
+        Set<Long> readIds = inboxReadRepository.findReadNotificationIds(userId, ids);
+
+        return page.map(n -> NotificationInboxResponse.builder()
+                .notificationId(n.getNotificationId())
+                .title(n.getTitle())
+                .body(n.getBody())
+                .senderId(n.getSender() != null ? n.getSender().getUserId() : null)
+                .senderName(n.getSender() != null ? n.getSender().getName() : "System")
+                .targetType(n.getTargetType())
+                .targetId(n.getTargetId())
+                .createdAt(n.getCreatedAt())
+                .read(readIds.contains(n.getNotificationId()))
+                .build());
+    }
+
+    @Transactional(readOnly = true)
+    public UnreadCountResponse getUnreadCount(UserPrincipal principal) {
+        Long tenantId = TenantContext.get() != null ? TenantContext.get() : principal.getInstitutionId();
+        if (tenantId == null) {
+            return UnreadCountResponse.builder().count(0L).build();
+        }
+
+        Long userId = principal.getUserId();
+        InboxScope scope = resolveScope(principal, tenantId);
+
+        long count = notificationRepository.countUnreadInbox(
+                tenantId,
+                userId,
+                scope.levelId,
+                scope.subjectIds,
+                scope.userCreatedAt);
+
+        return UnreadCountResponse.builder().count(count).build();
+    }
+
+    @Transactional
+    public void markAsRead(Long notificationId, UserPrincipal principal) {
+        Long tenantId = TenantContext.get() != null ? TenantContext.get() : principal.getInstitutionId();
+        if (tenantId == null) {
+            throw new AccessDeniedException("Super-admin inbox is not supported");
+        }
+
+        Long userId = principal.getUserId();
+        InboxScope scope = resolveScope(principal, tenantId);
+
+        boolean inScope = notificationRepository.isNotificationInUserInboxScope(
+                notificationId,
+                tenantId,
+                userId,
+                scope.levelId,
+                scope.subjectIds,
+                scope.userCreatedAt);
+
+        if (!inScope) {
+            throw new AccessDeniedException("Notification is not in your inbox scope");
+        }
+
+        inboxReadRepository.markReadNative(notificationId, userId);
+    }
+
+    private InboxScope resolveScope(UserPrincipal principal, Long tenantId) {
+        Long userId = principal.getUserId();
+        Long levelId = -1L;
         List<Long> subjectIds = new ArrayList<>();
+        Instant userCreatedAt = Instant.EPOCH;
+
+        if (principal.getUser() != null && principal.getUser().getCreatedAt() != null) {
+            userCreatedAt = principal.getUser().getCreatedAt().toInstant(ZoneOffset.UTC);
+        } else {
+            Optional<User> userOpt = userRepository.findById(userId);
+            if (userOpt.isPresent() && userOpt.get().getCreatedAt() != null) {
+                userCreatedAt = userOpt.get().getCreatedAt().toInstant(ZoneOffset.UTC);
+            }
+        }
 
         if (principal.getRole() == UserRole.STUDENT) {
             Optional<Student> studentOpt = studentRepository.findByUser_UserId(userId);
@@ -163,23 +247,13 @@ public class NotificationService {
         }
 
         if (subjectIds.isEmpty()) {
-            subjectIds.add(-1L); // Prevent empty SQL IN clause
+            subjectIds.add(-1L);
         }
 
-        Page<Notification> page = notificationRepository.findUserInbox(
-                tenantId, userId, levelId != null ? levelId : -1L, subjectIds, pageable);
-
-        return page.map(n -> NotificationInboxResponse.builder()
-                .notificationId(n.getNotificationId())
-                .title(n.getTitle())
-                .body(n.getBody())
-                .senderId(n.getSender() != null ? n.getSender().getUserId() : null)
-                .senderName(n.getSender() != null ? n.getSender().getName() : "System")
-                .targetType(n.getTargetType())
-                .targetId(n.getTargetId())
-                .createdAt(n.getCreatedAt())
-                .build());
+        return new InboxScope(levelId, subjectIds, userCreatedAt);
     }
+
+    private record InboxScope(Long levelId, List<Long> subjectIds, Instant userCreatedAt) {}
 
     private void validateAuthorizationAndTarget(CreateNotificationRequest request, UserPrincipal principal, Long tenantId) {
         UserRole role = principal.getRole();

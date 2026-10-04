@@ -29,7 +29,6 @@ public class NotificationJobClaimService {
         if (jobIds.isEmpty()) {
             return List.of();
         }
-
         Instant leaseExpiresAt = now.plus(leaseDurationSeconds, ChronoUnit.SECONDS);
         jobRepository.markJobsProcessing(jobIds, JobStatus.PROCESSING, now, leaseExpiresAt);
 
@@ -44,6 +43,7 @@ public class NotificationJobClaimService {
                         .body(job.getNotification().getMessage())
                         .targetType(job.getNotification().getTargetType())
                         .targetId(job.getNotification().getTargetId())
+                        .type(job.getNotification().getType())
                         .attemptCount(job.getAttemptCount())
                         .maxAttempts(job.getMaxAttempts())
                         .build());

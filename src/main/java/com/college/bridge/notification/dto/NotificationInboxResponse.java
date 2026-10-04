@@ -21,4 +21,6 @@ public class NotificationInboxResponse {
     private NotificationTargetType targetType;
     private Long targetId;
     private Instant createdAt;
+    private boolean read;
 }
+

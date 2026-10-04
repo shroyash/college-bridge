@@ -7,7 +7,8 @@ import lombok.*;
 
 @Entity
 @Table(name = "notification_targets")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor

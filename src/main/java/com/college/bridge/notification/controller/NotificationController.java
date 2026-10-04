@@ -5,6 +5,7 @@ import com.college.bridge.common.response.ApiResponse;
 import com.college.bridge.notification.dto.CreateNotificationRequest;
 import com.college.bridge.notification.dto.NotificationInboxResponse;
 import com.college.bridge.notification.dto.NotificationResponse;
+import com.college.bridge.notification.dto.UnreadCountResponse;
 import com.college.bridge.notification.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -48,5 +49,26 @@ public class NotificationController {
 
         Page<NotificationInboxResponse> inbox = notificationService.getUserInbox(principal, pageable);
         return ResponseEntity.ok(ApiResponse.success("Inbox notifications retrieved successfully", inbox));
+    }
+
+    @GetMapping("/unread-count")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get unread notification count for the current user")
+    public ResponseEntity<ApiResponse<UnreadCountResponse>> getUnreadCount(
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        UnreadCountResponse response = notificationService.getUnreadCount(principal);
+        return ResponseEntity.ok(ApiResponse.success("Unread count retrieved", response));
+    }
+
+    @PutMapping("/{id}/read")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Mark a notification as read (idempotent)")
+    public ResponseEntity<ApiResponse<Void>> markAsRead(
+            @PathVariable("id") Long notificationId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        notificationService.markAsRead(notificationId, principal);
+        return ResponseEntity.ok(ApiResponse.success("Notification marked as read", null));
     }
 }

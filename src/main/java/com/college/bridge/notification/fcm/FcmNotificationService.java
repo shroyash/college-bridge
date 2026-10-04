@@ -1,5 +1,8 @@
 package com.college.bridge.notification.fcm;
 
+import com.college.bridge.notification.exception.FcmNotInitializedException;
+import com.college.bridge.notification.exception.FcmSendException;
+import com.college.bridge.notification.exception.FcmTopicSubscriptionException;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.*;
 import lombok.RequiredArgsConstructor;
@@ -13,165 +16,158 @@ import java.util.*;
 @Slf4j
 public class FcmNotificationService {
 
+    private static final int MAX_MULTICAST_TOKENS = 500;   // sendEachForMulticast limit
+    private static final int TOPIC_BATCH_SIZE = 1000;      // subscribe/unsubscribe limit
+
     private final FirebaseConfig firebaseConfig;
 
     public record FcmMulticastBatchResult(
             List<Integer> successfulIndices,
             List<String> unregisteredTokens,
             List<Integer> transientFailureIndices,
-            List<Integer> permanentFailureIndices,
-            boolean hasTransientFailure
+            List<Integer> permanentFailureIndices
     ) {}
 
-    public void sendToTopic(String topic, String title, String body, Map<String, String> dataPayload) throws Exception {
-        if (firebaseConfig.isMockMode()) {
-            log.debug("[MOCK FCM] sendToTopic: topic={}, title={}", topic, title);
-            return;
-        }
-
-        ensureFirebaseInitialized();
-
-        Message.Builder messageBuilder = Message.builder()
-                .setTopic(topic)
-                .setNotification(com.google.firebase.messaging.Notification.builder()
-                        .setTitle(title)
-                        .setBody(body)
-                        .build());
-
-        if (dataPayload != null && !dataPayload.isEmpty()) {
-            messageBuilder.putAllData(dataPayload);
-        }
-
-        FirebaseMessaging.getInstance().send(messageBuilder.build());
-        log.debug("Sent FCM message to topic: {}", topic);
+    @FunctionalInterface
+    private interface TopicCall {
+        TopicManagementResponse run(List<String> batch) throws FirebaseMessagingException;
     }
 
-    public FcmMulticastBatchResult sendToTokens(
-            List<String> tokens,
-            String title,
-            String body,
-            Map<String, String> dataPayload) throws Exception {
 
+    public void sendToTopic(String topic, String title, String body, Map<String, String> data) {
+        if (topic == null || topic.isBlank()) {
+            throw new IllegalArgumentException("Topic must not be blank");
+        }
+        if (firebaseConfig.isMockMode()) {
+            log.debug("[MOCK FCM] sendToTopic: topic={}", topic);
+            return;
+        }
+        ensureFirebaseInitialized();
+
+        Message.Builder builder = Message.builder()
+                .setTopic(topic)
+                .setNotification(com.google.firebase.messaging.Notification.builder()
+                        .setTitle(title).setBody(body).build());
+        if (data != null && !data.isEmpty()) builder.putAllData(data);
+
+        try {
+            FirebaseMessaging.getInstance().send(builder.build());
+        } catch (FirebaseMessagingException e) {
+            throw new FcmSendException("Failed to send to topic " + topic, e, isRetryable(e));
+        }
+    }
+
+
+    public FcmMulticastBatchResult sendToTokens(List<String> tokens, String title, String body,
+                                                Map<String, String> data) {
         if (tokens == null || tokens.isEmpty()) {
-            return new FcmMulticastBatchResult(List.of(), List.of(), List.of(), List.of(), false);
+            return new FcmMulticastBatchResult(List.of(), List.of(), List.of(), List.of());
+        }
+        if (tokens.size() > MAX_MULTICAST_TOKENS) {
+            throw new IllegalArgumentException("Max " + MAX_MULTICAST_TOKENS + " tokens per call");
+        }
+
+        if (tokens.stream().anyMatch(t -> t == null || t.isBlank())) {
+            throw new IllegalArgumentException("Token list contains null or blank values");
         }
 
         if (firebaseConfig.isMockMode()) {
-            log.debug("[MOCK FCM] sendToTokens: count={}, title={}", tokens.size(), title);
-            List<Integer> allSuccess = new ArrayList<>();
-            for (int i = 0; i < tokens.size(); i++) {
-                allSuccess.add(i);
-            }
-            return new FcmMulticastBatchResult(allSuccess, List.of(), List.of(), List.of(), false);
+            log.debug("[MOCK FCM] sendToTokens: count={}", tokens.size());
+            List<Integer> all = new ArrayList<>();
+            for (int i = 0; i < tokens.size(); i++) all.add(i);
+            return new FcmMulticastBatchResult(all, List.of(), List.of(), List.of());
         }
-
         ensureFirebaseInitialized();
 
-        MulticastMessage.Builder multicastBuilder = MulticastMessage.builder()
+        MulticastMessage.Builder builder = MulticastMessage.builder()
                 .addAllTokens(tokens)
                 .setNotification(com.google.firebase.messaging.Notification.builder()
-                        .setTitle(title)
-                        .setBody(body)
-                        .build());
+                        .setTitle(title).setBody(body).build());
+        if (data != null && !data.isEmpty()) builder.putAllData(data);
 
-        if (dataPayload != null && !dataPayload.isEmpty()) {
-            multicastBuilder.putAllData(dataPayload);
+        BatchResponse batchResponse;
+        try {
+            batchResponse = FirebaseMessaging.getInstance().sendEachForMulticast(builder.build());
+        } catch (FirebaseMessagingException e) {
+            throw new FcmSendException("Multicast send failed", e, isRetryable(e));
         }
+        return classifyResponses(tokens, batchResponse);
+    }
 
-        BatchResponse batchResponse = FirebaseMessaging.getInstance().sendEachForMulticast(multicastBuilder.build());
-
-        List<Integer> successfulIndices = new ArrayList<>();
-        List<String> unregisteredTokens = new ArrayList<>();
-        List<Integer> transientIndices = new ArrayList<>();
-        List<Integer> permanentIndices = new ArrayList<>();
+    private FcmMulticastBatchResult classifyResponses(List<String> tokens, BatchResponse batchResponse) {
+        List<Integer> successful = new ArrayList<>();
+        List<String> unregistered = new ArrayList<>();
+        List<Integer> transientFailures = new ArrayList<>();
+        List<Integer> permanentFailures = new ArrayList<>();
 
         List<SendResponse> responses = batchResponse.getResponses();
         for (int i = 0; i < responses.size(); i++) {
             SendResponse response = responses.get(i);
             if (response.isSuccessful()) {
-                successfulIndices.add(i);
-            } else {
-                FirebaseMessagingException exception = response.getException();
-                FcmErrorClassifier.ErrorCategory category = FcmErrorClassifier.classify(exception);
-
-                switch (category) {
-                    case UNREGISTERED -> {
-                        unregisteredTokens.add(tokens.get(i));
-                        permanentIndices.add(i);
-                    }
-                    case TRANSIENT -> transientIndices.add(i);
-                    case PERMANENT -> permanentIndices.add(i);
+                successful.add(i);
+                continue;
+            }
+            switch (FcmErrorClassifier.classify(response.getException())) {
+                case UNREGISTERED -> {
+                    unregistered.add(tokens.get(i));
+                    permanentFailures.add(i);
                 }
+                case TRANSIENT -> transientFailures.add(i);
+                case PERMANENT -> permanentFailures.add(i);
             }
         }
-
-        boolean hasTransient = !transientIndices.isEmpty();
-        log.debug("Multicast result: {} success, {} unregistered, {} transient failures, {} permanent failures",
-                successfulIndices.size(), unregisteredTokens.size(), transientIndices.size(), permanentIndices.size());
-
-        return new FcmMulticastBatchResult(
-                successfulIndices,
-                unregisteredTokens,
-                transientIndices,
-                permanentIndices,
-                hasTransient
-        );
+        log.debug("Multicast result: {} success, {} unregistered, {} transient, {} permanent",
+                successful.size(), unregistered.size(), transientFailures.size(), permanentFailures.size());
+        return new FcmMulticastBatchResult(successful, unregistered, transientFailures, permanentFailures);
     }
 
+
     public void subscribeTokensToTopic(List<String> tokens, String topic) {
-        if (tokens == null || tokens.isEmpty()) {
-            return;
-        }
-
-        if (firebaseConfig.isMockMode()) {
-            log.debug("[MOCK FCM] Subscribing {} tokens to topic: {}", tokens.size(), topic);
-            return;
-        }
-
-        ensureFirebaseInitialized();
-
-        try {
-            // Firebase limits subscribeToTopic to 1000 tokens per call
-            int batchSize = 1000;
-            for (int i = 0; i < tokens.size(); i += batchSize) {
-                List<String> batch = tokens.subList(i, Math.min(i + batchSize, tokens.size()));
-                TopicManagementResponse response = FirebaseMessaging.getInstance().subscribeToTopic(batch, topic);
-                log.debug("Subscribed batch of {} tokens to {}: {} successes, {} failures",
-                        batch.size(), topic, response.getSuccessCount(), response.getFailureCount());
-            }
-        } catch (Exception e) {
-            log.warn("Failed to subscribe tokens to topic {}: {}", topic, e.getMessage());
-        }
+        runTopicOperation(tokens, topic, "subscribe",
+                batch -> FirebaseMessaging.getInstance().subscribeToTopic(batch, topic));
     }
 
     public void unsubscribeTokensFromTopic(List<String> tokens, String topic) {
-        if (tokens == null || tokens.isEmpty()) {
-            return;
-        }
+        runTopicOperation(tokens, topic, "unsubscribe",
+                batch -> FirebaseMessaging.getInstance().unsubscribeFromTopic(batch, topic));
+    }
 
+    private void runTopicOperation(List<String> tokens, String topic, String action, TopicCall call) {
+        if (tokens == null || tokens.isEmpty()) return;
         if (firebaseConfig.isMockMode()) {
-            log.debug("[MOCK FCM] Unsubscribing {} tokens from topic: {}", tokens.size(), topic);
+            log.debug("[MOCK FCM] {} {} tokens, topic={}", action, tokens.size(), topic);
             return;
         }
-
         ensureFirebaseInitialized();
 
-        try {
-            int batchSize = 1000;
-            for (int i = 0; i < tokens.size(); i += batchSize) {
-                List<String> batch = tokens.subList(i, Math.min(i + batchSize, tokens.size()));
-                TopicManagementResponse response = FirebaseMessaging.getInstance().unsubscribeFromTopic(batch, topic);
-                log.debug("Unsubscribed batch of {} tokens from {}: {} successes, {} failures",
-                        batch.size(), topic, response.getSuccessCount(), response.getFailureCount());
+        for (int i = 0; i < tokens.size(); i += TOPIC_BATCH_SIZE) {
+            List<String> batch = tokens.subList(i, Math.min(i + TOPIC_BATCH_SIZE, tokens.size()));
+            try {
+                TopicManagementResponse response = call.run(batch);
+                if (response.getFailureCount() > 0) {
+                    String reason = response.getErrors().get(0).getReason();
+                    // Invalid/unknown token will never succeed, so don't retry it
+                    boolean retryable = !"NOT_FOUND".equals(reason) && !"INVALID_ARGUMENT".equals(reason);
+                    throw new FcmTopicSubscriptionException(
+                            response.getFailureCount() + " of " + batch.size()
+                                    + " tokens failed to " + action + " topic " + topic
+                                    + " (reason=" + reason + ")",
+                            null, retryable);
+                }
+            } catch (FirebaseMessagingException e) {
+                throw new FcmTopicSubscriptionException(
+                        "Failed to " + action + " topic " + topic, e, isRetryable(e));
             }
-        } catch (Exception e) {
-            log.warn("Failed to unsubscribe tokens from topic {}: {}", topic, e.getMessage());
         }
+    }
+
+    private boolean isRetryable(FirebaseMessagingException e) {
+        return FcmErrorClassifier.classify(e) == FcmErrorClassifier.ErrorCategory.TRANSIENT;
     }
 
     private void ensureFirebaseInitialized() {
         if (FirebaseApp.getApps().isEmpty()) {
-            throw new IllegalStateException("Firebase is not initialized and mock mode is false");
+            throw new FcmNotInitializedException();
         }
     }
 }

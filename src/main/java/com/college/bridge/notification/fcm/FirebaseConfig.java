@@ -8,24 +8,29 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-
+import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
 
 @Configuration
 @Slf4j
+@Getter
 public class FirebaseConfig {
+
+    private final Environment environment;
 
     @Value("${firebase.config.path:keys/firebase-service-account.json}")
     private String firebaseConfigPath;
 
-    @Value("${spring.profiles.active:dev}")
-    private String activeProfiles;
+    private boolean mockMode;
 
-    @Getter
-    private boolean mockMode = false;
+    public FirebaseConfig(Environment environment) {
+        this.environment = environment;
+    }
 
     @PostConstruct
     public void initializeFirebase() {
@@ -33,40 +38,63 @@ public class FirebaseConfig {
             return;
         }
 
-        boolean isProd = Arrays.asList(activeProfiles.split(",")).contains("prod");
+        Resource resource = resolveFirebaseCredentials();
 
-        try {
-            Resource resource = new FileSystemResource(firebaseConfigPath);
-            if (!resource.exists()) {
-                // Also check classpath if not found on filesystem
-                resource = new org.springframework.core.io.ClassPathResource(firebaseConfigPath);
-            }
-
-            if (!resource.exists()) {
-                if (isProd) {
-                    throw new IllegalStateException("Production environment requires valid Firebase credentials at: " + firebaseConfigPath);
-                } else {
-                    mockMode = true;
-                    log.warn("Firebase credentials not found at [{}]. Running FCM in safe MOCK mode for environment: {}", firebaseConfigPath, activeProfiles);
-                    return;
-                }
-            }
-
-            try (InputStream serviceAccount = resource.getInputStream()) {
-                FirebaseOptions options = FirebaseOptions.builder()
-                        .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                        .build();
-
-                FirebaseApp.initializeApp(options);
-                log.debug("FirebaseApp initialized successfully with credentials from {}", firebaseConfigPath);
-            }
-        } catch (Exception e) {
-            if (isProd) {
-                throw new IllegalStateException("Failed to initialize Firebase in production: " + e.getMessage(), e);
-            } else {
-                mockMode = true;
-                log.warn("Error loading Firebase credentials ({}). Falling back to MOCK mode.", e.getMessage());
-            }
+        if (!resource.exists()) {
+            handleMissingCredentials();
+            return;
         }
+
+        initializeFromCredentials(resource);
+    }
+
+    private Resource resolveFirebaseCredentials() {
+        Resource fileResource = new FileSystemResource(firebaseConfigPath);
+
+        if (fileResource.exists()) {
+            return fileResource;
+        }
+
+        return new ClassPathResource(firebaseConfigPath);
+    }
+
+    private void handleMissingCredentials() {
+        if (isProduction()) {
+            throw new IllegalStateException(
+                    "Firebase credentials are required in production. " +
+                            "File not found: " + firebaseConfigPath
+            );
+        }
+
+        mockMode = true;
+
+        log.warn(
+                "Firebase credentials not found at [{}]. " +
+                        "Running FCM in MOCK mode.",
+                firebaseConfigPath
+        );
+    }
+
+    private void initializeFromCredentials(Resource resource) {
+        try (InputStream inputStream = resource.getInputStream()) {
+
+            FirebaseOptions options = FirebaseOptions.builder()
+                    .setCredentials(GoogleCredentials.fromStream(inputStream))
+                    .build();
+
+            FirebaseApp.initializeApp(options);
+
+            log.debug("Firebase Admin SDK initialized successfully.");
+
+        } catch (IOException | RuntimeException exception) {
+            throw new IllegalStateException(
+                    "Failed to initialize Firebase from: " + firebaseConfigPath,
+                    exception
+            );
+        }
+    }
+
+    private boolean isProduction() {
+        return environment.matchesProfiles(String.valueOf(Profiles.of("prod")));
     }
 }

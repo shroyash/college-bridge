@@ -157,9 +157,13 @@ public class NotificationJobProcessor {
                 }
             }
 
+            // A user may have multiple devices. If at least one device delivered successfully,
+            // remove that recipientId from failedIds — the recipient is considered SENT.
+            failedIds.removeAll(deliveredIds);
+
             statusService.updateRecipientBatch(deliveredIds, failedIds, batchResult.unregisteredTokens());
 
-            if (batchResult.hasTransientFailure()) {
+            if (!batchResult.transientFailureIndices().isEmpty()) {
                 hasTransientFailure = true;
             }
         }
