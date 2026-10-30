@@ -43,6 +43,7 @@ public class DoubtService {
     private final TeacherAssignmentRepository teacherAssignmentRepository;
     private final DoubtMapper doubtMapper;
     private final DoubtAnswerMapper doubtAnswerMapper;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public DoubtResponse createDoubt(
@@ -78,6 +79,24 @@ public class DoubtService {
                 .build();
 
         Doubt saved = doubtRepository.save(doubt);
+
+        Long authorUserId = (enrollment.getStudent().getUser() != null)
+                ? enrollment.getStudent().getUser().getUserId()
+                : principal.getUserId();
+
+        String subjectName = (enrollment.getSubject() != null)
+                ? enrollment.getSubject().getName()
+                : null;
+
+        eventPublisher.publishEvent(new com.college.bridge.notification.event.DoubtPostedEvent(
+                saved.getDoubtId(),
+                saved.getSubject().getSubjectId(),
+                subjectName,
+                authorUserId,
+                principal.getUserId(),
+                tenantId,
+                saved.getQuestion()
+        ));
 
         return doubtMapper.toResponse(
                 saved,

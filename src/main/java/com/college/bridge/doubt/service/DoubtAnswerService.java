@@ -85,6 +85,21 @@ public class DoubtAnswerService {
             );
         }
 
+        Long doubtAuthorUserId = (doubt.getStudent() != null && doubt.getStudent().getUser() != null)
+                ? doubt.getStudent().getUser().getUserId()
+                : null;
+        String subjectName = (doubt.getSubject() != null) ? doubt.getSubject().getName() : null;
+
+        eventPublisher.publishEvent(new com.college.bridge.notification.event.DoubtAnsweredEvent(
+                doubt.getDoubtId(),
+                saved.getAnswerId(),
+                principal.getUserId(),
+                doubtAuthorUserId,
+                tenantId,
+                saved.getAnswer(),
+                subjectName
+        ));
+
         return doubtAnswerMapper.toResponse(saved);
     }
 
@@ -166,8 +181,11 @@ public class DoubtAnswerService {
             Long doubtAuthorUserId = (answer.getDoubt() != null && answer.getDoubt().getStudent() != null && answer.getDoubt().getStudent().getUser() != null)
                     ? answer.getDoubt().getStudent().getUser().getUserId()
                     : null;
+            String subjectName = (answer.getDoubt() != null && answer.getDoubt().getSubject() != null)
+                    ? answer.getDoubt().getSubject().getName()
+                    : null;
             eventPublisher.publishEvent(new com.college.bridge.notification.event.AnswerApprovedEvent(
-                    doubtId, answerId, principal.getUserId(), answerAuthorUserId, doubtAuthorUserId, tenantId, approvedVersion
+                    doubtId, answerId, principal.getUserId(), answerAuthorUserId, doubtAuthorUserId, tenantId, approvedVersion, subjectName
             ));
         }
     }
@@ -218,6 +236,18 @@ public class DoubtAnswerService {
 
         if (!answer.isVerified()) {
             answer.setVerified(true);
+            long approvedVersion = System.currentTimeMillis();
+            Long answerAuthorUserId = (answer.getAnsweredBy() != null) ? answer.getAnsweredBy().getUserId() : null;
+            Long doubtAuthorUserId = (answer.getDoubt() != null && answer.getDoubt().getStudent() != null && answer.getDoubt().getStudent().getUser() != null)
+                    ? answer.getDoubt().getStudent().getUser().getUserId()
+                    : null;
+            String subjectName = (answer.getDoubt() != null && answer.getDoubt().getSubject() != null)
+                    ? answer.getDoubt().getSubject().getName()
+                    : null;
+            Long doubtId = (answer.getDoubt() != null) ? answer.getDoubt().getDoubtId() : null;
+            eventPublisher.publishEvent(new com.college.bridge.notification.event.AnswerApprovedEvent(
+                    doubtId, answerId, principal.getUserId(), answerAuthorUserId, doubtAuthorUserId, tenantId, approvedVersion, subjectName
+            ));
         }
     }
 

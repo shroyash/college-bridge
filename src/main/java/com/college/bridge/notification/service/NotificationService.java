@@ -77,10 +77,37 @@ public class NotificationService {
 
         validateAuthorizationAndTarget(request, principal, tenantId);
 
+        String resolvedTitle = request.getTitle().trim();
+        String resolvedBody = request.getBody().trim();
+
+        if (request.getTargetType() == NotificationTargetType.SUBJECT && request.getTargetId() != null) {
+            var subjectOpt = subjectRepository.findActiveByIdAndInstitutionId(request.getTargetId(), tenantId);
+            if (subjectOpt.isPresent()) {
+                String subjectName = subjectOpt.get().getName();
+                if (!resolvedTitle.toLowerCase().contains(subjectName.toLowerCase()) &&
+                    !resolvedBody.toLowerCase().contains(subjectName.toLowerCase())) {
+                    resolvedTitle = "[" + subjectName + "] " + resolvedTitle;
+                }
+            }
+        } else if (request.getTargetType() == NotificationTargetType.CLASS && request.getTargetId() != null) {
+            var levelOpt = academicLevelRepository.findActiveByIdAndInstitutionId(request.getTargetId(), tenantId);
+            if (levelOpt.isPresent()) {
+                var level = levelOpt.get();
+                String progCode = (level.getProgram() != null && level.getProgram().getCode() != null)
+                        ? level.getProgram().getCode() + " "
+                        : "";
+                String levelName = progCode + level.getName();
+                if (!resolvedTitle.toLowerCase().contains(level.getName().toLowerCase()) &&
+                    !resolvedBody.toLowerCase().contains(level.getName().toLowerCase())) {
+                    resolvedTitle = "[" + levelName + "] " + resolvedTitle;
+                }
+            }
+        }
+
         Notification notification = Notification.builder()
                 .institution(institution)
-                .title(request.getTitle().trim())
-                .message(request.getBody().trim())
+                .title(resolvedTitle)
+                .message(resolvedBody)
                 .sender(principal.getUser())
                 .targetType(request.getTargetType())
                 .targetId(request.getTargetId())

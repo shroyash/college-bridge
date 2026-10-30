@@ -80,17 +80,19 @@ public class NotificationDomainEventListener {
                 return;
             }
 
-            String preview = (event.preview() != null && !event.preview().isBlank())
-                    ? event.preview()
-                    : "A new doubt was posted in your subject.";
-            if (preview.length() > 100) {
-                preview = preview.substring(0, 97) + "...";
-            }
+            String subjectName = (event.subjectName() != null && !event.subjectName().isBlank())
+                    ? event.subjectName().trim()
+                    : null;
+            String body = (subjectName != null)
+                    ? "A student has posted a new doubt in " + subjectName + ". Tap to view and respond."
+                    : (event.preview() != null && !event.preview().isBlank()
+                            ? (event.preview().length() > 100 ? event.preview().substring(0, 97) + "..." : event.preview())
+                            : "A new doubt was posted in your subject.");
 
             notificationPublisher.publish(NotificationPublishRequest.builder()
                     .institutionId(event.institutionId())
-                    .title("New Doubt Asked")
-                    .body(preview)
+                    .title("New Student Doubt")
+                    .body(body)
                     .targetType(NotificationTargetType.USERS)
                     .targetId(event.doubtId())
                     .userIds(new ArrayList<>(recipientUserIds))
@@ -116,17 +118,17 @@ public class NotificationDomainEventListener {
                 return;
             }
 
-            String preview = (event.preview() != null && !event.preview().isBlank())
-                    ? event.preview()
-                    : "Someone answered your doubt.";
-            if (preview.length() > 100) {
-                preview = preview.substring(0, 97) + "...";
-            }
+            String subjectName = (event.subjectName() != null && !event.subjectName().isBlank())
+                    ? event.subjectName().trim()
+                    : null;
+            String body = (subjectName != null)
+                    ? "Your teacher has answered your doubt in " + subjectName + ". Tap to view the response."
+                    : "Your teacher has answered your doubt. Tap to view the response.";
 
             notificationPublisher.publish(NotificationPublishRequest.builder()
                     .institutionId(event.institutionId())
-                    .title("New Answer on Your Doubt")
-                    .body(preview)
+                    .title("Your Doubt Has Been Answered")
+                    .body(body)
                     .targetType(NotificationTargetType.USERS)
                     .targetId(event.doubtId())
                     .userIds(List.of(event.doubtAuthorUserId()))
@@ -145,6 +147,9 @@ public class NotificationDomainEventListener {
     public void onAnswerApproved(AnswerApprovedEvent event) {
         try {
             String baseKey = "ANSWER_APPROVED:" + event.answerId() + ":" + event.approvedVersion();
+            String subjectName = (event.subjectName() != null && !event.subjectName().isBlank())
+                    ? event.subjectName().trim()
+                    : null;
 
             // 1. Notify Answer Author (if distinct from approver)
             if (event.answerAuthorUserId() != null && !event.answerAuthorUserId().equals(event.approverUserId())) {
@@ -165,10 +170,17 @@ public class NotificationDomainEventListener {
             if (event.doubtAuthorUserId() != null
                     && !event.doubtAuthorUserId().equals(event.approverUserId())
                     && !event.doubtAuthorUserId().equals(event.answerAuthorUserId())) {
+                String title = (subjectName != null)
+                        ? "Your Doubt Has Been Accepted"
+                        : "Answer Verified on Your Doubt";
+                String acceptedBody = (subjectName != null)
+                        ? "Your doubt in " + subjectName + " has been accepted by your teacher."
+                        : "An answer to your doubt was verified by a teacher.";
+
                 notificationPublisher.publish(NotificationPublishRequest.builder()
                         .institutionId(event.institutionId())
-                        .title("Answer Verified on Your Doubt")
-                        .body("An answer to your doubt was verified by a teacher.")
+                        .title(title)
+                        .body(acceptedBody)
                         .targetType(NotificationTargetType.USERS)
                         .targetId(event.doubtId())
                         .userIds(List.of(event.doubtAuthorUserId()))

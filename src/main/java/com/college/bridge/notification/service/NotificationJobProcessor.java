@@ -3,6 +3,8 @@ package com.college.bridge.notification.service;
 import com.college.bridge.notification.dto.NotificationJobExecutionDto;
 import com.college.bridge.notification.entity.FcmDevice;
 import com.college.bridge.notification.entity.NotificationRecipient;
+import com.college.bridge.notification.entity.NotificationTargetType;
+import com.college.bridge.notification.entity.NotificationType;
 import com.college.bridge.notification.entity.RecipientDeliveryStatus;
 import com.college.bridge.notification.fcm.FcmErrorClassifier;
 import com.college.bridge.notification.fcm.FcmNotificationService;
@@ -36,8 +38,20 @@ public class NotificationJobProcessor {
             dataPayload.put("notificationId", String.valueOf(jobDto.getNotificationId()));
             dataPayload.put("targetType", jobDto.getTargetType().name());
             dataPayload.put("institutionId", String.valueOf(institutionId));
+            if (jobDto.getType() != null) {
+                dataPayload.put("notificationType", jobDto.getType().name());
+            }
             if (jobDto.getTargetId() != null) {
                 dataPayload.put("targetId", String.valueOf(jobDto.getTargetId()));
+                if (jobDto.getType() == NotificationType.DOUBT_POSTED
+                        || jobDto.getType() == NotificationType.DOUBT_ANSWER
+                        || jobDto.getType() == NotificationType.ANSWER_APPROVED) {
+                    dataPayload.put("doubtId", String.valueOf(jobDto.getTargetId()));
+                } else if (jobDto.getTargetType() == NotificationTargetType.SUBJECT) {
+                    dataPayload.put("subjectId", String.valueOf(jobDto.getTargetId()));
+                } else if (jobDto.getTargetType() == NotificationTargetType.CLASS) {
+                    dataPayload.put("academicLevelId", String.valueOf(jobDto.getTargetId()));
+                }
             }
 
             switch (jobDto.getTargetType()) {

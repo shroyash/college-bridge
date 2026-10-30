@@ -7,7 +7,6 @@ import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-
 import java.util.List;
 import java.util.concurrent.*;
 
@@ -36,7 +35,10 @@ public class NotificationWorkerScheduler {
     public void pollAndProcessJobs() {
         try {
             int activeThreads = workerPool.getActiveCount();
-            int freeSlots = POOL_SIZE - activeThreads;
+            int queuedTasks = workerPool.getQueue().size();
+
+            int freeSlots = POOL_SIZE - activeThreads - queuedTasks;
+
             if (freeSlots <= 0) {
                 return;
             }
