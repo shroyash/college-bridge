@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../auth/presentation/controllers/auth_providers.dart';
 import 'super_admin_profile_modal.dart';
+import 'super_admin_requests_screen.dart';
 
 class SuperAdminSettingsScreen extends ConsumerWidget {
   const SuperAdminSettingsScreen({super.key});
@@ -146,6 +147,19 @@ class SuperAdminSettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
 
+          _SettingsItem(
+            icon: Icons.confirmation_number_rounded,
+            title: 'Support & Issue Tickets',
+            subtitle: 'Review help requests & bug reports submitted by users',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SuperAdminRequestsScreen(),
+                ),
+              );
+            },
+          ),
           _SettingsItem(
             icon: Icons.security_rounded,
             title: 'Global Security Policies',

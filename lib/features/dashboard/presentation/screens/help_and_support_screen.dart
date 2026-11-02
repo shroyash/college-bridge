@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class HelpAndSupportScreen extends StatefulWidget {
+import '../../../../core/widgets/clickable.dart';
+import '../../../support/presentation/controllers/support_providers.dart';
+
+class HelpAndSupportScreen extends ConsumerStatefulWidget {
   const HelpAndSupportScreen({super.key});
 
   @override
-  State<HelpAndSupportScreen> createState() => _HelpAndSupportScreenState();
+  ConsumerState<HelpAndSupportScreen> createState() =>
+      _HelpAndSupportScreenState();
 }
 
-class _HelpAndSupportScreenState extends State<HelpAndSupportScreen> {
+class _HelpAndSupportScreenState extends ConsumerState<HelpAndSupportScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = 'All';
   String _searchQuery = '';
@@ -516,7 +521,7 @@ class _HelpAndSupportScreenState extends State<HelpAndSupportScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          GestureDetector(
+          Clickable(
             onTap: onTap,
             child: Text(
               actionText,
@@ -590,23 +595,26 @@ class _HelpAndSupportScreenState extends State<HelpAndSupportScreen> {
                         style: GoogleFonts.inter(
                             fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF334155))),
                     const SizedBox(height: 6),
-                    DropdownButtonFormField<String>(
-                      initialValue: category,
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0xFFF8FAFC),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: category,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: const Color(0xFFF8FAFC),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        items: ['General Inquiry', 'Account & Security', 'Course/Subject Issue', 'App Bug']
+                            .map((cat) => DropdownMenuItem(value: cat, child: Text(cat, style: GoogleFonts.inter(fontSize: 13))))
+                            .toList(),
+                        onChanged: (val) {
+                          if (val != null) setModalState(() => category = val);
+                        },
                       ),
-                      items: ['General Inquiry', 'Account & Security', 'Course/Subject Issue', 'App Bug']
-                          .map((cat) => DropdownMenuItem(value: cat, child: Text(cat, style: GoogleFonts.inter(fontSize: 13))))
-                          .toList(),
-                      onChanged: (val) {
-                        if (val != null) setModalState(() => category = val);
-                      },
                     ),
 
                     const SizedBox(height: 14),
@@ -672,20 +680,42 @@ class _HelpAndSupportScreenState extends State<HelpAndSupportScreen> {
                                 }
 
                                 setModalState(() => isSubmitting = true);
-                                await Future.delayed(const Duration(milliseconds: 800));
-
-                                if (ctx.mounted) {
-                                  Navigator.pop(ctx);
-                                  final ticketNum = 'TK-${1000 + (DateTime.now().millisecondsSinceEpoch % 8999)}';
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Ticket $ticketNum submitted! We will respond via email.',
-                                          style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-                                      backgroundColor: const Color(0xFF16A34A),
-                                      behavior: SnackBarBehavior.floating,
-                                      duration: const Duration(seconds: 4),
-                                    ),
+                                try {
+                                  final ds = ref.read(supportRemoteDataSourceProvider);
+                                  final ticket = await ds.createTicket(
+                                    category: category,
+                                    subject: sub,
+                                    description: desc,
                                   );
+
+                                  if (ctx.mounted) {
+                                    Navigator.pop(ctx);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Ticket ${ticket.ticketNumber} submitted! We will respond via email.',
+                                          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                                        ),
+                                        backgroundColor: const Color(0xFF16A34A),
+                                        behavior: SnackBarBehavior.floating,
+                                        duration: const Duration(seconds: 4),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (ctx.mounted) {
+                                    setModalState(() => isSubmitting = false);
+                                    ScaffoldMessenger.of(ctx).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Failed to submit ticket: ${e.toString().replaceAll("Exception: ", "")}',
+                                          style: GoogleFonts.inter(),
+                                        ),
+                                        backgroundColor: const Color(0xFFDC2626),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
                                 }
                               },
                         style: ElevatedButton.styleFrom(

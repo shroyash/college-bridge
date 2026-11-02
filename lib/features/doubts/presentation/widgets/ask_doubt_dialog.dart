@@ -160,7 +160,9 @@ class _AskDoubtDialogState extends ConsumerState<AskDoubtDialog> {
                   ),
                 )
               else
-                DropdownButtonFormField<int>(
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: DropdownButtonFormField<int>(
                   initialValue: _selectedSubjectId,
                   decoration: InputDecoration(
                     hintText: enrolledSubjects.isEmpty
@@ -189,6 +191,7 @@ class _AskDoubtDialogState extends ConsumerState<AskDoubtDialog> {
                   },
                   validator: (val) =>
                       val == null ? 'Subject is required' : null,
+                ),
                 ),
               const SizedBox(height: 16),
 

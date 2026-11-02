@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/widgets/clickable.dart';
 import '../../data/models/class_detail_model.dart';
 import 'package:bridge_mobile/features/institution_admin/presentation/controllers/role_academic_providers.dart';
 import 'package:bridge_mobile/features/institution_admin/presentation/screens/subject_members_screen.dart';
@@ -112,7 +113,7 @@ class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen> {
         elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF2563EB), size: 24),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.maybePop(context),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -271,7 +272,7 @@ class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   else
-                    GestureDetector(
+                    Clickable(
                       onTap: () => _toggleClassStatus(details),
                       child: Text(
                         isActive ? 'Suspend' : 'Activate',
@@ -351,30 +352,6 @@ class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen> {
                 iconBg: const Color(0xFFEFF6FF),
                 iconColor: const Color(0xFF2563EB),
                 title: 'Manage Teacher',
-                onTap: () {},
-              ),
-              _buildQuickActionCard(
-                icon: Icons.chat_bubble_outline,
-                iconBg: const Color(0xFFEFF6FF),
-                iconColor: const Color(0xFF2563EB),
-                title: 'Review Doubts',
-                onTap: () {
-                  ref.invalidate(subjectDoubtSummaryProvider(widget.classId));
-                  ref.invalidate(doubtsListProvider);
-                  if (_scrollController.hasClients) {
-                    _scrollController.animateTo(
-                      _scrollController.position.maxScrollExtent,
-                      duration: const Duration(milliseconds: 400),
-                      curve: Curves.easeInOut,
-                    );
-                  }
-                },
-              ),
-              _buildQuickActionCard(
-                icon: Icons.campaign_outlined,
-                iconBg: const Color(0xFFFEF2F2),
-                iconColor: const Color(0xFFDC2626),
-                title: 'Post Notice',
                 onTap: () {},
               ),
               _buildQuickActionCard(

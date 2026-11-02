@@ -106,37 +106,43 @@ class _ManageClassesScreenState extends ConsumerState<ManageClassesScreen> {
             children: [
               const Text('Select Faculty/Program:'),
               const SizedBox(height: 6),
-              DropdownButtonFormField<String>(
-                initialValue: faculty,
-                decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-                items: _faculties
-                    .where((f) => f != 'ALL')
-                    .map((f) => DropdownMenuItem(value: f, child: Text(f)))
-                    .toList(),
-                onChanged: (val) {
-                  if (val != null) {
-                    setDialogState(() {
-                      faculty = val;
-                      nameController.text = '$faculty ${semester}th Semester';
-                    });
-                  }
-                },
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: DropdownButtonFormField<String>(
+                  initialValue: faculty,
+                  decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                  items: _faculties
+                      .where((f) => f != 'ALL')
+                      .map((f) => DropdownMenuItem(value: f, child: Text(f)))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setDialogState(() {
+                        faculty = val;
+                        nameController.text = '$faculty ${semester}th Semester';
+                      });
+                    }
+                  },
+                ),
               ),
               const SizedBox(height: 12),
               const Text('Select Semester:'),
               const SizedBox(height: 6),
-              DropdownButtonFormField<int>(
-                initialValue: semester,
-                decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-                items: List.generate(8, (i) => DropdownMenuItem(value: i + 1, child: Text('Semester ${i + 1}'))),
-                onChanged: (val) {
-                  if (val != null) {
-                    setDialogState(() {
-                      semester = val;
-                      nameController.text = '$faculty ${semester}th Semester';
-                    });
-                  }
-                },
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: DropdownButtonFormField<int>(
+                  initialValue: semester,
+                  decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                  items: List.generate(8, (i) => DropdownMenuItem(value: i + 1, child: Text('Semester ${i + 1}'))),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setDialogState(() {
+                        semester = val;
+                        nameController.text = '$faculty ${semester}th Semester';
+                      });
+                    }
+                  },
+                ),
               ),
               const SizedBox(height: 12),
               const Text('Class Display Name:'),
@@ -201,12 +207,15 @@ class _ManageClassesScreenState extends ConsumerState<ManageClassesScreen> {
               children: [
                 const Text('Select designated primary class teacher:'),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<UserProfileModel>(
-                  initialValue: selectedTeacher,
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
-                  hint: const Text('Choose teacher...'),
-                  items: teachers.map((t) => DropdownMenuItem(value: t, child: Text('${t.name} (${t.email})'))).toList(),
-                  onChanged: (val) => setModalState(() => selectedTeacher = val),
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: DropdownButtonFormField<UserProfileModel>(
+                    initialValue: selectedTeacher,
+                    decoration: const InputDecoration(border: OutlineInputBorder()),
+                    hint: const Text('Choose teacher...'),
+                    items: teachers.map((t) => DropdownMenuItem(value: t, child: Text('${t.name} (${t.email})'))).toList(),
+                    onChanged: (val) => setModalState(() => selectedTeacher = val),
+                  ),
                 ),
               ],
             ),
@@ -348,7 +357,9 @@ class _ManageClassesScreenState extends ConsumerState<ManageClassesScreen> {
                         color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: DropdownButton<int?>(
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: DropdownButton<int?>(
                         value: _selectedSemester,
                         dropdownColor: const Color(0xFF1E40AF),
                         underline: const SizedBox(),
@@ -368,6 +379,7 @@ class _ManageClassesScreenState extends ConsumerState<ManageClassesScreen> {
                           setState(() => _selectedSemester = val);
                           _fetchClasses();
                         },
+                        ),
                       ),
                     ),
                   ],

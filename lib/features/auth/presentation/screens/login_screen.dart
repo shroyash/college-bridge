@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/error/auth_exceptions.dart';
+import '../../../../core/widgets/clickable.dart';
 import '../controllers/auth_providers.dart';
 import '../controllers/auth_state.dart';
 import '../widgets/auth_button.dart';
@@ -12,7 +13,9 @@ import '../../domain/entities/auth_user.dart';
 class LoginScreen extends ConsumerStatefulWidget {
   final VoidCallback onNavigateToRegister;
   final VoidCallback onLoginSuccess;
-  final VoidCallback onBack;
+  // No longer used by this screen (back arrow removed) but kept optional
+  // so existing callers don't break.
+  final VoidCallback? onBack;
   final VoidCallback onForgotPassword;
   final void Function(AuthUser user)? onLoginSuccessWithUser;
   // Called when institution is rejected — user can try re-registration
@@ -22,7 +25,7 @@ class LoginScreen extends ConsumerStatefulWidget {
     super.key,
     required this.onNavigateToRegister,
     required this.onLoginSuccess,
-    required this.onBack,
+    this.onBack,
     required this.onForgotPassword,
     this.onLoginSuccessWithUser,
     this.onNavigateToInstitutionRegister,
@@ -34,14 +37,12 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _institutionCodeCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscurePassword = true;
 
   @override
   void dispose() {
-    _institutionCodeCtrl.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
@@ -50,7 +51,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _onLogin() {
     if (!_formKey.currentState!.validate()) return;
     ref.read(authNotifierProvider.notifier).login(
-          institutionCode: _institutionCodeCtrl.text.trim().toUpperCase(),
+          institutionCode: '', // no longer collected (use null if String?)
           email: _emailCtrl.text.trim(),
           password: _passwordCtrl.text,
         );
@@ -84,8 +85,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final authState = ref.watch(authNotifierProvider);
     final isLoading = authState is AuthLoading;
-    final loginFailure =
-        authState is AuthLoginFailure ? authState : null;
+    final loginFailure = authState is AuthLoginFailure ? authState : null;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -95,22 +95,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 16),
-              // ── Back ──
-              GestureDetector(
-                onTap: widget.onBack,
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.arrow_back_ios_new_rounded,
-                      size: 16, color: Color(0xFF1E293B)),
-                ),
-              ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 40),
               Text(
                 'Welcome Back',
                 style: GoogleFonts.inter(
@@ -136,8 +121,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   failure: loginFailure,
                   onDismiss: () =>
                       ref.read(authNotifierProvider.notifier).reset(),
-                  onResubmit:
-                      widget.onNavigateToInstitutionRegister,
+                  onResubmit: widget.onNavigateToInstitutionRegister,
                 ),
                 const SizedBox(height: 20),
               ],
@@ -148,14 +132,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AuthTextField(
-                      label: 'Institution Code (Optional for Super Admin)',
-                      hint: 'e.g. TU-KTM',
-                      controller: _institutionCodeCtrl,
-                      textCapitalization: TextCapitalization.characters,
-                      textInputAction: TextInputAction.next,
-                    ),
-                    const SizedBox(height: 16),
                     AuthTextField(
                       label: 'Email',
                       hint: 'Enter your email',
@@ -217,10 +193,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    AuthButton(
-                      label: 'LOGIN',
-                      isLoading: isLoading,
-                      onPressed: _onLogin,
+                    // Wrapped so the pointer cursor shows even if AuthButton
+                    // uses a GestureDetector/InkWell internally.
+                    MouseRegion(
+                      cursor: isLoading
+                          ? SystemMouseCursors.basic
+                          : SystemMouseCursors.click,
+                      child: AuthButton(
+                        label: 'LOGIN',
+                        isLoading: isLoading,
+                        onPressed: _onLogin,
+                      ),
                     ),
                   ],
                 ),
@@ -230,8 +213,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const Row(
                 children: [
                   Expanded(
-                      child: Divider(
-                          color: Color(0xFFE2E8F0), thickness: 1)),
+                      child: Divider(color: Color(0xFFE2E8F0), thickness: 1)),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 12),
                     child: Text('or',
@@ -239,8 +221,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             color: Color(0xFF94A3B8), fontSize: 13)),
                   ),
                   Expanded(
-                      child: Divider(
-                          color: Color(0xFFE2E8F0), thickness: 1)),
+                      child: Divider(color: Color(0xFFE2E8F0), thickness: 1)),
                 ],
               ),
               const SizedBox(height: 20),
@@ -249,7 +230,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               Center(
                 child: Column(
                   children: [
-                    GestureDetector(
+                    Clickable(
                       onTap: widget.onNavigateToInstitutionRegister,
                       child: Text(
                         'Register a new institution →',
@@ -268,7 +249,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             style: GoogleFonts.inter(
                                 fontSize: 14,
                                 color: const Color(0xFF64748B))),
-                        GestureDetector(
+                        Clickable(
                           onTap: widget.onNavigateToRegister,
                           child: Text(
                             'Sign Up',
@@ -292,6 +273,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Per-reason failure banners
@@ -317,8 +299,7 @@ class _LoginFailureBanner extends StatelessWidget {
           iconColor: const Color(0xFFF59E0B),
           icon: Icons.hourglass_top_rounded,
           title: 'Registration Under Review',
-          message:
-              'Your institution\'s registration is pending approval. '
+          message: 'Your institution\'s registration is pending approval. '
               'We\'ll notify you by email once reviewed.',
           onDismiss: onDismiss,
         ),
@@ -328,8 +309,7 @@ class _LoginFailureBanner extends StatelessWidget {
           iconColor: const Color(0xFFEF4444),
           icon: Icons.cancel_rounded,
           title: 'Registration Rejected',
-          message: failure.rejectionReason ??
-              failure.message,
+          message: failure.rejectionReason ?? failure.message,
           onDismiss: onDismiss,
           action: onResubmit != null
               ? _BannerAction(
@@ -345,8 +325,7 @@ class _LoginFailureBanner extends StatelessWidget {
           iconColor: const Color(0xFF7C3AED),
           icon: Icons.block_rounded,
           title: 'Institution Suspended',
-          message:
-              'Your institution\'s account has been suspended. '
+          message: 'Your institution\'s account has been suspended. '
               'Please contact support for assistance.',
           onDismiss: onDismiss,
         ),
@@ -356,8 +335,7 @@ class _LoginFailureBanner extends StatelessWidget {
           iconColor: const Color(0xFFF97316),
           icon: Icons.person_off_rounded,
           title: 'Account Suspended',
-          message:
-              'Your personal account has been suspended. '
+          message: 'Your personal account has been suspended. '
               'Contact your institution administrator.',
           onDismiss: onDismiss,
         ),
@@ -426,10 +404,9 @@ class _BannerCard extends StatelessWidget {
                   ),
                 ),
               ),
-              GestureDetector(
+              Clickable(
                 onTap: onDismiss,
-                child: Icon(Icons.close_rounded,
-                    size: 16, color: iconColor),
+                child: Icon(Icons.close_rounded, size: 16, color: iconColor),
               ),
             ],
           ),
@@ -444,11 +421,11 @@ class _BannerCard extends StatelessWidget {
           ),
           if (action != null) ...[
             const SizedBox(height: 12),
-            GestureDetector(
+            Clickable(
               onTap: action!.onTap,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: action!.color,
                   borderRadius: BorderRadius.circular(8),

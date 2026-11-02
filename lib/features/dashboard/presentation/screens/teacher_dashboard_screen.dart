@@ -1,12 +1,18 @@
+import '../../../notifications/presentation/widgets/notification_badge_icon.dart';
+import '../../../notifications/presentation/screens/broadcast_notification_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/widgets/clickable.dart';
 
 import '../../../admin_users/domain/entities/teacher_assignment.dart';
 import '../../../auth/presentation/controllers/institution_provider.dart';
 import '../../../doubts/presentation/controllers/doubt_providers.dart';
 import '../../../doubts/presentation/screens/doubt_detail_screen.dart';
+import '../../../doubts/presentation/screens/student_doubts_screen.dart';
 import '../../../institution_admin/presentation/screens/teacher_classes_screen.dart';
 import '../../../institution_admin/presentation/screens/teacher_class_detail_screen.dart';
+import '../../../subjects/presentation/screens/subject_members_screen.dart';
 import '../widgets/subject_card.dart';
 import '../controllers/dashboard_providers.dart';
 import '../controllers/dashboard_state.dart';
@@ -33,7 +39,6 @@ class _TeacherDashboardScreenState
     extends ConsumerState<TeacherDashboardScreen> {
   int _selectedBottomNavIndex = 0;
   final ScrollController _scrollController = ScrollController();
-  final GlobalKey _doubtsKey = GlobalKey();
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -60,17 +65,6 @@ class _TeacherDashboardScreenState
   void dispose() {
     _scrollController.dispose();
     super.dispose();
-  }
-
-  void _scrollToDoubts() {
-    final context = _doubtsKey.currentContext;
-    if (context != null) {
-      Scrollable.ensureVisible(
-        context,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
-    }
   }
 
   @override
@@ -113,7 +107,6 @@ class _TeacherDashboardScreenState
                           _buildMyClassesSection(state),
                           const SizedBox(height: 28),
                           Container(
-                            key: _doubtsKey,
                             child: _buildRequiresAttentionSection(),
                           ),
                           const SizedBox(height: 28),
@@ -127,12 +120,19 @@ class _TeacherDashboardScreenState
               ],
             ),
             // 1 – Classes
-            const TeacherClassesScreen(),
-            // 2 – Notifications (placeholder)
-            const Center(child: Text('Notifications')),
+            TeacherClassesScreen(
+              onBack: () => setState(() => _selectedBottomNavIndex = 0),
+            ),
+            // 2 – Doubts
+            StudentDoubtsScreen(
+              onBack: () => setState(() => _selectedBottomNavIndex = 0),
+            ),
             // 3 – Profile
             TeacherProfileScreen(
-                totalClasses: totalClasses, onLogout: widget.onLogout),
+              totalClasses: totalClasses,
+              onLogout: widget.onLogout,
+              onBack: () => setState(() => _selectedBottomNavIndex = 0),
+            ),
           ],
         ),
       ),
@@ -196,15 +196,7 @@ class _TeacherDashboardScreenState
               ],
             ),
           ),
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            icon: const Icon(
-              Icons.notifications_none,
-              color: Colors.white,
-            ),
-            onPressed: () {},
-          ),
+          const NotificationBadgeIcon(),
         ],
       ),
     );
@@ -212,19 +204,57 @@ class _TeacherDashboardScreenState
 
   // ── 2. Quick Actions ────────────────────────────────────────────────────────
   Widget _buildQuickActions() {
-    final actions = [
-      {'title': 'Review Doubts', 'icon': Icons.chat_bubble_outline_rounded, 'action': _scrollToDoubts},
+    final state = ref.read(teacherDashboardNotifierProvider);
+
+    void navigateToMembers() {
+      if (state is DashboardSuccess<List<TeacherAssignment>> &&
+          state.data.isNotEmpty) {
+        final first = state.data.first;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SubjectMembersScreen(
+              subjectId: first.subjectId,
+              subjectName: first.subjectName,
+              teacherName: '',
+              totalStudents: 0,
+              viewMode: ClassMembersViewMode.student,
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('No class assigned yet. Check back later.')),
+        );
+      }
+    }
+
+    final actions = <Map<String, Object?>>[
+      {
+        'title': 'Review Doubts',
+        'icon': Icons.chat_bubble_outline_rounded,
+        'action': () => setState(() => _selectedBottomNavIndex = 2),
+      },
       {
         'title': 'My Classes',
         'icon': Icons.school_outlined,
-        'action': () {
-          setState(() {
-            _selectedBottomNavIndex = 1;
-          });
-        }
+        'action': () => setState(() => _selectedBottomNavIndex = 1),
       },
-      {'title': 'Notices', 'icon': Icons.campaign_outlined, 'action': null},
-      {'title': 'Members', 'icon': Icons.people_outline_rounded, 'action': null},
+      {
+        'title': 'Post Notice',
+        'icon': Icons.campaign_outlined,
+        'action': () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const BroadcastNotificationScreen()),
+            ),
+      },
+      {
+        'title': 'Members',
+        'icon': Icons.people_outline_rounded,
+        'action': navigateToMembers,
+      },
     ];
 
     return Column(
@@ -252,15 +282,11 @@ class _TeacherDashboardScreenState
           ),
           itemBuilder: (context, index) {
             final action = actions[index];
-            final VoidCallback? onTapAction = action['action'] as VoidCallback?;
+            final VoidCallback onTapAction =
+                action['action'] as VoidCallback;
 
             return InkWell(
-              onTap: onTapAction ??
-                  () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${action['title']} coming soon')),
-                    );
-                  },
+              onTap: onTapAction,
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 decoration: BoxDecoration(
@@ -317,7 +343,7 @@ class _TeacherDashboardScreenState
                 color: Color(0xFF0F172A),
               ),
             ),
-            GestureDetector(
+            Clickable(
               onTap: () {
                 setState(() {
                   _selectedBottomNavIndex = 1;
@@ -447,7 +473,7 @@ class _TeacherDashboardScreenState
         final facultyStr = item.faculty ?? 'BCA';
         final semInt = item.semester ?? 1;
 
-        return GestureDetector(
+        return Clickable(
           onTap: () {
             Navigator.push(
               context,
@@ -489,8 +515,8 @@ class _TeacherDashboardScreenState
                 color: Color(0xFF0F172A),
               ),
             ),
-            GestureDetector(
-              onTap: _scrollToDoubts,
+            Clickable(
+              onTap: () => setState(() => _selectedBottomNavIndex = 2),
               child: const Text(
                 'See all',
                 style: TextStyle(
@@ -717,10 +743,10 @@ class _TeacherDashboardScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
+        Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
+            const Text(
               'Latest Notices',
               style: TextStyle(
                 fontSize: 18,
@@ -728,26 +754,46 @@ class _TeacherDashboardScreenState
                 color: Color(0xFF0F172A),
               ),
             ),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const BroadcastNotificationScreen()),
+                );
+              },
+              child: const Text('Post Notice'),
+            ),
           ],
         ),
         const SizedBox(height: 14),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: const Column(
-            children: [
-              Icon(Icons.campaign_outlined, size: 36, color: Color(0xFF94A3B8)),
-              SizedBox(height: 8),
-              Text(
-                'No notices posted',
-                style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-              ),
-            ],
+        InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const BroadcastNotificationScreen()),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: const Column(
+              children: [
+                Icon(Icons.campaign_outlined, size: 36, color: Color(0xFF2563EB)),
+                SizedBox(height: 8),
+                Text(
+                  'Tap to post a campus notice',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF2563EB)),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -806,8 +852,8 @@ class _TeacherDashboardScreenState
             label: 'Classes',
           ),
           const BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_outlined),
-            label: 'Notifications',
+            icon: Icon(Icons.chat_bubble_outline_rounded),
+            label: 'Doubts',
           ),
           const BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),

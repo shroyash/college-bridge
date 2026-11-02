@@ -1,6 +1,12 @@
+import 'package:flutter/foundation.dart';
 abstract class ApiEndpoints {
   // Base configuration
-  static const String baseUrl = 'http://localhost:8080';
+  static String get baseUrl {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:8080';
+    }
+    return 'http://localhost:8080';
+  }
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 15);
 
@@ -87,6 +93,7 @@ abstract class ApiEndpoints {
   // --- SUBJECTS (PUBLIC / USER-FACING) ---
   static String subjectDetails(int id) => '/api/academic/subjects/$id/details';
   static const String mySubjects = '/api/academic/subjects/my-subjects';
+  static const String myAcademicLevels = '/api/academic/levels/my-levels';
   static const String academicSubjectsAll = '/api/academic/subjects/all';
   static const String academicSubjectsSearch = '/api/academic/subjects/search';
   static String academicStudentSubjects(int studentId) =>
@@ -115,4 +122,22 @@ abstract class ApiEndpoints {
       '/api/super-admin/users/$id/suspend';
   static String superAdminUserActivate(int id) =>
       '/api/super-admin/users/$id/activate';
+
+  // --- NOTIFICATION ENDPOINTS ---
+  static const String notifications = '/api/notifications';
+  static const String notificationsInbox = '/api/notifications/inbox';
+  static const String notificationsUnreadCount = '/api/notifications/unread-count';
+  static String notificationMarkRead(int id) => '/api/notifications/$id/read';
+
+  // --- FCM DEVICE ENDPOINTS ---
+  static const String devicesFcmToken = '/api/devices/fcm-token';
+  static String deviceDeactivateFcmToken(String token) =>
+      '/api/devices/fcm-token?token=${Uri.encodeComponent(token)}';
+
+  // --- SUPPORT TICKET ENDPOINTS ---
+  static const String supportTickets = '/api/support/tickets';
+  static const String supportTicketsMy = '/api/support/tickets/my';
+  static const String superAdminTickets = '/api/super-admin/tickets';
+  static String superAdminTicketDetail(int id) => '/api/super-admin/tickets/$id';
+  static String superAdminTicketStatus(int id) => '/api/super-admin/tickets/$id/status';
 }

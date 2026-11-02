@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/widgets/clickable.dart';
+import '../../../admin_users/domain/entities/user_profile.dart';
 import 'package:bridge_mobile/features/dashboard/presentation/controllers/dashboard_providers.dart';
 import '../controllers/profile_notifier.dart';
 import 'package:bridge_mobile/features/dashboard/presentation/screens/help_and_support_screen.dart';
@@ -56,37 +58,87 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
         ),
       ),
       body: SafeArea(
-        child: profileState is ProfileLoading
-            ? const Center(child: CircularProgressIndicator())
-            : profileState is ProfileFailure
-                ? _buildError(profileState.message)
-                : profileState is ProfileSuccess
-                    ? _buildContent(context, profileState)
-                    : const SizedBox.shrink(),
+        child: switch (profileState) {
+          ProfileFailure(:final message) => _buildErrorWithFallback(context, message),
+          final ProfileSuccess s => _buildContent(context, s),
+          _ => _buildLoadingOrFallback(context),
+        },
       ),
     );
   }
 
-  Widget _buildError(String msg) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 40),
-            const SizedBox(height: 12),
-            Text(msg,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF64748B))),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () =>
-                  ref.read(profileNotifierProvider.notifier).fetchProfile(),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB)),
-              child: const Text('Retry', style: TextStyle(color: Colors.white)),
-            ),
-          ],
+  Widget _buildLoadingOrFallback(BuildContext context) {
+    final fallbackProfile = UserProfile(
+      userId: 0,
+      name: widget.userName.isNotEmpty ? widget.userName : 'Admin',
+      email: 'admin@college.edu',
+      role: 'ADMIN',
+      status: 'ACTIVE',
+    );
+    return Stack(
+      children: [
+        _buildContent(context, ProfileSuccess(fallbackProfile)),
+        const Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: LinearProgressIndicator(
+            minHeight: 2,
+            color: Color(0xFF2563EB),
+            backgroundColor: Colors.transparent,
+          ),
         ),
-      );
+      ],
+    );
+  }
+
+  Widget _buildErrorWithFallback(BuildContext context, String msg) {
+    final fallbackProfile = UserProfile(
+      userId: 0,
+      name: widget.userName.isNotEmpty ? widget.userName : 'Admin',
+      email: 'admin@college.edu',
+      role: 'ADMIN',
+      status: 'ACTIVE',
+    );
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: const Color(0xFFFEE2E2),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, size: 16, color: Color(0xFFDC2626)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  msg.isNotEmpty ? msg : 'Unable to connect to server',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFFDC2626)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              TextButton(
+                onPressed: () =>
+                    ref.read(profileNotifierProvider.notifier).refreshProfile(),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Retry',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFDC2626))),
+              ),
+            ],
+          ),
+        ),
+        Expanded(child: _buildContent(context, ProfileSuccess(fallbackProfile))),
+      ],
+    );
+  }
 
   Widget _buildContent(BuildContext context, ProfileSuccess state) {
     final p = state.profile;
@@ -119,7 +171,7 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
                 Stack(
                   alignment: Alignment.center,
                   children: [
-                    GestureDetector(
+                    Clickable(
                       onTap: state.isSaving ? null : () => _pickAndUploadImage(),
                       child: CircleAvatar(
                         radius: 44,
@@ -143,7 +195,7 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
                     Positioned(
                       bottom: 0,
                       right: 0,
-                      child: GestureDetector(
+                      child: Clickable(
                         onTap: state.isSaving ? null : () => _pickAndUploadImage(),
                         child: Container(
                           width: 28,

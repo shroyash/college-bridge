@@ -132,20 +132,23 @@ class _AssignSubjectDialogState extends ConsumerState<AssignSubjectDialog> {
                 children: [
                   const Text('Select Teacher:', style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
-                  DropdownButtonFormField<UserProfileModel>(
-                    initialValue: _selectedTeacher,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: DropdownButtonFormField<UserProfileModel>(
+                      initialValue: _selectedTeacher,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      hint: const Text('Choose a teacher...'),
+                      items: _teachers
+                          .map((t) => DropdownMenuItem(
+                                value: t,
+                                child: Text('${t.name} (${t.email})'),
+                              ))
+                          .toList(),
+                      onChanged: _onTeacherSelected,
                     ),
-                    hint: const Text('Choose a teacher...'),
-                    items: _teachers
-                        .map((t) => DropdownMenuItem(
-                              value: t,
-                              child: Text('${t.name} (${t.email})'),
-                            ))
-                        .toList(),
-                    onChanged: _onTeacherSelected,
                   ),
                   if (_selectedTeacher != null) ...[
                     const SizedBox(height: 16),

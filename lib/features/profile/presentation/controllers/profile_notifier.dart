@@ -48,12 +48,56 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   ProfileNotifier(this._useCase, this._storage) : super(const ProfileInitial());
 
   Future<void> fetchProfile() async {
-    state = const ProfileLoading();
+    // Skip re-fetching if we already have fresh data (avoids unnecessary loading
+    // flicker when navigating back to the profile screen).
+    if (state is ProfileSuccess) return;
+    await _loadProfile();
+  }
+
+  /// Forces a fresh fetch regardless of current state (e.g. after image upload or retry).
+  Future<void> refreshProfile() => _loadProfile();
+
+  Future<UserProfile?> _getCachedProfile() async {
+    final name = await _storage.getUserName();
+    final email = await _storage.getUserEmail();
+    final role = await _storage.getUserRole();
+    if ((name != null && name.isNotEmpty) || (email != null && email.isNotEmpty)) {
+      return UserProfile(
+        userId: 0,
+        name: name ?? '',
+        email: email ?? '',
+        role: role ?? 'ADMIN',
+        status: 'ACTIVE',
+      );
+    }
+    return null;
+  }
+
+  Future<void> _loadProfile() async {
+    UserProfile? fallback;
+    if (state is ProfileSuccess) {
+      fallback = (state as ProfileSuccess).profile;
+    } else {
+      fallback = await _getCachedProfile();
+      if (fallback != null) {
+        state = ProfileSuccess(fallback);
+      } else {
+        state = const ProfileLoading();
+      }
+    }
+
     try {
-      final profile = await _useCase.getMyProfile();
+      final profile = await _useCase.getMyProfile().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw Exception('Request timed out. Please try again.'),
+      );
       state = ProfileSuccess(profile);
     } catch (e) {
-      state = ProfileFailure(e.toString().replaceFirst('Exception: ', ''));
+      if (fallback != null) {
+        state = ProfileSuccess(fallback);
+      } else {
+        state = ProfileFailure(e.toString().replaceFirst('Exception: ', ''));
+      }
     }
   }
 
@@ -80,7 +124,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     try {
       await _useCase.uploadProfileImage(imageFile);
       // Re-fetch profile to get the updated imageUrl from server
-      await fetchProfile();
+      await _loadProfile();
       return true;
     } catch (_) {
       state = ProfileSuccess(current, isSaving: false);

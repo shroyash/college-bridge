@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/clickable.dart';
+
 import '../controllers/forgot_password_providers.dart';
 import '../controllers/forgot_password_state.dart';
 import '../widgets/auth_button.dart';
@@ -108,7 +110,7 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
                 const SizedBox(height: 16),
 
                 // ── Back button ──
-                GestureDetector(
+                Clickable(
                   onTap: widget.onBack,
                   child: Container(
                     width: 38,
@@ -311,7 +313,7 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
                         style:
                             TextStyle(fontSize: 13, color: Color(0xFF64748B)),
                       ),
-                      GestureDetector(
+                      Clickable(
                         onTap: () {},
                         child: const Text(
                           'Contact IT Support',

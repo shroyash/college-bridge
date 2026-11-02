@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/clickable.dart';
+
 import '../controllers/manage_users_notifier.dart';
 import '../controllers/manage_users_providers.dart';
 import '../controllers/manage_users_state.dart';
@@ -147,7 +149,7 @@ class _ManageUsersScreenState extends ConsumerState<ManageUsersScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: GestureDetector(
+                    child: Clickable(
                       onTap: () => notifier.selectRoleTab('TEACHER'),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
@@ -180,7 +182,7 @@ class _ManageUsersScreenState extends ConsumerState<ManageUsersScreen> {
                     ),
                   ),
                   Expanded(
-                    child: GestureDetector(
+                    child: Clickable(
                       onTap: () => notifier.selectRoleTab('STUDENT'),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),

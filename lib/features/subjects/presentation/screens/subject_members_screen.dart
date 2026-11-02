@@ -123,7 +123,7 @@ class _SubjectMembersScreenState extends ConsumerState<SubjectMembersScreen> {
         elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF2563EB), size: 24),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.maybePop(context),
         ),
         title: const Text(
           'Class Members',

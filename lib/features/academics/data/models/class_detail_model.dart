@@ -104,7 +104,7 @@ class ClassDetailModel {
             .toList() ??
         [];
 
-    final lId = (json['levelId'] ?? json['subjectId'] ?? json['classId'] as num?)?.toInt() ?? 0;
+    final lId = (json['subjectId'] ?? json['levelId'] ?? json['classId'] as num?)?.toInt() ?? 0;
     final progName = json['programName'] ??
         (json['academicProgram'] is Map ? json['academicProgram']['name'] : null) ??
         json['faculty'] as String? ??

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "784598194727",
+    "project_id": "college-bridge-96f08",
+    "storage_bucket": "college-bridge-96f08.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:784598194727:android:457cefb3c3a29d15c64c02",
+        "android_client_info": {
+          "package_name": "com.example.bridge_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDcYKtv3d0JXa0tlcGbTlke5AVFHZgjuWg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -44,7 +44,7 @@ class UserProfileModel extends UserProfile {
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
     return UserProfileModel(
-      userId: (json['userId'] as num).toInt(),
+      userId: (json['userId'] as num?)?.toInt() ?? (json['id'] as num?)?.toInt() ?? 0,
       teacherId: (json['teacherId'] as num?)?.toInt(),
       name: json['name'] as String? ?? '',
       email: json['email'] as String? ?? '',

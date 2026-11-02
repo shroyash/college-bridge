@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/clickable.dart';
+
 import 'package:bridge_mobile/features/institution_admin/data/models/class_detail_model.dart';
 import 'package:bridge_mobile/features/institution_admin/presentation/controllers/role_academic_providers.dart';
 import 'subject_members_screen.dart';
@@ -229,7 +231,7 @@ class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   else
-                    GestureDetector(
+                    Clickable(
                       onTap: () => _toggleClassStatus(details),
                       child: Text(
                         isActive ? 'Suspend' : 'Activate',
@@ -309,20 +311,6 @@ class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen> {
                 iconBg: const Color(0xFFEFF6FF),
                 iconColor: const Color(0xFF2563EB),
                 title: 'Manage Teacher',
-                onTap: () {},
-              ),
-              _buildQuickActionCard(
-                icon: Icons.chat_bubble_outline,
-                iconBg: const Color(0xFFEFF6FF),
-                iconColor: const Color(0xFF2563EB),
-                title: 'Review Doubts',
-                onTap: () {},
-              ),
-              _buildQuickActionCard(
-                icon: Icons.campaign_outlined,
-                iconBg: const Color(0xFFFEF2F2),
-                iconColor: const Color(0xFFDC2626),
-                title: 'Post Notice',
                 onTap: () {},
               ),
               _buildQuickActionCard(
@@ -603,7 +591,7 @@ class _ClassDetailsScreenState extends ConsumerState<ClassDetailsScreen> {
   }
 
   Widget _buildDoubtFilterChip(String label, bool isSelected, VoidCallback onTap) {
-    return GestureDetector(
+    return Clickable(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

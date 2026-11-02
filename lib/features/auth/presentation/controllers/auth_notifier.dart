@@ -1,3 +1,4 @@
+import '../../../../core/services/fcm_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/auth_exceptions.dart';
@@ -16,8 +17,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _authRepository;
   final SecureStorageService _storageService;
   final Ref _ref;
+  final FcmService? _fcmService;
 
   AuthNotifier({
+    FcmService? fcmService,
     required LoginUseCase loginUseCase,
     required RegisterUseCase registerUseCase,
     required AuthRepository authRepository,
@@ -28,6 +31,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _authRepository = authRepository,
         _storageService = storageService,
         _ref = ref,
+        _fcmService = fcmService,
         super(const AuthInitial());
 
   Future<void> login({
@@ -57,6 +61,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
         _ref.read(currentInstitutionProvider.notifier).updateInstitution(user.institution);
       }
+      try {
+        _fcmService?.init();
+      } catch (_) {}
       state = AuthSuccess(user);
     } on LoginFailureException catch (e) {
       // Typed reason-code failures from the backend
@@ -101,6 +108,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
         _ref.read(currentInstitutionProvider.notifier).updateInstitution(user.institution);
       }
+      try {
+        _fcmService?.init();
+      } catch (_) {}
       state = AuthSuccess(user);
     } catch (e) {
       state = AuthFailure(e.toString().replaceFirst('Exception: ', ''));
@@ -108,6 +118,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    try {
+      await _fcmService?.deactivateToken();
+    } catch (_) {}
     final refreshToken = await _storageService.getRefreshToken();
     if (refreshToken != null && refreshToken.isNotEmpty) {
       // Best-effort: revoke the refresh token on the backend.

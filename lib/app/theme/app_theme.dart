@@ -73,6 +73,8 @@ abstract class AppTheme {
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(52),
+          enabledMouseCursor: SystemMouseCursors.click,
+          disabledMouseCursor: SystemMouseCursors.basic,
           shape: const RoundedRectangleBorder(
             borderRadius: AppRadius.borderMd,
           ),
@@ -85,11 +87,19 @@ abstract class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size.fromHeight(52),
+          enabledMouseCursor: SystemMouseCursors.click,
+          disabledMouseCursor: SystemMouseCursors.basic,
           side: const BorderSide(color: AppColors.borderLight, width: 1.5),
           shape: const RoundedRectangleBorder(
             borderRadius: AppRadius.borderMd,
           ),
           textStyle: AppTypography.labelLarge(isDark: false),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          enabledMouseCursor: SystemMouseCursors.click,
+          disabledMouseCursor: SystemMouseCursors.basic,
         ),
       ),
       cardTheme: const CardThemeData(
@@ -172,6 +182,8 @@ abstract class AppTheme {
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(52),
+          enabledMouseCursor: SystemMouseCursors.click,
+          disabledMouseCursor: SystemMouseCursors.basic,
           shape: const RoundedRectangleBorder(
             borderRadius: AppRadius.borderMd,
           ),
@@ -184,11 +196,19 @@ abstract class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size.fromHeight(52),
+          enabledMouseCursor: SystemMouseCursors.click,
+          disabledMouseCursor: SystemMouseCursors.basic,
           side: const BorderSide(color: AppColors.borderDark, width: 1.5),
           shape: const RoundedRectangleBorder(
             borderRadius: AppRadius.borderMd,
           ),
           textStyle: AppTypography.labelLarge(isDark: true),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          enabledMouseCursor: SystemMouseCursors.click,
+          disabledMouseCursor: SystemMouseCursors.basic,
         ),
       ),
       cardTheme: const CardThemeData(

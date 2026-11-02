@@ -15,6 +15,8 @@ import '../../../institution_admin/presentation/screens/institution_profile_scre
 import '../../../institution_admin/presentation/screens/student_management_screen.dart';
 
 import '../../../auth/presentation/controllers/institution_provider.dart';
+import '../../../notifications/presentation/screens/broadcast_notification_screen.dart';
+import '../../../notifications/presentation/widgets/notification_badge_icon.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   final String userName;
@@ -113,15 +115,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: const Icon(
-                          Icons.notifications_none,
-                          color: Colors.white,
-                        ),
-                        onPressed: () {},
-                      ),
+                      const NotificationBadgeIcon(),
                       const SizedBox(width: 8),
                       IconButton(
                         padding: EdgeInsets.zero,
@@ -196,6 +190,22 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                               ),
                             ),
                             const SizedBox(height: 16),
+
+                            QuickActionTile(
+                              title: 'Broadcast Notification',
+                              icon: Icons.campaign_outlined,
+                              iconColor: const Color(0xFF2563EB),
+                              iconBackgroundColor: const Color(0xFFDBEAFE),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const BroadcastNotificationScreen(),
+                                  ),
+                                );
+                              },
+                            ),
 
                             QuickActionTile(
                               title: 'Manage Academic Structure',
@@ -307,7 +317,14 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         unselectedItemColor: const Color(0xFF64748B),
         showUnselectedLabels: true,
         onTap: (index) async {
-          if (index == 2) {
+          if (index == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const BroadcastNotificationScreen(),
+              ),
+            );
+          } else if (index == 2) {
             await Navigator.push(
               context,
               MaterialPageRoute(

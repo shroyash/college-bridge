@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/clickable.dart';
+
 import '../../../auth/presentation/controllers/institution_provider.dart';
 import '../../../dashboard/presentation/controllers/dashboard_providers.dart';
 import '../../../dashboard/presentation/controllers/profile_notifier.dart';
@@ -46,12 +48,7 @@ class TeacherClassesScreen extends ConsumerWidget {
             fontSize: 22,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Color(0xFF2563EB), size: 24),
-            onPressed: () {},
-          ),
-        ],
+        actions: const [],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -244,7 +241,7 @@ class TeacherClassesScreen extends ConsumerWidget {
                 ),
                 data: (classes) {
                   if (classes.isEmpty) {
-                    return _buildFallbackClassesList(context);
+                    return _buildEmptyState();
                   }
                   return ListView.separated(
                     shrinkWrap: true,
@@ -273,31 +270,36 @@ class TeacherClassesScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildFallbackClassesList(BuildContext context) {
-    final defaultClasses = [
-      {'id': 101, 'name': 'Mathematics', 'faculty': 'BCA', 'sem': 1, 'students': 42, 'teacher': 'Assigned'},
-      {'id': 102, 'name': 'Database Management System', 'faculty': 'BCA', 'sem': 3, 'students': 38, 'teacher': 'Assigned'},
-      {'id': 103, 'name': 'Operating Systems', 'faculty': 'BCA', 'sem': 3, 'students': 35, 'teacher': 'Assigned'},
-      {'id': 104, 'name': 'Java Programming', 'faculty': 'BCA', 'sem': 5, 'students': 40, 'teacher': 'Assigned'},
-    ];
-
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: defaultClasses.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 14),
-      itemBuilder: (context, index) {
-        final c = defaultClasses[index];
-        return _buildClassCard(
-          context: context,
-          classId: c['id'] as int,
-          className: c['name'] as String,
-          faculty: c['faculty'] as String,
-          semester: c['sem'] as int,
-          studentsCount: c['students'] as int,
-          teacherName: c['teacher'] as String,
-        );
-      },
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.school_outlined, size: 52, color: Color(0xFF94A3B8)),
+          SizedBox(height: 14),
+          Text(
+            'No classes assigned yet',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Your assigned subjects will appear here once the admin\nconfigures your teaching schedule.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -310,7 +312,7 @@ class TeacherClassesScreen extends ConsumerWidget {
     required int studentsCount,
     required String teacherName,
   }) {
-    return GestureDetector(
+    return Clickable(
       onTap: () {
         Navigator.push(
           context,

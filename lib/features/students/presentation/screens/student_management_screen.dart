@@ -551,8 +551,10 @@ class _FilterDropdown<T> extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<T>(
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<T>(
           value: value,
           hint: Text(label,
               style: GoogleFonts.inter(
@@ -564,6 +566,7 @@ class _FilterDropdown<T> extends StatelessWidget {
               color: const Color(0xFF1E293B)),
           items: items,
           onChanged: onChanged,
+        ),
         ),
       ),
     );
@@ -689,8 +692,10 @@ class _BulkTransferDialogState extends ConsumerState<_BulkTransferDialog> {
                             Border.all(color: const Color(0xFFE2E8F0)),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<AcademicLevelModel>(
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<AcademicLevelModel>(
                           value: _targetLevel,
                           isExpanded: true,
                           hint: Text('Choose target level...',
@@ -708,6 +713,7 @@ class _BulkTransferDialogState extends ConsumerState<_BulkTransferDialog> {
                               .toList(),
                           onChanged: (v) =>
                               setState(() => _targetLevel = v),
+                        ),
                         ),
                       ),
                     ),

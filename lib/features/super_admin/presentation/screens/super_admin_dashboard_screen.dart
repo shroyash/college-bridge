@@ -6,6 +6,7 @@ import '../../domain/entities/super_admin_models.dart';
 import '../controllers/super_admin_providers.dart';
 import 'super_admin_profile_modal.dart';
 import 'super_admin_shell.dart';
+import 'super_admin_requests_screen.dart';
 
 class SuperAdminDashboardScreen extends ConsumerStatefulWidget {
   const SuperAdminDashboardScreen({super.key});
@@ -69,6 +70,22 @@ class _SuperAdminDashboardScreenState
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Support & Issue Tickets',
+            icon: const Icon(Icons.confirmation_number_outlined,
+                color: Color(0xFF2563EB)),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SuperAdminRequestsScreen(),
+                ),
+              );
+            },
+          ),
+          // REMOVED: System Broadcast IconButton
+          // REMOVED: NotificationBadgeIcon
+          const SizedBox(width: 4),
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: InkWell(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/clickable.dart';
+
 import '../../../institution_admin/data/models/academic_level_model.dart';
 import '../../../institution_admin/data/models/academic_program_model.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
@@ -214,7 +216,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 16),
 
                 // ── Back button ──
-                GestureDetector(
+                Clickable(
                   onTap: widget.onBack,
                   child: Container(
                     width: 38,
@@ -260,7 +262,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   hint: 'e.g. TU-KTM',
                   controller: _institutionCodeController,
                   textCapitalization: TextCapitalization.characters,
-                  suffixIcon: GestureDetector(
+                  suffixIcon: Clickable(
                     onTap: () {
                       final code = _institutionCodeController.text.trim();
                       if (code.isNotEmpty) _loadPrograms();
@@ -433,11 +435,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 24),
 
                 // ── Create Account button ──
-                AuthButton(
-                  label: 'CREATE ACCOUNT',
-                  trailingIcon: Icons.arrow_forward_rounded,
-                  isLoading: isLoading,
-                  onPressed: _onRegister,
+                // Wrapped so the pointer cursor shows even if AuthButton
+                // uses a GestureDetector/InkWell internally.
+                MouseRegion(
+                  cursor: isLoading
+                      ? SystemMouseCursors.basic
+                      : SystemMouseCursors.click,
+                  child: AuthButton(
+                    label: 'CREATE ACCOUNT',
+                    trailingIcon: Icons.arrow_forward_rounded,
+                    isLoading: isLoading,
+                    onPressed: _onRegister,
+                  ),
                 ),
 
                 const SizedBox(height: 20),
@@ -454,7 +463,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           color: Color(0xFF64748B),
                         ),
                       ),
-                      GestureDetector(
+                      Clickable(
                         onTap: widget.onNavigateToLogin,
                         child: const Text(
                           'Sign In',
@@ -516,47 +525,57 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
           )
         else
-          DropdownButtonFormField<T>(
-            initialValue: value,
-            hint: Text(
-              hint,
-              style: const TextStyle(
-                color: Color(0xFFB0BAC8),
-                fontSize: 14,
+          // Pointer cursor on the dropdown (basic cursor when disabled)
+          MouseRegion(
+            cursor: onChanged != null
+                ? SystemMouseCursors.click
+                : SystemMouseCursors.basic,
+            child: DropdownButtonFormField<T>(
+              initialValue: value,
+              hint: Text(
+                hint,
+                style: const TextStyle(
+                  color: Color(0xFFB0BAC8),
+                  fontSize: 14,
+                ),
               ),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide:
+                      const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide:
+                      const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide:
+                      const BorderSide(color: Color(0xFF2563EB), width: 2),
+                ),
+                disabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide:
+                      const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+                ),
+              ),
+              items: items,
+              onChanged: onChanged,
+              icon: const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: Color(0xFF94A3B8),
+              ),
+              dropdownColor: Colors.white,
+              borderRadius: BorderRadius.circular(12),
             ),
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: const Color(0xFFF8FAFC),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
-              ),
-              disabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
-              ),
-            ),
-            items: items,
-            onChanged: onChanged,
-            icon: const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: Color(0xFF94A3B8),
-            ),
-            dropdownColor: Colors.white,
-            borderRadius: BorderRadius.circular(12),
           ),
       ],
     );

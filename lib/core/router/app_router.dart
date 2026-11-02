@@ -9,9 +9,14 @@ import '../../features/auth/presentation/screens/otp_verification_screen.dart';
 import '../../features/auth/presentation/screens/new_password_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
+import '../../features/doubts/presentation/screens/doubt_detail_screen.dart';
 import '../../features/institution_admin/domain/entities/institution_entities.dart';
 import '../../features/institution_admin/presentation/screens/institution_registration_screen.dart';
 import '../../features/institution_admin/presentation/screens/registration_submitted_screen.dart';
+import '../../features/notifications/presentation/screens/broadcast_notification_screen.dart';
+import '../../features/notifications/presentation/screens/notification_inbox_screen.dart';
+import '../../features/notifications/presentation/screens/notification_detail_screen.dart';
+import '../../features/notifications/domain/entities/notification_item.dart';
 import '../../features/super_admin/presentation/screens/super_admin_shell.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -132,6 +137,34 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/super-admin',
         builder: (context, state) => const SuperAdminShell(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationInboxScreen(),
+      ),
+      GoRoute(
+        path: '/notifications/:id',
+        builder: (context, state) {
+          final idStr = state.pathParameters['id'] ?? '0';
+          final id = int.tryParse(idStr) ?? 0;
+          final extraItem = state.extra as NotificationItem?;
+          return NotificationDetailScreen(
+            notificationId: id,
+            initialItem: extraItem,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/broadcast-notification',
+        builder: (context, state) => const BroadcastNotificationScreen(),
+      ),
+      GoRoute(
+        path: '/doubts/:doubtId',
+        builder: (context, state) {
+          final idStr = state.pathParameters['doubtId'] ?? '0';
+          final id = int.tryParse(idStr) ?? 0;
+          return DoubtDetailScreen(doubtId: id);
+        },
       ),
     ],
   );

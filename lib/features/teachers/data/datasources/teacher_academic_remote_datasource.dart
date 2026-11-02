@@ -27,35 +27,21 @@ class TeacherAcademicRemoteDataSource {
 
   /// GET /api/academic/subjects/my-subjects
   ///
-  /// Q3: SubjectController now wraps all responses in ApiResponse<> — read 'data' field.
+  /// SubjectController wraps all responses in ApiResponse<> — read 'data' field.
   Future<List<AcademicClassModel>> fetchMyClasses() async {
     try {
       final options = await _authOptions();
-      try {
-        final response = await _apiClient.get<Map<String, dynamic>>(
-          ApiConstants.teacherMySubjects,
-          options: options,
-        );
-        // Q3 fix: always read from response['data']
-        final data = response.data?['data'];
-        if (data is List && data.isNotEmpty) {
-          return data
-              .map((e) => AcademicClassModel.fromJson(e as Map<String, dynamic>))
-              .toList();
-        }
-        // Empty list from my-subjects — fall through to my-classes
-      } catch (_) {
-        // Fallback to my-classes if my-subjects fails
-      }
-
       final response = await _apiClient.get<Map<String, dynamic>>(
-        ApiConstants.teacherMyClasses,
+        ApiConstants.teacherMySubjects,
         options: options,
       );
-      final data = response.data!['data'] as List<dynamic>;
-      return data
-          .map((e) => AcademicClassModel.fromJson(e as Map<String, dynamic>))
-          .toList();
+      final rawData = response.data?['data'] ?? response.data;
+      if (rawData is List) {
+        return rawData
+            .map((e) => AcademicClassModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
     } on DioException catch (e) {
       throw _mapDioError(e);
     }

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:bridge_mobile/core/widgets/clickable.dart';
 import 'package:bridge_mobile/features/institutions/domain/entities/institution_entities.dart';
 import 'package:bridge_mobile/features/institutions/presentation/controllers/institution_providers.dart';
 import 'package:bridge_mobile/features/institutions/presentation/controllers/institution_state.dart';
@@ -240,7 +241,7 @@ class _InstitutionRegistrationScreenState
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Row(
         children: [
-          GestureDetector(
+          Clickable(
             onTap: _prevStep,
             child: Container(
               width: 38,
@@ -335,6 +336,9 @@ class _InstitutionRegistrationScreenState
               borderRadius: BorderRadius.circular(14),
             ),
             elevation: 0,
+            // CHANGED: explicit pointer cursor (basic while loading/disabled)
+            enabledMouseCursor: SystemMouseCursors.click,
+            disabledMouseCursor: SystemMouseCursors.basic,
           ),
           child: isLoading
               ? const SizedBox(
@@ -358,6 +362,7 @@ class _InstitutionRegistrationScreenState
     );
   }
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Step widgets
@@ -579,7 +584,7 @@ class _StepDocuments extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           // Upload area
-          GestureDetector(
+          Clickable(
             onTap: onPickFiles,
             child: Container(
               width: double.infinity,
@@ -610,7 +615,7 @@ class _StepDocuments extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Tap to browse files',
+                    'Click to browse files',
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -719,6 +724,7 @@ class _StepDocuments extends StatelessWidget {
                         ],
                       ),
                     ),
+                    // IconButton already shows the pointer cursor
                     IconButton(
                       icon: const Icon(
                         Icons.close_rounded,

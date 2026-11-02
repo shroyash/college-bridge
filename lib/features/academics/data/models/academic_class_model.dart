@@ -30,9 +30,10 @@ class AcademicClassModel extends AcademicClass {
         ? subjectName
         : (facultyStr.isNotEmpty ? '$facultyStr Sem $semInt' : 'Class Sem $semInt');
 
-    final resolvedClassId = (json['levelId'] as num?)?.toInt() ??
+    // Prefer subjectId (for teacher assigned subjects) then classId, falling back to levelId
+    final resolvedClassId = (json['subjectId'] as num?)?.toInt() ??
         (json['classId'] as num?)?.toInt() ??
-        (json['subjectId'] as num?)?.toInt() ??
+        (json['levelId'] as num?)?.toInt() ??
         0;
 
     return AcademicClassModel(

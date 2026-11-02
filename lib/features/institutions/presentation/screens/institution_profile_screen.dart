@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/network/api_client.dart';
+import '../../../auth/presentation/controllers/institution_provider.dart';
 
 class InstitutionProfileScreen extends ConsumerStatefulWidget {
   const InstitutionProfileScreen({super.key});
@@ -21,7 +22,24 @@ class _InstitutionProfileScreenState
   @override
   void initState() {
     super.initState();
-    _fetchInstitutionProfile();
+    Future.microtask(() {
+      final current = ref.read(currentInstitutionProvider);
+      if (current != null && current.name.isNotEmpty && _institutionData == null) {
+        setState(() {
+          _institutionData = {
+            'name': current.name,
+            'code': current.code,
+            'status': 'ACTIVE',
+            'location': '',
+            'website': '',
+            'totalStudents': 0,
+            'totalTeachers': 0,
+            'totalClasses': 0,
+          };
+        });
+      }
+      _fetchInstitutionProfile();
+    });
   }
 
   Future<void> _fetchInstitutionProfile() async {
@@ -32,10 +50,23 @@ class _InstitutionProfileScreenState
 
     try {
       final apiClient = ref.read(apiClientProvider);
-      final response = await apiClient.get('/api/admin/institution/profile');
+      final response = await apiClient.get('/api/admin/institution/profile').timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw Exception('Request timed out. Please check server connection.'),
+      );
       if (mounted) {
+        final rawData = response.data;
+        Map<String, dynamic>? data;
+        if (rawData is Map) {
+          final rawInner = rawData['data'];
+          if (rawInner is Map) {
+            data = Map<String, dynamic>.from(rawInner);
+          }
+        }
         setState(() {
-          _institutionData = response.data['data'] as Map<String, dynamic>?;
+          if (data != null) {
+            _institutionData = data;
+          }
           _isLoading = false;
         });
       }
@@ -286,29 +317,72 @@ class _InstitutionProfileScreenState
           ),
         ],
       ),
-      body: _isLoading && _institutionData == null
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF2563EB)))
-          : _errorMessage != null && _institutionData == null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(_errorMessage!,
-                          style: GoogleFonts.inter(color: Colors.red)),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: _fetchInstitutionProfile,
-                        child: const Text('Retry'),
-                      )
-                    ],
-                  ),
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+      body: Stack(
+        children: [
+          if (_isLoading && _institutionData == null)
+            const Center(
+                child: CircularProgressIndicator(color: Color(0xFF2563EB)))
+          else if (_errorMessage != null && _institutionData == null)
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(_errorMessage!,
+                      style: GoogleFonts.inter(color: Colors.red)),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _fetchInstitutionProfile,
+                    child: const Text('Retry'),
+                  )
+                ],
+              ),
+            )
+          else
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_errorMessage != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEE2E2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline,
+                              size: 16, color: Color(0xFFDC2626)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: const Color(0xFFDC2626)),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _fetchInstitutionProfile,
+                            style: TextButton.styleFrom(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text('Retry',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFFDC2626))),
+                          ),
+                        ],
+                      ),
+                    ),
                       // ── Institution Banner ──
                       Container(
                         width: double.infinity,
@@ -518,6 +592,19 @@ class _InstitutionProfileScreenState
                     ],
                   ),
                 ),
+          if (_isLoading && _institutionData != null)
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: LinearProgressIndicator(
+                minHeight: 2,
+                color: Color(0xFF2563EB),
+                backgroundColor: Colors.transparent,
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

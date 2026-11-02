@@ -53,7 +53,9 @@ class _SocialButtonState extends State<SocialButton> with SingleTickerProviderSt
       button: true,
       enabled: isEnabled,
       label: widget.text,
-      child: GestureDetector(
+      child: MouseRegion(
+        cursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        child: GestureDetector(
         onTapDown: (_) => isEnabled ? _controller.forward() : null,
         onTapUp: (_) => isEnabled ? _controller.reverse() : null,
         onTapCancel: () => isEnabled ? _controller.reverse() : null,
@@ -99,6 +101,7 @@ class _SocialButtonState extends State<SocialButton> with SingleTickerProviderSt
                     ),
             ),
           ),
+        ),
         ),
       ),
     );

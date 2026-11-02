@@ -9,6 +9,7 @@ import '../controllers/profile_notifier.dart';
 import '../widgets/change_email_modal.dart';
 import '../widgets/change_password_modal.dart';
 import 'help_and_support_screen.dart';
+import '../../../../core/widgets/clickable.dart';
 
 class StudentProfileScreen extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
@@ -115,7 +116,7 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
                 Stack(
                   alignment: Alignment.center,
                   children: [
-                    GestureDetector(
+                    Clickable(
                       onTap: state.isSaving ? null : () => _pickAndUploadImage(),
                       child: CircleAvatar(
                         radius: 44,
@@ -136,7 +137,7 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
                     Positioned(
                       bottom: 0,
                       right: 0,
-                      child: GestureDetector(
+                      child: Clickable(
                         onTap: state.isSaving ? null : () => _pickAndUploadImage(),
                         child: Container(
                           width: 28,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/clickable.dart';
+
 import 'package:bridge_mobile/features/auth/presentation/controllers/institution_provider.dart';
 import 'package:bridge_mobile/features/subjects/domain/entities/subject.dart';
 import 'package:bridge_mobile/features/dashboard/presentation/controllers/dashboard_providers.dart';
@@ -388,7 +390,7 @@ class _StudentClassesScreenState extends ConsumerState<StudentClassesScreen> {
     required int studentsCount,
     required int newPostsCount,
   }) {
-    return GestureDetector(
+    return Clickable(
       onTap: () {
         Navigator.push(
           context,

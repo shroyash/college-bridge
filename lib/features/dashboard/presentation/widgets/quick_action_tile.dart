@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/widgets/clickable.dart';
+
 /// Reusable quick action tile for both dashboards.
 class QuickActionTile extends StatelessWidget {
   final String title;
@@ -21,7 +23,7 @@ class QuickActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Clickable(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),

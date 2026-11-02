@@ -80,11 +80,13 @@ class _PrimaryButtonState extends State<PrimaryButton>
       button: true,
       enabled: isEnabled,
       label: widget.text,
-      child: GestureDetector(
-        onTapDown: _onTapDown,
-        onTapUp: _onTapUp,
-        onTapCancel: _onTapCancel,
-        child: ScaleTransition(
+      child: MouseRegion(
+        cursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        child: GestureDetector(
+          onTapDown: _onTapDown,
+          onTapUp: _onTapUp,
+          onTapCancel: _onTapCancel,
+          child: ScaleTransition(
           scale: _scaleAnimation,
           child: SizedBox(
             width: double.infinity,
@@ -137,6 +139,7 @@ class _PrimaryButtonState extends State<PrimaryButton>
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }

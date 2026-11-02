@@ -89,7 +89,7 @@ class _TeacherClassDetailScreenState
         elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF2563EB), size: 24),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.maybePop(context),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -226,7 +226,7 @@ class _TeacherClassDetailScreenState
           ),
           const SizedBox(height: 20),
 
-          // ── 2. QUICK ACTIONS (2x2) ─────────────────────────────────────────
+          // ── 2. QUICK ACTIONS (Members only) ───────────────────────────────
           const Text(
             'QUICK ACTIONS',
             style: TextStyle(
@@ -237,69 +237,28 @@ class _TeacherClassDetailScreenState
             ),
           ),
           const SizedBox(height: 10),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.8,
-            children: [
-              _buildQuickActionCard(
-                icon: Icons.question_answer_outlined,
-                iconBg: const Color(0xFFEFF6FF),
-                iconColor: const Color(0xFF2563EB),
-                title: 'Solve Doubts',
-                onTap: () {
-                  ref.invalidate(subjectDoubtSummaryProvider(widget.classId));
-                  ref.invalidate(doubtsListProvider);
-                  if (_scrollController.hasClients) {
-                    _scrollController.animateTo(
-                      _scrollController.position.maxScrollExtent,
-                      duration: const Duration(milliseconds: 400),
-                      curve: Curves.easeInOut,
-                    );
-                  }
-                },
-              ),
-              _buildQuickActionCard(
-                icon: Icons.find_in_page_outlined,
-                iconBg: const Color(0xFFEFF6FF),
-                iconColor: const Color(0xFF2563EB),
-                title: 'Review Doubts',
-                onTap: () {
-                  ref.invalidate(subjectDoubtSummaryProvider(widget.classId));
-                  ref.invalidate(doubtsListProvider);
-                },
-              ),
-              _buildQuickActionCard(
-                icon: Icons.campaign_outlined,
-                iconBg: const Color(0xFFFEF2F2),
-                iconColor: const Color(0xFFDC2626),
-                title: 'Post Notice',
-                onTap: () {},
-              ),
-              _buildQuickActionCard(
-                icon: Icons.groups_outlined,
-                iconBg: const Color(0xFFEFF6FF),
-                iconColor: const Color(0xFF2563EB),
-                title: 'Class Students',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => SubjectMembersScreen(
-                        subjectId: widget.classId,
-                        subjectName: displayClassName,
-                        teacherName: teacherName,
-                        totalStudents: studentsCount,
-                        viewMode: ClassMembersViewMode.teacher,
-                      ),
+          SizedBox(
+            width: double.infinity,
+            child: _buildQuickActionCard(
+              icon: Icons.groups_outlined,
+              iconBg: const Color(0xFFEFF6FF),
+              iconColor: const Color(0xFF2563EB),
+              title: 'Members',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SubjectMembersScreen(
+                      subjectId: widget.classId,
+                      subjectName: displayClassName,
+                      teacherName: teacherName,
+                      totalStudents: studentsCount,
+                      viewMode: ClassMembersViewMode.student,
                     ),
-                  );
-                },
-              ),
-            ],
+                  ),
+                );
+              },
+            ),
           ),
           const SizedBox(height: 24),
 

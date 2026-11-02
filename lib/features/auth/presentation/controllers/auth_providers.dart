@@ -1,3 +1,7 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import '../../../../core/services/fcm_service.dart';
+import '../../../notifications/presentation/controllers/notification_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_client.dart';
@@ -42,5 +46,19 @@ final authNotifierProvider =
     authRepository: ref.watch(authRepositoryProvider),
     storageService: ref.watch(secureStorageProvider),
     ref: ref,
+    fcmService: ref.watch(fcmServiceProvider),
   );
+});
+
+
+final fcmServiceProvider = Provider<FcmService?>((ref) {
+  if (Firebase.apps.isEmpty) {
+    return null;
+  }
+  try {
+    final repository = ref.watch(notificationRepositoryProvider);
+    return FcmService(FirebaseMessaging.instance, repository);
+  } catch (_) {
+    return null;
+  }
 });

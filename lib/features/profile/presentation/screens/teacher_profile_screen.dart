@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/widgets/clickable.dart';
+
 import 'package:bridge_mobile/features/dashboard/presentation/controllers/dashboard_providers.dart';
 import 'package:bridge_mobile/features/profile/presentation/controllers/profile_notifier.dart';
 import '../widgets/change_email_modal.dart';
@@ -53,13 +55,11 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
         ),
       ),
       body: SafeArea(
-        child: profileState is ProfileLoading
-            ? const Center(child: CircularProgressIndicator())
-            : profileState is ProfileFailure
-                ? _buildError((profileState).message)
-                : profileState is ProfileSuccess
-                    ? _buildContent(context, profileState)
-                    : const SizedBox.shrink(),
+        child: switch (profileState) {
+          ProfileFailure(:final message) => _buildError(message),
+          final ProfileSuccess s => _buildContent(context, s),
+          _ => const Center(child: CircularProgressIndicator()),
+        },
       ),
     );
   }
@@ -96,7 +96,7 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
           Stack(
             alignment: Alignment.center,
             children: [
-              GestureDetector(
+              Clickable(
                 onTap: state.isSaving ? null : () => _pickAndUploadImage(),
                 child: CircleAvatar(
                   radius: 50,
@@ -112,7 +112,7 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
               Positioned(
                 bottom: 0,
                 right: 0,
-                child: GestureDetector(
+                child: Clickable(
                   onTap: state.isSaving ? null : () => _pickAndUploadImage(),
                   child: Container(
                     width: 28,

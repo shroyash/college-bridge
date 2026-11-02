@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/clickable.dart';
+
 import '../controllers/forgot_password_providers.dart';
 import '../controllers/forgot_password_state.dart';
 import '../widgets/auth_button.dart';
@@ -218,7 +220,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen>
               const SizedBox(height: 16),
 
               // ── Back button ──
-              GestureDetector(
+              Clickable(
                 onTap: widget.onBack,
                 child: Container(
                   width: 38,
@@ -306,7 +308,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen>
 
               // ── Resend link ──
               Center(
-                child: GestureDetector(
+                child: Clickable(
                   onTap: _resendCountdown == 0 ? _onResend : null,
                   child: RichText(
                     text: TextSpan(

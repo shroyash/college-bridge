@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/clickable.dart';
+
 import '../../../dashboard/domain/entities/subject.dart';
 import '../../domain/entities/academic_level.dart';
 import '../../domain/entities/academic_program.dart';
@@ -104,7 +106,7 @@ class _AcademicManagementScreenState
                 Row(
                   children: [
                     Expanded(
-                      child: GestureDetector(
+                      child: Clickable(
                         onTap: () => _showProgramPickerSheet(context, state),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -1181,17 +1183,20 @@ class _AcademicManagementScreenState
                         ),
                       ),
                     ],
-                    DropdownButtonFormField<String>(
-                      initialValue: levelType,
-                      decoration: const InputDecoration(labelText: 'Level Type *'),
-                      items: const [
-                        DropdownMenuItem(value: 'SEMESTER', child: Text('Semester')),
-                        DropdownMenuItem(value: 'YEAR', child: Text('Year')),
-                        DropdownMenuItem(value: 'GRADE', child: Text('Grade')),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) setDialogState(() => levelType = val);
-                      },
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: levelType,
+                        decoration: const InputDecoration(labelText: 'Level Type *'),
+                        items: const [
+                          DropdownMenuItem(value: 'SEMESTER', child: Text('Semester')),
+                          DropdownMenuItem(value: 'YEAR', child: Text('Year')),
+                          DropdownMenuItem(value: 'GRADE', child: Text('Grade')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) setDialogState(() => levelType = val);
+                        },
+                      ),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -1831,17 +1836,20 @@ class _AcademicManagementScreenState
                         ),
                       ),
                     ],
-                    DropdownButtonFormField<String>(
-                      initialValue: levelType,
-                      decoration: const InputDecoration(labelText: 'Level Type *'),
-                      items: const [
-                        DropdownMenuItem(value: 'SEMESTER', child: Text('Semester')),
-                        DropdownMenuItem(value: 'YEAR', child: Text('Year')),
-                        DropdownMenuItem(value: 'GRADE', child: Text('Grade')),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) setDialogState(() => levelType = val);
-                      },
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: levelType,
+                        decoration: const InputDecoration(labelText: 'Level Type *'),
+                        items: const [
+                          DropdownMenuItem(value: 'SEMESTER', child: Text('Semester')),
+                          DropdownMenuItem(value: 'YEAR', child: Text('Year')),
+                          DropdownMenuItem(value: 'GRADE', child: Text('Grade')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) setDialogState(() => levelType = val);
+                        },
+                      ),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(

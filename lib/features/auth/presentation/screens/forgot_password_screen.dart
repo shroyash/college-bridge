@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/clickable.dart';
+
 import '../controllers/forgot_password_providers.dart';
 import '../controllers/forgot_password_state.dart';
 import '../widgets/auth_button.dart';
@@ -90,7 +92,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
                 const SizedBox(height: 16),
 
                 // ── Back button ──
-                GestureDetector(
+                Clickable(
                   onTap: widget.onBack,
                   child: Container(
                     width: 38,
@@ -232,7 +234,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
                         'Remember password? ',
                         style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
                       ),
-                      GestureDetector(
+                      Clickable(
                         onTap: widget.onBack,
                         child: const Text(
                           'Sign In',

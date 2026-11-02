@@ -2,7 +2,7 @@ import '../../core/constants/api_endpoints.dart';
 
 /// Legacy adapter for [ApiEndpoints] to maintain backward compatibility across existing features
 abstract class ApiConstants {
-  static const String baseUrl = ApiEndpoints.baseUrl;
+  static String get baseUrl => ApiEndpoints.baseUrl;
   static const Duration connectTimeout = ApiEndpoints.connectTimeout;
   static const Duration receiveTimeout = ApiEndpoints.receiveTimeout;
 
@@ -64,4 +64,8 @@ abstract class ApiConstants {
 
   static const String studentClassDetails = ApiEndpoints.adminAcademicLevels;
   static const String studentSubjectDetails = ApiEndpoints.mySubjects;
+
+  static const String supportTickets = ApiEndpoints.supportTickets;
+  static const String supportTicketsMy = ApiEndpoints.supportTicketsMy;
+  static const String superAdminTickets = ApiEndpoints.superAdminTickets;
 }

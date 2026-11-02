@@ -11,10 +11,12 @@ import 'doubt_detail_screen.dart';
 
 class StudentDoubtsScreen extends ConsumerStatefulWidget {
   final int? initialSubjectId;
+  final VoidCallback? onBack;
 
   const StudentDoubtsScreen({
     super.key,
     this.initialSubjectId,
+    this.onBack,
   });
 
   @override
@@ -71,6 +73,17 @@ class _StudentDoubtsScreenState extends ConsumerState<StudentDoubtsScreen> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
+        leading: widget.onBack != null
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Color(0xFF2563EB), size: 24),
+                onPressed: widget.onBack,
+              )
+            : (Navigator.canPop(context)
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Color(0xFF2563EB), size: 24),
+                    onPressed: () => Navigator.maybePop(context),
+                  )
+                : null),
         title: const Text(
           'Doubts & Peer Learning',
           style: TextStyle(

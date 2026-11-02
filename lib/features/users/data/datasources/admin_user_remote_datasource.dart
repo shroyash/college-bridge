@@ -16,6 +16,9 @@ class AdminUserRemoteDataSource {
 
   Future<Options> _authOptions() async {
     final token = await _storage.getAccessToken();
+    if (token == null || token.isEmpty) {
+      return Options();
+    }
     return Options(
       headers: {'Authorization': 'Bearer $token'},
     );
@@ -269,12 +272,25 @@ class AdminUserRemoteDataSource {
   Future<UserProfileModel> getMyProfile() async {
     try {
       final options = await _authOptions();
-      final response = await _apiClient.get<Map<String, dynamic>>(
+      final response = await _apiClient.get(
         '/api/account/profile',
         options: options,
       );
 
-      final data = response.data!['data'] as Map<String, dynamic>;
+      final rawData = response.data;
+      if (rawData == null) {
+        throw Exception('No profile data received.');
+      }
+      final Map<String, dynamic> body = rawData is Map<String, dynamic>
+          ? rawData
+          : Map<String, dynamic>.from(rawData as Map);
+      final rawDetails = body['data'];
+      if (rawDetails == null) {
+        throw Exception('Profile data is empty.');
+      }
+      final Map<String, dynamic> data = rawDetails is Map<String, dynamic>
+          ? rawDetails
+          : Map<String, dynamic>.from(rawDetails as Map);
       return UserProfileModel.fromJson(data);
     } on DioException catch (e) {
       throw _mapDioException(e);
@@ -285,13 +301,23 @@ class AdminUserRemoteDataSource {
   Future<UserProfileModel> updateProfile({required String name}) async {
     try {
       final options = await _authOptions();
-      final response = await _apiClient.dio.put<Map<String, dynamic>>(
+      final response = await _apiClient.dio.put(
         '/api/account/profile',
         data: {'name': name},
         options: options,
       );
 
-      final data = response.data!['data'] as Map<String, dynamic>;
+      final rawData = response.data;
+      if (rawData == null) {
+        throw Exception('No profile data returned.');
+      }
+      final Map<String, dynamic> body = rawData is Map<String, dynamic>
+          ? rawData
+          : Map<String, dynamic>.from(rawData as Map);
+      final rawDetails = body['data'];
+      final Map<String, dynamic> data = rawDetails is Map<String, dynamic>
+          ? rawDetails
+          : Map<String, dynamic>.from(rawDetails as Map);
       return UserProfileModel.fromJson(data);
     } on DioException catch (e) {
       throw _mapDioException(e);

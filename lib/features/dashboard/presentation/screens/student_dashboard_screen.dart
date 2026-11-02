@@ -1,3 +1,5 @@
+import '../../../notifications/presentation/screens/notification_inbox_screen.dart';
+import '../../../notifications/presentation/widgets/notification_badge_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,6 +14,7 @@ import 'package:bridge_mobile/features/institution_admin/presentation/screens/st
 import 'package:bridge_mobile/features/institution_admin/presentation/screens/student_subject_detail_screen.dart';
 import 'package:bridge_mobile/features/institution_admin/presentation/screens/subject_members_screen.dart';
 import 'package:bridge_mobile/features/doubts/presentation/screens/student_doubts_screen.dart';
+import '../../../../core/widgets/clickable.dart';
 import 'package:bridge_mobile/features/doubts/presentation/widgets/ask_doubt_dialog.dart';
 import 'package:bridge_mobile/features/doubts/presentation/controllers/doubt_providers.dart';
 import 'package:bridge_mobile/features/doubts/presentation/screens/doubt_detail_screen.dart';
@@ -133,35 +136,7 @@ class _StudentDashboardScreenState
                           )
                         ],
                       ),
-                      Stack(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.notifications_none,
-                                color: Colors.white),
-                          ),
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFEF4444),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Text('3',
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.bold)),
-                            ),
-                          )
-                        ],
-                      )
+const NotificationBadgeIcon()
                     ],
                   ),
                 ),
@@ -223,7 +198,10 @@ class _StudentDashboardScreenState
                                   child: _buildActionBtn(
                                       Icons.campaign_outlined,
                                       'Notices',
-                                      const Color(0xFF9333EA))),
+                                      const Color(0xFF9333EA),
+                                      onTap: () {
+                                        setState(() => _selectedBottomNavIndex = 2);
+                                      })),
                               const SizedBox(width: 16),
                               Expanded(
                                   child: _buildActionBtn(
@@ -295,7 +273,7 @@ class _StudentDashboardScreenState
                               itemCount: state.data.length,
                               itemBuilder: (context, index) {
                                 final subject = state.data[index];
-                                return GestureDetector(
+                                return Clickable(
                                   onTap: () {
                                     Navigator.push(
                                       context,
@@ -484,7 +462,7 @@ class _StudentDashboardScreenState
               onBack: () => setState(() => _selectedBottomNavIndex = 0),
             ),
             // 2 – Alerts (placeholder)
-            const Center(child: Text('Notices')),
+            const NotificationInboxScreen(),
             // 3 – Doubts
             const StudentDoubtsScreen(),
             // 4 – Profile

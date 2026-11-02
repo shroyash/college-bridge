@@ -9,6 +9,7 @@ import '../controllers/profile_notifier.dart';
 import '../widgets/change_email_modal.dart';
 import '../widgets/change_password_modal.dart';
 import 'help_and_support_screen.dart';
+import '../../../../core/widgets/clickable.dart';
 
 class TeacherProfileScreen extends ConsumerStatefulWidget {
   final int totalClasses;
@@ -83,6 +84,17 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
         ),
       );
 
+  /// Converts backend role strings like ROLE_TEACHER → "Teacher"
+  String _formatRole(String role) {
+    return role
+        .replaceAll('ROLE_', '')
+        .replaceAll('_', ' ')
+        .toLowerCase()
+        .split(' ')
+        .map((w) => w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1)}')
+        .join(' ');
+  }
+
   Widget _buildContent(BuildContext context, ProfileSuccess state) {
     final p = state.profile;
     final empId =
@@ -96,7 +108,7 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
           Stack(
             alignment: Alignment.center,
             children: [
-              GestureDetector(
+              Clickable(
                 onTap: state.isSaving ? null : () => _pickAndUploadImage(),
                 child: CircleAvatar(
                   radius: 50,
@@ -112,7 +124,7 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
               Positioned(
                 bottom: 0,
                 right: 0,
-                child: GestureDetector(
+                child: Clickable(
                   onTap: state.isSaving ? null : () => _pickAndUploadImage(),
                   child: Container(
                     width: 28,
@@ -143,9 +155,11 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Professor',
-            style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+          Text(
+            p.role.isNotEmpty
+                ? _formatRole(p.role)
+                : 'Teacher',
+            style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
           ),
           const SizedBox(height: 14),
 
