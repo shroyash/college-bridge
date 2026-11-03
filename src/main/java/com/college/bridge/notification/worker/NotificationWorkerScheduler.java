@@ -48,8 +48,6 @@ public class NotificationWorkerScheduler {
                 return;
             }
 
-            log.debug("Worker scheduler claimed {} notification jobs for processing", claimedJobs.size());
-
             for (NotificationJobExecutionDto jobDto : claimedJobs) {
                 workerPool.submit(() -> {
                     try {
