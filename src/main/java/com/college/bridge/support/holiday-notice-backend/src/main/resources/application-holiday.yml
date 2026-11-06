@@ -1,0 +1,19 @@
+# Merge into application.yml
+holiday:
+  api:
+    base-url: https://CHANGE-ME-new-bihani-host
+    type: public
+  sync:
+    years: [2083]           # BS years to refresh monthly
+  notice:
+    audience-topic: college_notices   # students/parents/staff subscribe to this FCM topic
+    auto-send-holiday-variant: true   # if no admin decides, send the HOLIDAY notice at the deadline
+    auto-select-at: "07:00"           # Kathmandu time
+    language: English                 # or Nepali
+    ai-max-attempts: 3
+  schedule:                           # all optional, shown with defaults (Asia/Kathmandu)
+    sync: "0 0 2 1 * *"
+    draft: "0 0 18 * * *"
+    remind-evening: "0 0 20 * * *"
+    remind-morning: "0 0 6 * * *"
+    publish: "0 */10 7-19 * * *"
