@@ -42,8 +42,10 @@ class ErrorInterceptor extends Interceptor {
 
     if (data is Map<String, dynamic>) {
       serverMsg =
+          data['detail'] as String? ??
           data['message'] as String? ??
           data['error'] as String? ??
+          data['title'] as String? ??
           '';
     } else if (data is String) {
       serverMsg = data;

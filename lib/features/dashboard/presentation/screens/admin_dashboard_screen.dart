@@ -17,6 +17,9 @@ import '../../../institution_admin/presentation/screens/student_management_scree
 import '../../../auth/presentation/controllers/institution_provider.dart';
 import '../../../notifications/presentation/screens/broadcast_notification_screen.dart';
 import '../../../notifications/presentation/widgets/notification_badge_icon.dart';
+import '../../../holiday_notices/presentation/controllers/holiday_notice_providers.dart';
+import '../../../holiday_notices/presentation/widgets/admin_holiday_banner.dart';
+import 'package:go_router/go_router.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   final String userName;
@@ -49,6 +52,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     super.initState();
     Future.microtask(() {
       ref.read(adminDashboardNotifierProvider.notifier).fetchDashboard();
+      ref.read(pendingNoticeNotifierProvider.notifier).fetchPendingNotice();
     });
   }
 
@@ -175,6 +179,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            const AdminHolidayBanner(),
                             // Metrics Grid
                             _buildMetricsGrid(state.data),
                             const SizedBox(height: 32),
@@ -190,6 +195,16 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                               ),
                             ),
                             const SizedBox(height: 16),
+
+                            QuickActionTile(
+                              title: 'Holiday Notices',
+                              icon: Icons.celebration_outlined,
+                              iconColor: const Color(0xFFD97706),
+                              iconBackgroundColor: const Color(0xFFFEF3C7),
+                              onTap: () {
+                                context.push('/admin/holiday-notices');
+                              },
+                            ),
 
                             QuickActionTile(
                               title: 'Broadcast Notification',

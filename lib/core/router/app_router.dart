@@ -18,6 +18,12 @@ import '../../features/notifications/presentation/screens/notification_inbox_scr
 import '../../features/notifications/presentation/screens/notification_detail_screen.dart';
 import '../../features/notifications/domain/entities/notification_item.dart';
 import '../../features/super_admin/presentation/screens/super_admin_shell.dart';
+import '../../features/holiday_notices/domain/entities/official_holiday_notice.dart';
+import '../../features/holiday_notices/domain/entities/pending_holiday_notice.dart';
+import '../../features/holiday_notices/presentation/screens/official_notice_detail_screen.dart';
+import '../../features/holiday_notices/presentation/screens/official_notices_screen.dart';
+import '../../features/holiday_notices/presentation/screens/pending_notices_screen.dart';
+import '../../features/holiday_notices/presentation/screens/review_notice_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -164,6 +170,46 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final idStr = state.pathParameters['doubtId'] ?? '0';
           final id = int.tryParse(idStr) ?? 0;
           return DoubtDetailScreen(doubtId: id);
+        },
+      ),
+      GoRoute(
+        path: '/admin/holiday-notices',
+        builder: (context, state) => const PendingNoticesScreen(),
+      ),
+      GoRoute(
+        path: '/admin/holiday-notices/pending',
+        builder: (context, state) {
+          final pending = state.extra as PendingHolidayNotice?;
+          return ReviewNoticeScreen(
+            noticeId: pending?.id ?? 0,
+            initialPending: pending,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/admin/holiday-notices/:id',
+        builder: (context, state) {
+          final idStr = state.pathParameters['id'] ?? '0';
+          final id = int.tryParse(idStr) ?? 0;
+          final pending = state.extra as PendingHolidayNotice?;
+          return ReviewNoticeScreen(
+            noticeId: id,
+            initialPending: pending,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/holiday-notices/official',
+        builder: (context, state) => const OfficialNoticesScreen(),
+      ),
+      GoRoute(
+        path: '/holiday-notices/detail',
+        builder: (context, state) {
+          final notice = state.extra as OfficialHolidayNotice?;
+          if (notice == null) {
+            return const OfficialNoticesScreen();
+          }
+          return OfficialNoticeDetailScreen(notice: notice);
         },
       ),
     ],

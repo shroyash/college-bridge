@@ -36,6 +36,13 @@ class FcmService {
           if (payload != null && payload.startsWith('doubt:')) {
             final doubtId = payload.substring(6);
             onNavigate?.call('/doubts/$doubtId');
+          } else if (payload != null && payload.startsWith('holiday_approval:')) {
+            final id = payload.substring(17);
+            onNavigate?.call(id.isNotEmpty && id != '0'
+                ? '/admin/holiday-notices/$id'
+                : '/admin/holiday-notices/pending');
+          } else if (payload != null && payload.startsWith('holiday_notice:')) {
+            onNavigate?.call('/holiday-notices/official');
           } else if (payload != null && payload.isNotEmpty) {
             onNavigate?.call('/notifications/$payload');
           } else {
@@ -128,9 +135,19 @@ class FcmService {
     final body = notification?.body ?? message.data['body'] ?? message.data['message'] ?? '';
     final doubtIdStr = message.data['doubtId']?.toString();
     final notifIdStr = message.data['notificationId']?.toString();
-    final payload = (doubtIdStr != null && doubtIdStr.isNotEmpty)
-        ? 'doubt:$doubtIdStr'
-        : notifIdStr;
+    final typeStr = message.data['type']?.toString();
+    final noticeIdStr = (message.data['noticeId'] ?? message.data['holidayId'])?.toString() ?? '';
+
+    String? payload;
+    if (doubtIdStr != null && doubtIdStr.isNotEmpty) {
+      payload = 'doubt:$doubtIdStr';
+    } else if (typeStr == 'HOLIDAY_APPROVAL' || typeStr == 'HOLIDAY_DRAFT_READY') {
+      payload = 'holiday_approval:$noticeIdStr';
+    } else if (typeStr == 'HOLIDAY_NOTICE') {
+      payload = 'holiday_notice:$noticeIdStr';
+    } else {
+      payload = notifIdStr;
+    }
 
     _localNotifications.show(
       message.hashCode,
@@ -152,6 +169,22 @@ class FcmService {
 
   void _handleMessageOpenedApp(RemoteMessage message) {
     log('[FCM] Opened from notification: ${message.data}', name: 'FcmService');
+    final typeStr = message.data['type']?.toString();
+    final noticeIdStr = (message.data['noticeId'] ?? message.data['holidayId'])?.toString() ?? '';
+
+    if (typeStr == 'HOLIDAY_APPROVAL' || typeStr == 'HOLIDAY_DRAFT_READY') {
+      onNavigate?.call(noticeIdStr.isNotEmpty && noticeIdStr != '0'
+          ? '/admin/holiday-notices/$noticeIdStr'
+          : '/admin/holiday-notices/pending');
+      return;
+    } else if (typeStr == 'HOLIDAY_NOTICE') {
+      onNavigate?.call('/holiday-notices/official');
+      return;
+    } else if (typeStr == 'HOLIDAY_PUBLISH_FAILED') {
+      onNavigate?.call('/admin/holiday-notices/$noticeIdStr');
+      return;
+    }
+
     final doubtIdStr = message.data['doubtId']?.toString();
     if (doubtIdStr != null && doubtIdStr.isNotEmpty) {
       onNavigate?.call('/doubts/$doubtIdStr');
