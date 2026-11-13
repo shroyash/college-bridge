@@ -5,15 +5,16 @@ import com.college.bridge.holiday.domain.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
-
 @Service
 @RequiredArgsConstructor
 public class NoticeApprovalService {
-
 
     public record ApproveCommand(Long holidayId, Long institutionId, Long userId, NoticeVariant variant,
                                  String customTitle, String customBody, Set<NoticeAudience> audience) {}
@@ -22,6 +23,7 @@ public class NoticeApprovalService {
     private final InstitutionNoticeRepository notices;
     private final NoticeDraftRepository drafts;
     private final AdminActionRepository actions;
+    private final NoticePublishingService publishing;
     private final NepalClock clock;
 
     @Transactional(readOnly = true)
@@ -45,7 +47,7 @@ public class NoticeApprovalService {
                 draftViews);
     }
 
-    /** Approving makes the notice official immediately; the push notification is delivered separately. */
+    /** Approving makes the notice official immediately; the push notification is triggered upon commit. */
     @Transactional
     public InstitutionNoticeView approve(ApproveCommand command) {
         PublicHoliday holiday = holiday(command.holidayId());
@@ -69,6 +71,18 @@ public class NoticeApprovalService {
         }
         actions.save(AdminAction.of(command.holidayId(), command.institutionId(), command.userId(),
                 AdminActionType.APPROVED_NOTICE));
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    publishing.publishDueNotices();
+                }
+            });
+        } else {
+            publishing.publishDueNotices();
+        }
+
         return view(command.holidayId(), command.institutionId());
     }
 

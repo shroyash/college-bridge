@@ -62,6 +62,7 @@ public class DesiredTopicResolver {
             });
 
         } else if (user.getRole() == UserRole.STUDENT) {
+            topics.add("tenant_" + tenantId + "_students");
             studentRepository.findByUser_UserId(user.getUserId()).ifPresent(student -> {
                 AcademicLevel level = student.getAcademicLevel();
                 if (level != null && !level.isDeleted()) {
