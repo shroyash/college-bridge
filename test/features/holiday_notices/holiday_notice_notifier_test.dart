@@ -29,6 +29,8 @@ class MockHolidayNoticeRepository implements HolidayNoticeRepository {
   int approveCalls = 0;
   int rejectCalls = 0;
   int loadNoticeCalls = 0;
+  int? lastApproveId;
+  int? lastRejectId;
 
   @override
   Future<PendingHolidayNotice?> getPendingNotice() async {
@@ -54,6 +56,7 @@ class MockHolidayNoticeRepository implements HolidayNoticeRepository {
     required bool notifyTeachers,
   }) async {
     approveCalls++;
+    lastApproveId = id;
     if (isConflictOnApprove) {
       throw DioException(
         requestOptions: RequestOptions(path: '/approve'),
@@ -76,6 +79,7 @@ class MockHolidayNoticeRepository implements HolidayNoticeRepository {
   @override
   Future<InstitutionHolidayNotice> rejectNotice(int id) async {
     rejectCalls++;
+    lastRejectId = id;
     if (isConflictOnReject) {
       throw DioException(
         requestOptions: RequestOptions(path: '/reject'),
@@ -242,6 +246,44 @@ void main() {
       final loaded = notifier.state as NoticeDetailLoaded;
       expect(loaded.pendingNotice?.id, 101);
       expect(mockRepo.loadNoticeCalls, 0);
+    });
+
+    test('resolves holidayId 33 when noticeId is passed as 0 with pending notice', () async {
+      mockRepo.approveResult = sampleApprovedNotice;
+      const pendingWithHolidayId33 = PendingHolidayNotice(
+        id: 0,
+        institutionId: 1,
+        holidayId: 33,
+        holidayName: 'Test Holiday',
+        holidayDateAd: '2026-11-14',
+        holidayDateBs: '2083-07-28',
+        status: NoticeStatus.AWAITING_DECISION,
+        closedDraft: HolidayNoticeDraft(
+          variant: NoticeVariant.CLOSED,
+          title: 'Closed',
+          body: 'Closed',
+        ),
+        openDraft: HolidayNoticeDraft(
+          variant: NoticeVariant.OPEN,
+          title: 'Open',
+          body: 'Open',
+        ),
+      );
+
+      final notifier = NoticeDetailNotifier(
+        repository: mockRepo,
+        noticeId: 0,
+        initialPending: pendingWithHolidayId33,
+      );
+
+      final result = await notifier.approve(
+        variant: NoticeVariant.CLOSED,
+        notifyStudents: true,
+        notifyTeachers: false,
+      );
+
+      expect(result, isTrue);
+      expect(mockRepo.lastApproveId, equals(33));
     });
 
     test('approves notice successfully', () async {

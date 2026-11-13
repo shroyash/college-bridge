@@ -89,7 +89,14 @@ class _PendingNoticesScreenState extends ConsumerState<PendingNoticesScreen> {
                   children: [
                     InkWell(
                       onTap: () {
-                        context.push('/admin/holiday-notices/pending', extra: notice);
+                        final targetId =
+                            notice.holidayId > 0 ? notice.holidayId : notice.id;
+                        context.push(
+                          targetId > 0
+                              ? '/admin/holiday-notices/$targetId'
+                              : '/admin/holiday-notices/pending',
+                          extra: notice,
+                        );
                       },
                       borderRadius: AppRadius.borderMd,
                       child: Container(

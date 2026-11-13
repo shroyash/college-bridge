@@ -70,9 +70,14 @@ void main() {
 
       final model = PendingNoticeModel.fromJson(json);
       expect(model.holidayId, equals(12));
+      expect(model.id, equals(12));
       expect(model.holidayDateAd, equals('2026-10-21'));
       expect(model.closedDraft?.title, equals('Closed Draft'));
       expect(model.openDraft?.title, equals('Open Draft'));
+
+      final entity = model.toEntity();
+      expect(entity.holidayId, equals(12));
+      expect(entity.id, equals(12));
     });
 
     test('InstitutionNoticeModel parses approved notice JSON and maps to entity', () {

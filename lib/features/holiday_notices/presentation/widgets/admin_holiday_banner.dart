@@ -98,7 +98,14 @@ class AdminHolidayBanner extends ConsumerWidget {
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () {
-                context.push('/admin/holiday-notices/pending', extra: notice);
+                final targetId =
+                    notice.holidayId > 0 ? notice.holidayId : notice.id;
+                context.push(
+                  targetId > 0
+                      ? '/admin/holiday-notices/$targetId'
+                      : '/admin/holiday-notices/pending',
+                  extra: notice,
+                );
               },
               icon: const Icon(Icons.rate_review_outlined, size: 18),
               label: const Text('Review & Decide'),

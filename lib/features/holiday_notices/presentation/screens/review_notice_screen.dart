@@ -120,9 +120,15 @@ class _ReviewNoticeScreenState extends ConsumerState<ReviewNoticeScreen> {
 
     if (confirmed != true || !mounted) return;
 
+    final targetId = id > 0
+        ? id
+        : ((widget.initialPending != null && widget.initialPending!.holidayId > 0)
+            ? widget.initialPending!.holidayId
+            : (widget.initialPending?.id ?? 0));
+
     final notifier = ref.read(
       noticeDetailNotifierProvider((
-        noticeId: id,
+        noticeId: targetId,
         initialPending: widget.initialPending,
       )).notifier,
     );
@@ -170,9 +176,15 @@ class _ReviewNoticeScreenState extends ConsumerState<ReviewNoticeScreen> {
 
     if (confirmed != true || !mounted) return;
 
+    final targetId = id > 0
+        ? id
+        : ((widget.initialPending != null && widget.initialPending!.holidayId > 0)
+            ? widget.initialPending!.holidayId
+            : (widget.initialPending?.id ?? 0));
+
     final notifier = ref.read(
       noticeDetailNotifierProvider((
-        noticeId: id,
+        noticeId: targetId,
         initialPending: widget.initialPending,
       )).notifier,
     );
@@ -213,7 +225,11 @@ class _ReviewNoticeScreenState extends ConsumerState<ReviewNoticeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveId = widget.noticeId > 0 ? widget.noticeId : (widget.initialPending?.id ?? 0);
+    final effectiveId = widget.noticeId > 0
+        ? widget.noticeId
+        : ((widget.initialPending != null && widget.initialPending!.holidayId > 0)
+            ? widget.initialPending!.holidayId
+            : (widget.initialPending?.id ?? 0));
 
     ref.listen(
       noticeDetailNotifierProvider((

@@ -67,11 +67,16 @@ class PendingNoticeModel {
   });
 
   factory PendingNoticeModel.fromJson(Map<String, dynamic> json) {
+    final parsedHolidayId =
+        (json['holidayId'] as num?)?.toInt() ?? (json['id'] as num?)?.toInt() ?? 0;
+    final parsedId = (json['id'] as num?)?.toInt() ??
+        (json['noticeId'] as num?)?.toInt() ??
+        parsedHolidayId;
     return PendingNoticeModel(
-      id: (json['id'] as num?)?.toInt() ?? (json['noticeId'] as num?)?.toInt() ?? 0,
+      id: parsedId,
       institutionId: (json['institutionId'] as num?)?.toInt() ?? 0,
       status: json['status'] as String? ?? 'AWAITING_DECISION',
-      holidayId: (json['holidayId'] as num?)?.toInt() ?? 0,
+      holidayId: parsedHolidayId,
       holidayDateAd: json['holidayDateAd'] as String? ?? json['date'] as String? ?? '',
       holidayDateBs: json['holidayDateBs'] as String? ?? json['dateBs'] as String? ?? '',
       holidayName: json['holidayName'] as String? ?? '',
@@ -175,9 +180,14 @@ class InstitutionNoticeModel {
   });
 
   factory InstitutionNoticeModel.fromJson(Map<String, dynamic> json) {
+    final parsedHolidayId =
+        (json['holidayId'] as num?)?.toInt() ?? (json['id'] as num?)?.toInt() ?? 0;
+    final parsedId = (json['id'] as num?)?.toInt() ??
+        (json['noticeId'] as num?)?.toInt() ??
+        parsedHolidayId;
     return InstitutionNoticeModel(
-      id: (json['id'] as num?)?.toInt() ?? 0,
-      holidayId: (json['holidayId'] as num?)?.toInt() ?? 0,
+      id: parsedId,
+      holidayId: parsedHolidayId,
       holidayDateAd: json['holidayDateAd'] as String? ?? json['date'] as String? ?? '',
       holidayDateBs: json['holidayDateBs'] as String? ?? json['dateBs'] as String? ?? '',
       holidayName: json['holidayName'] as String? ?? '',

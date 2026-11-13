@@ -180,8 +180,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/admin/holiday-notices/pending',
         builder: (context, state) {
           final pending = state.extra as PendingHolidayNotice?;
+          final effectiveId = (pending != null && pending.holidayId > 0)
+              ? pending.holidayId
+              : (pending?.id ?? 0);
           return ReviewNoticeScreen(
-            noticeId: pending?.id ?? 0,
+            noticeId: effectiveId,
             initialPending: pending,
           );
         },
@@ -192,8 +195,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final idStr = state.pathParameters['id'] ?? '0';
           final id = int.tryParse(idStr) ?? 0;
           final pending = state.extra as PendingHolidayNotice?;
+          final effectiveId = id > 0
+              ? id
+              : ((pending != null && pending.holidayId > 0)
+                  ? pending.holidayId
+                  : (pending?.id ?? 0));
           return ReviewNoticeScreen(
-            noticeId: id,
+            noticeId: effectiveId,
             initialPending: pending,
           );
         },

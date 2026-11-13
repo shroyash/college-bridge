@@ -31,9 +31,14 @@ final noticeDetailNotifierProvider = StateNotifierProvider.autoDispose
     .family<NoticeDetailNotifier, NoticeDetailState, ({int noticeId, PendingHolidayNotice? initialPending})>(
   (ref, params) {
     final repository = ref.watch(holidayNoticeRepositoryProvider);
+    final effectiveId = params.noticeId > 0
+        ? params.noticeId
+        : ((params.initialPending != null && params.initialPending!.holidayId > 0)
+            ? params.initialPending!.holidayId
+            : (params.initialPending?.id ?? 0));
     return NoticeDetailNotifier(
       repository: repository,
-      noticeId: params.noticeId,
+      noticeId: effectiveId,
       initialPending: params.initialPending,
     );
   },
