@@ -11,6 +11,7 @@ import com.college.bridge.doubt.dto.CreateDoubtAnswerRequest;
 import com.college.bridge.doubt.dto.DoubtAnswerResponse;
 import com.college.bridge.doubt.entity.Doubt;
 import com.college.bridge.doubt.entity.DoubtAnswer;
+import com.college.bridge.doubt.entity.DoubtStatus;
 import com.college.bridge.doubt.mapper.DoubtAnswerMapper;
 import com.college.bridge.doubt.repository.DoubtAnswerRepository;
 import com.college.bridge.doubt.repository.DoubtRepository;
@@ -79,10 +80,8 @@ public class DoubtAnswerService {
         DoubtAnswer saved =
                 doubtAnswerRepository.save(answer);
 
-        if (doubt.getStatus() == com.college.bridge.doubt.entity.DoubtStatus.OPEN) {
-            doubt.setStatus(
-                    com.college.bridge.doubt.entity.DoubtStatus.ANSWERED
-            );
+        if (doubt.getStatus() == DoubtStatus.OPEN) {
+            doubt.setStatus(DoubtStatus.ANSWERED);
         }
 
         Long doubtAuthorUserId = (doubt.getStudent() != null && doubt.getStudent().getUser() != null)

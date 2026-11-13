@@ -32,6 +32,10 @@ public class Institution {
     @Builder.Default
     private InstitutionStatus status = InstitutionStatus.PENDING;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "region", length = 20)
+    private InstitutionRegion region;
+
     @Column(name = "location", length = 150)
     private String location;
 

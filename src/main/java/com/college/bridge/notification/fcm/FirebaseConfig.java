@@ -6,7 +6,6 @@ import com.google.firebase.FirebaseOptions;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
@@ -22,14 +21,17 @@ import java.io.InputStream;
 public class FirebaseConfig {
 
     private final Environment environment;
-
-    @Value("${firebase.config.path:keys/firebase-service-account.json}")
-    private String firebaseConfigPath;
+    private final FcmProperties fcmProperties;
 
     private boolean mockMode;
 
-    public FirebaseConfig(Environment environment) {
+    public FirebaseConfig(Environment environment, FcmProperties fcmProperties) {
         this.environment = environment;
+        this.fcmProperties = fcmProperties;
+    }
+
+    public String getFirebaseConfigPath() {
+        return fcmProperties.getConfigPath();
     }
 
     @PostConstruct
@@ -49,20 +51,21 @@ public class FirebaseConfig {
     }
 
     private Resource resolveFirebaseCredentials() {
-        Resource fileResource = new FileSystemResource(firebaseConfigPath);
+        String path = getFirebaseConfigPath();
+        Resource fileResource = new FileSystemResource(path);
 
         if (fileResource.exists()) {
             return fileResource;
         }
 
-        return new ClassPathResource(firebaseConfigPath);
+        return new ClassPathResource(path);
     }
 
     private void handleMissingCredentials() {
         if (isProduction()) {
             throw new IllegalStateException(
                     "Firebase credentials are required in production. " +
-                            "File not found: " + firebaseConfigPath
+                            "File not found: " + getFirebaseConfigPath()
             );
         }
 
@@ -71,7 +74,7 @@ public class FirebaseConfig {
         log.warn(
                 "Firebase credentials not found at [{}]. " +
                         "Running FCM in MOCK mode.",
-                firebaseConfigPath
+                getFirebaseConfigPath()
         );
     }
 
@@ -88,7 +91,7 @@ public class FirebaseConfig {
 
         } catch (IOException | RuntimeException exception) {
             throw new IllegalStateException(
-                    "Failed to initialize Firebase from: " + firebaseConfigPath,
+                    "Failed to initialize Firebase from: " + getFirebaseConfigPath(),
                     exception
             );
         }

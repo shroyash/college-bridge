@@ -1,6 +1,6 @@
 package com.college.bridge.doubt.dto;
 
-import com.college.bridge.doubt.enums.DoubtStatus;
+import com.college.bridge.doubt.entity.DoubtStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
