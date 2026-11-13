@@ -9,6 +9,10 @@ import com.college.bridge.holiday.config.NepalClock;
 import com.college.bridge.holiday.domain.InstitutionNotice;
 import com.college.bridge.holiday.domain.InstitutionNoticeRepository;
 import com.college.bridge.holiday.domain.PublicHolidayRepository;
+import com.college.bridge.notification.dto.NotificationPublishRequest;
+import com.college.bridge.notification.entity.NotificationTargetType;
+import com.college.bridge.notification.entity.NotificationType;
+import com.college.bridge.notification.service.NotificationPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -20,6 +24,10 @@ import java.time.Instant;
 /**
  * Outbox worker: delivers each approved institution notice by push, exactly once in the normal case.
  * Approval is already committed and visible in the app; a push failure never undoes it.
+ *
+ * <p>After a successful FCM broadcast, it also writes the notice into the unified notification
+ * inbox (via {@link NotificationPublisher}) so students and teachers see it in their notification
+ * bell even if their device was not subscribed to the audience topics at broadcast time.
  */
 @Service
 @Slf4j
@@ -34,6 +42,7 @@ public class NoticePublishingService {
     private final InstitutionDirectory institutions;
     private final AudienceBroadcaster broadcaster;
     private final AdminAlerts adminAlerts;
+    private final NotificationPublisher notificationPublisher;
     private final HolidayProperties props;
     private final NepalClock clock;
 
@@ -68,8 +77,36 @@ public class NoticePublishingService {
                     notice.isNotifyStudents(), notice.isNotifyTeachers()));
             notices.markPublished(notice.getId(), clock.instantNow());
             log.info("Holiday notice {} published for institution {}", notice.getHolidayId(), notice.getInstitutionId());
+
+            // Also write into the unified notification inbox so users see it in the bell icon
+            // regardless of whether their FCM topic subscription was active at broadcast time.
+            publishToInbox(notice);
         } catch (RuntimeException e) {
             recordFailure(notice, attempt, e);
+        }
+    }
+
+    /**
+     * Writes the holiday notice into the shared notification system (notifications table +
+     * notification_jobs). The job processor will push it via the tenant_X_all topic and store it
+     * in the per-user read-state so users see it in their inbox.
+     * Uses an idempotency key so re-runs (after a crash/retry) never create duplicates.
+     */
+    private void publishToInbox(InstitutionNotice notice) {
+        try {
+            String idempotencyKey = "holiday-notice-" + notice.getHolidayId() + "-" + notice.getInstitutionId();
+            notificationPublisher.publish(NotificationPublishRequest.builder()
+                    .institutionId(notice.getInstitutionId())
+                    .title(notice.getFinalTitle())
+                    .body(notice.getFinalBody())
+                    .targetType(NotificationTargetType.INSTITUTION)
+                    .type(NotificationType.HOLIDAY)
+                    .idempotencyKey(idempotencyKey)
+                    .build());
+        } catch (RuntimeException e) {
+            // Inbox write failure must NOT roll back the FCM publish — the notice is already delivered.
+            log.warn("Could not write holiday notice {} / institution {} to notification inbox: {}",
+                    notice.getHolidayId(), notice.getInstitutionId(), e.getMessage());
         }
     }
 
