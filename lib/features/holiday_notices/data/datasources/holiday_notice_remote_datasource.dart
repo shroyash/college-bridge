@@ -1,5 +1,4 @@
 import '../../../../core/network/api_client.dart';
-import '../../../../core/network/api_response.dart';
 import '../../../../core/network/page_response.dart';
 import '../models/holiday_notice_models.dart';
 
@@ -13,26 +12,33 @@ class HolidayNoticeRemoteDataSource {
     final json = response.data;
 
     if (json is Map<String, dynamic>) {
-      final apiResponse = ApiResponse<PendingNoticeModel?>.fromJson(
-        json,
-        (data) => data != null
-            ? PendingNoticeModel.fromJson(Map<String, dynamic>.from(data as Map))
-            : null,
-      );
-      return apiResponse.data;
+      final rawData = json.containsKey('data') ? json['data'] : json;
+      if (rawData is List) {
+        if (rawData.isEmpty) return null;
+        return PendingNoticeModel.fromJson(Map<String, dynamic>.from(rawData.first as Map));
+      }
+      if (rawData is Map) {
+        return PendingNoticeModel.fromJson(Map<String, dynamic>.from(rawData));
+      }
+      return null;
+    } else if (json is List) {
+      if (json.isEmpty) return null;
+      return PendingNoticeModel.fromJson(Map<String, dynamic>.from(json.first as Map));
     }
     return null;
   }
 
   Future<InstitutionNoticeModel> getNoticeById(int id) async {
     final response = await _client.get('/api/admin/holiday-notices/$id');
-    final json = response.data as Map<String, dynamic>;
+    final json = response.data;
 
-    final apiResponse = ApiResponse<InstitutionNoticeModel>.fromJson(
-      json,
-      (data) => InstitutionNoticeModel.fromJson(Map<String, dynamic>.from(data as Map)),
-    );
-    return apiResponse.data!;
+    if (json is Map<String, dynamic>) {
+      final dataMap = json.containsKey('data') && json['data'] is Map
+          ? json['data'] as Map
+          : json;
+      return InstitutionNoticeModel.fromJson(Map<String, dynamic>.from(dataMap));
+    }
+    throw const FormatException('Invalid notice response');
   }
 
   Future<InstitutionNoticeModel> approveNotice({
@@ -43,12 +49,17 @@ class HolidayNoticeRemoteDataSource {
     required bool notifyStudents,
     required bool notifyTeachers,
   }) async {
+    final audience = <String>[];
+    if (notifyStudents) audience.add('STUDENTS');
+    if (notifyTeachers) audience.add('TEACHERS');
+
     final payload = <String, dynamic>{
       'variant': variant,
       if (customTitle != null && customTitle.trim().isNotEmpty)
         'customTitle': customTitle.trim(),
       if (customBody != null && customBody.trim().isNotEmpty)
         'customBody': customBody.trim(),
+      'audience': audience,
       'notifyStudents': notifyStudents,
       'notifyTeachers': notifyTeachers,
     };
@@ -57,24 +68,28 @@ class HolidayNoticeRemoteDataSource {
       '/api/admin/holiday-notices/$id/approve',
       data: payload,
     );
-    final json = response.data as Map<String, dynamic>;
+    final json = response.data;
 
-    final apiResponse = ApiResponse<InstitutionNoticeModel>.fromJson(
-      json,
-      (data) => InstitutionNoticeModel.fromJson(Map<String, dynamic>.from(data as Map)),
-    );
-    return apiResponse.data!;
+    if (json is Map<String, dynamic>) {
+      final dataMap = json.containsKey('data') && json['data'] is Map
+          ? json['data'] as Map
+          : json;
+      return InstitutionNoticeModel.fromJson(Map<String, dynamic>.from(dataMap));
+    }
+    throw const FormatException('Invalid approve response');
   }
 
   Future<InstitutionNoticeModel> rejectNotice(int id) async {
     final response = await _client.post('/api/admin/holiday-notices/$id/reject');
-    final json = response.data as Map<String, dynamic>;
+    final json = response.data;
 
-    final apiResponse = ApiResponse<InstitutionNoticeModel>.fromJson(
-      json,
-      (data) => InstitutionNoticeModel.fromJson(Map<String, dynamic>.from(data as Map)),
-    );
-    return apiResponse.data!;
+    if (json is Map<String, dynamic>) {
+      final dataMap = json.containsKey('data') && json['data'] is Map
+          ? json['data'] as Map
+          : json;
+      return InstitutionNoticeModel.fromJson(Map<String, dynamic>.from(dataMap));
+    }
+    throw const FormatException('Invalid reject response');
   }
 
   Future<PageResponse<InstitutionNoticeModel>> getHistory({
@@ -98,27 +113,28 @@ class HolidayNoticeRemoteDataSource {
     );
   }
 
-  Future<OfficialNoticeModel?> getOfficialNotice({
-    required int institutionId,
-    required String date,
+  Future<List<OfficialNoticeModel>> getOfficialNotices({
+    int page = 0,
+    int size = 20,
   }) async {
     final response = await _client.get(
       '/api/holiday-notices/official',
-      queryParameters: {
-        'institutionId': institutionId,
-        'date': date,
-      },
+      queryParameters: {'page': page, 'size': size},
     );
     final json = response.data;
     if (json is Map<String, dynamic>) {
-      final apiResponse = ApiResponse<OfficialNoticeModel?>.fromJson(
-        json,
-        (data) => data != null
-            ? OfficialNoticeModel.fromJson(Map<String, dynamic>.from(data as Map))
-            : null,
-      );
-      return apiResponse.data;
+      // ApiResponse<PagedResult<OfficialNoticeView>>
+      final rawData = json['data'];
+      final rawContent = rawData is Map<String, dynamic>
+          ? rawData['content'] as List<dynamic>?
+          : null;
+      if (rawContent != null) {
+        return rawContent
+            .whereType<Map>()
+            .map((e) => OfficialNoticeModel.fromJson(Map<String, dynamic>.from(e)))
+            .toList();
+      }
     }
-    return null;
+    return const [];
   }
 }

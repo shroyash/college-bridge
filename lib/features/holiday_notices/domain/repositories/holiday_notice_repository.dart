@@ -30,9 +30,9 @@ abstract class HolidayNoticeRepository {
     int size = 10,
   });
 
-  /// Public endpoint to fetch an official notice for an institution on a date.
-  Future<OfficialHolidayNotice?> getOfficialNotice({
-    required int institutionId,
-    required String date,
+  /// Fetches official (approved) holiday notices for the user's institution.
+  Future<List<OfficialHolidayNotice>> getOfficialNotices({
+    int page = 0,
+    int size = 20,
   });
 }

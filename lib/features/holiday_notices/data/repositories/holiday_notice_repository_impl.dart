@@ -67,14 +67,11 @@ class HolidayNoticeRepositoryImpl implements HolidayNoticeRepository {
   }
 
   @override
-  Future<OfficialHolidayNotice?> getOfficialNotice({
-    required int institutionId,
-    required String date,
+  Future<List<OfficialHolidayNotice>> getOfficialNotices({
+    int page = 0,
+    int size = 20,
   }) async {
-    final model = await _remoteDataSource.getOfficialNotice(
-      institutionId: institutionId,
-      date: date,
-    );
-    return model?.toEntity();
+    final models = await _remoteDataSource.getOfficialNotices(page: page, size: size);
+    return models.map((m) => m.toEntity()).toList();
   }
 }

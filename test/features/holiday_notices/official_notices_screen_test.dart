@@ -12,8 +12,8 @@ import 'package:bridge_mobile/features/holiday_notices/presentation/screens/offi
 import 'package:bridge_mobile/features/holiday_notices/presentation/screens/official_notices_screen.dart';
 
 class MockHolidayNoticeRepository implements HolidayNoticeRepository {
-  OfficialHolidayNotice? officialResult;
-  bool returnNull = false;
+  List<OfficialHolidayNotice> officialResult = [];
+  bool returnEmpty = false;
 
   @override
   Future<PendingHolidayNotice?> getPendingNotice() async => null;
@@ -52,11 +52,11 @@ class MockHolidayNoticeRepository implements HolidayNoticeRepository {
   }
 
   @override
-  Future<OfficialHolidayNotice?> getOfficialNotice({
-    required int institutionId,
-    required String date,
+  Future<List<OfficialHolidayNotice>> getOfficialNotices({
+    int page = 0,
+    int size = 20,
   }) async {
-    if (returnNull) return null;
+    if (returnEmpty) return [];
     return officialResult;
   }
 }
@@ -81,7 +81,7 @@ void main() {
   });
 
   testWidgets('OfficialNoticesScreen shows empty state when no notices published', (tester) async {
-    mockRepo.returnNull = true;
+    mockRepo.returnEmpty = true;
 
     await tester.pumpWidget(
       ProviderScope(
@@ -102,7 +102,7 @@ void main() {
   });
 
   testWidgets('OfficialNoticesScreen displays published notice card', (tester) async {
-    mockRepo.officialResult = sampleOfficial;
+    mockRepo.officialResult = [sampleOfficial];
 
     await tester.pumpWidget(
       ProviderScope(

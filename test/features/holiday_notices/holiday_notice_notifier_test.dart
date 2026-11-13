@@ -20,7 +20,7 @@ class MockHolidayNoticeRepository implements HolidayNoticeRepository {
   InstitutionHolidayNotice? noticeByIdResult;
   InstitutionHolidayNotice? approveResult;
   InstitutionHolidayNotice? rejectResult;
-  OfficialHolidayNotice? officialResult;
+  List<OfficialHolidayNotice> officialResult = [];
 
   Object? errorToThrow;
   bool isConflictOnApprove = false;
@@ -110,9 +110,9 @@ class MockHolidayNoticeRepository implements HolidayNoticeRepository {
   }
 
   @override
-  Future<OfficialHolidayNotice?> getOfficialNotice({
-    required int institutionId,
-    required String date,
+  Future<List<OfficialHolidayNotice>> getOfficialNotices({
+    int page = 0,
+    int size = 20,
   }) async {
     if (errorToThrow != null) throw errorToThrow!;
     return officialResult;
@@ -351,11 +351,11 @@ void main() {
       expect(notifier.state, isA<OfficialNoticesInitial>());
     });
 
-    test('fetchNotice populates notice list when found', () async {
-      mockRepo.officialResult = sampleOfficial;
+    test('fetchNotices populates notice list when found', () async {
+      mockRepo.officialResult = [sampleOfficial];
       final notifier = OfficialNoticesNotifier(mockRepo);
 
-      await notifier.fetchNotice(institutionId: 1, date: '2026-05-31');
+      await notifier.fetchNotices();
 
       expect(notifier.state, isA<OfficialNoticesLoaded>());
       final loaded = notifier.state as OfficialNoticesLoaded;
@@ -364,22 +364,22 @@ void main() {
       expect(loaded.notices.first.variant, NoticeVariant.CLOSED);
     });
 
-    test('fetchNotice populates empty list when null', () async {
-      mockRepo.officialResult = null;
+    test('fetchNotices populates empty list when empty', () async {
+      mockRepo.officialResult = [];
       final notifier = OfficialNoticesNotifier(mockRepo);
 
-      await notifier.fetchNotice(institutionId: 1, date: '2026-05-31');
+      await notifier.fetchNotices();
 
       expect(notifier.state, isA<OfficialNoticesLoaded>());
       final loaded = notifier.state as OfficialNoticesLoaded;
       expect(loaded.notices, isEmpty);
     });
 
-    test('fetchNotice sets error state on failure', () async {
+    test('fetchNotices sets error state on failure', () async {
       mockRepo.errorToThrow = const ServerFailure('Not found');
       final notifier = OfficialNoticesNotifier(mockRepo);
 
-      await notifier.fetchNotice(institutionId: 1, date: '2026-05-31');
+      await notifier.fetchNotices();
 
       expect(notifier.state, isA<OfficialNoticesError>());
       final err = notifier.state as OfficialNoticesError;

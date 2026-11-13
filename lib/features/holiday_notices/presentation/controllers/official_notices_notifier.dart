@@ -9,22 +9,11 @@ class OfficialNoticesNotifier extends StateNotifier<OfficialNoticesState> {
 
   OfficialNoticesNotifier(this._repository) : super(const OfficialNoticesInitial());
 
-  Future<void> fetchNotice({
-    required int institutionId,
-    required String date,
-  }) async {
+  Future<void> fetchNotices({int page = 0, int size = 20}) async {
     state = const OfficialNoticesLoading();
     try {
-      final notice = await _repository.getOfficialNotice(
-        institutionId: institutionId,
-        date: date,
-      );
-
-      if (notice != null) {
-        state = OfficialNoticesLoaded(notices: [notice]);
-      } else {
-        state = const OfficialNoticesLoaded(notices: []);
-      }
+      final notices = await _repository.getOfficialNotices(page: page, size: size);
+      state = OfficialNoticesLoaded(notices: notices);
     } catch (e) {
       state = OfficialNoticesError(extractErrorMessage(e));
     }

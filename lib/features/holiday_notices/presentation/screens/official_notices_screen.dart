@@ -8,8 +8,6 @@ import '../../../../core/helpers/nepal_time_helper.dart';
 import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading.dart';
-import '../../../auth/presentation/controllers/auth_providers.dart';
-import '../../../auth/presentation/controllers/auth_state.dart';
 import '../../domain/entities/holiday_notice_enums.dart';
 import '../controllers/holiday_notice_providers.dart';
 import '../controllers/official_notices_state.dart';
@@ -29,20 +27,7 @@ class _OfficialNoticesScreenState extends ConsumerState<OfficialNoticesScreen> {
   }
 
   void _loadNotices() {
-    final authState = ref.read(authNotifierProvider);
-    int institutionId = 1;
-    if (authState is AuthSuccess) {
-      institutionId = authState.user.institution?.institutionId ?? 1;
-    }
-
-    final todayNepal = NepalTimeHelper.nowInNepal();
-    final todayStr =
-        '${todayNepal.year}-${todayNepal.month.toString().padLeft(2, '0')}-${todayNepal.day.toString().padLeft(2, '0')}';
-
-    ref.read(officialNoticesNotifierProvider.notifier).fetchNotice(
-          institutionId: institutionId,
-          date: todayStr,
-        );
+    ref.read(officialNoticesNotifierProvider.notifier).fetchNotices();
   }
 
   @override

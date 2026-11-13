@@ -63,11 +63,11 @@ class MockHolidayNoticeRepository implements HolidayNoticeRepository {
   }
 
   @override
-  Future<OfficialHolidayNotice?> getOfficialNotice({
-    required int institutionId,
-    required String date,
+  Future<List<OfficialHolidayNotice>> getOfficialNotices({
+    int page = 0,
+    int size = 20,
   }) async {
-    return null;
+    return const [];
   }
 }
 
