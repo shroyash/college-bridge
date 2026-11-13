@@ -50,7 +50,7 @@ public class HolidayJobs {
 
     @Scheduled(cron = "0 */1 * * * *", zone = NepalClock.ZONE)
     public void prepareTomorrowsNotices() {
-        LocalDate tomorrow = clock.today();
+        LocalDate tomorrow = clock.today().plusDays(1);
         List<Long> holidayIds = drafting.holidayIdsOn(tomorrow);
         log.info("Holiday notices for {}: {} holiday(s)", tomorrow, holidayIds.size());
         holidayIds.forEach(drafting::prepareNoticesAsync);

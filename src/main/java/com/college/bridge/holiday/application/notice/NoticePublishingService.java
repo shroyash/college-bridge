@@ -1,6 +1,7 @@
 package com.college.bridge.holiday.application.notice;
 
 import com.college.bridge.holiday.application.port.AdminAlerts;
+import com.college.bridge.holiday.application.port.AdminDirectory;
 import com.college.bridge.holiday.application.port.AudienceBroadcaster;
 import com.college.bridge.holiday.application.port.AudienceBroadcaster.Broadcast;
 import com.college.bridge.holiday.application.port.InstitutionDirectory;
@@ -40,6 +41,7 @@ public class NoticePublishingService {
     private final InstitutionNoticeRepository notices;
     private final PublicHolidayRepository holidays;
     private final InstitutionDirectory institutions;
+    private final AdminDirectory adminDirectory;
     private final AudienceBroadcaster broadcaster;
     private final AdminAlerts adminAlerts;
     private final NotificationPublisher notificationPublisher;
@@ -69,6 +71,12 @@ public class NoticePublishingService {
         if (notices.claimForPublishing(notice.getId(), clock.instantNow()) == 0) {
             return;
         }
+
+        // 1. Always record in the unified in-app notification inbox first so users
+        // see the announcement in their bell icon, even if FCM topic push fails or is blocked.
+        publishToInbox(notice);
+
+        // 2. Broadcast via FCM topic push to role-specific audience (students/teachers)
         int attempt = notice.getPublishAttempts() + 1;
         try {
             broadcaster.broadcast(new Broadcast(
@@ -77,10 +85,6 @@ public class NoticePublishingService {
                     notice.isNotifyStudents(), notice.isNotifyTeachers()));
             notices.markPublished(notice.getId(), clock.instantNow());
             log.info("Holiday notice {} published for institution {}", notice.getHolidayId(), notice.getInstitutionId());
-
-            // Also write into the unified notification inbox so users see it in the bell icon
-            // regardless of whether their FCM topic subscription was active at broadcast time.
-            publishToInbox(notice);
         } catch (RuntimeException e) {
             recordFailure(notice, attempt, e);
         }
@@ -94,9 +98,15 @@ public class NoticePublishingService {
      */
     private void publishToInbox(InstitutionNotice notice) {
         try {
+            Long senderId = notice.getDecidedBy();
+            if (senderId == null) {
+                senderId = adminDirectory.findAnyAdminId(notice.getInstitutionId()).orElse(null);
+            }
+
             String idempotencyKey = "holiday-notice-" + notice.getHolidayId() + "-" + notice.getInstitutionId();
             notificationPublisher.publish(NotificationPublishRequest.builder()
                     .institutionId(notice.getInstitutionId())
+                    .senderUserId(senderId)
                     .title(notice.getFinalTitle())
                     .body(notice.getFinalBody())
                     .targetType(NotificationTargetType.INSTITUTION)

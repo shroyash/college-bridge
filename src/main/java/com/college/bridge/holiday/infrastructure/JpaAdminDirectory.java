@@ -61,6 +61,17 @@ public class JpaAdminDirectory implements AdminDirectory {
     }
 
     @Override
+    public Optional<Long> findAnyAdminId(Long institutionId) {
+        if (institutionId == null) {
+            return Optional.empty();
+        }
+        return userRepository.findByInstitution_InstitutionIdAndRole(institutionId, UserRole.ADMIN)
+                .stream()
+                .map(User::getUserId)
+                .findFirst();
+    }
+
+    @Override
     @Transactional
     public void forget(Collection<String> deviceTokens) {
         if (deviceTokens == null || deviceTokens.isEmpty()) {

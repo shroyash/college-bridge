@@ -17,5 +17,5 @@ public class FcmProperties {
     /**
      * Path to the Firebase service account JSON file.
      */
-    private String configPath = "keys/firebase-service-account.json";
+    private String configPath = "keys/college-bridge-96f08-42e61f29d57b.json";
 }

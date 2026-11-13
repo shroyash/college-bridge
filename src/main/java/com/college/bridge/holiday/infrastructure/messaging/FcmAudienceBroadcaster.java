@@ -58,7 +58,9 @@ class FcmAudienceBroadcaster implements AudienceBroadcaster {
                 fcm.sendToTopic(topic, title, body, data);
                 return;
             } catch (FcmSendException e) {
-                log.warn("Broadcast to {} attempt {}/{} failed: {}", topic, attempt, MAX_ATTEMPTS, e.getMessage());
+                log.warn("Broadcast to {} attempt {}/{} failed: {} (cause: {})",
+                        topic, attempt, MAX_ATTEMPTS, e.getMessage(),
+                        e.getCause() != null ? e.getCause().getMessage() : "none", e);
                 if (attempt < MAX_ATTEMPTS) {
                     pause(BACKOFF_MILLIS * attempt);
                 }
