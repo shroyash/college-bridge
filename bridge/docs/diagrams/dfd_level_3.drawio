@@ -1,0 +1,64 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="dfd_level_3" name="DFD Level 3 (Doubt Life Cycle Process 4.4)">
+    <mxGraphModel dx="1200" dy="850" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Subsystem Boundary for 4.4 -->
+        <mxCell id="d3_box" value="Decomposition of Process 4.4: Doubt Life Cycle &amp; Resolution Engine" style="shape=swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#F8FAFC;strokeColor=#16A34A;strokeWidth=2;fontStyle=1;fontSize=13;rounded=1;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="160" y="80" width="980" height="660" as="geometry" />
+        </mxCell>
+
+        <!-- External Inputs / Outputs -->
+        <mxCell id="d3_in_query" value="Student / Peer&#xa;Input" style="html=1;whiteSpace=wrap;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontStyle=1;rounded=1;arcSize=15;" vertex="1" parent="1">
+          <mxGeometry x="20" y="190" width="110" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d3_in_teacher" value="Teacher Input" style="html=1;whiteSpace=wrap;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontStyle=1;rounded=1;arcSize=15;" vertex="1" parent="1">
+          <mxGeometry x="20" y="470" width="110" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Child Processes -->
+        <mxCell id="p4_4_1" value="4.4.1&#xa;Validate Member&#xa;Subject Enrollment" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;strokeWidth=2;fontStyle=1;" vertex="1" parent="d3_box">
+          <mxGeometry x="60" y="100" width="140" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p4_4_2" value="4.4.2&#xa;Filter Content &amp;&#xa;Post Question/Reply" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;strokeWidth=2;fontStyle=1;" vertex="1" parent="d3_box">
+          <mxGeometry x="300" y="100" width="140" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p4_4_3" value="4.4.3&#xa;Teacher Official&#xa;Answer Submission" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;strokeWidth=2;fontStyle=1;" vertex="1" parent="d3_box">
+          <mxGeometry x="300" y="380" width="140" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p4_4_4" value="4.4.4&#xa;Mark Status:&#xa;SOLVED / CLOSED" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;strokeWidth=2;fontStyle=1;" vertex="1" parent="d3_box">
+          <mxGeometry x="580" y="380" width="140" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p4_4_5" value="4.4.5&#xa;Notify Author Student&#xa;via FCM Push" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;strokeWidth=2;fontStyle=1;" vertex="1" parent="d3_box">
+          <mxGeometry x="780" y="380" width="140" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Local Data Stores -->
+        <mxCell id="d3_ds_syll" value="D2: Enrolment Verification Store" style="shape=partialRectangle;whiteSpace=wrap;html=1;left=0;right=0;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=2;fontStyle=1;rounded=1;" vertex="1" parent="d3_box">
+          <mxGeometry x="510" y="115" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d3_ds_thread" value="D4.1: Active Doubt Thread Store" style="shape=partialRectangle;whiteSpace=wrap;html=1;left=0;right=0;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=2;fontStyle=1;rounded=1;" vertex="1" parent="d3_box">
+          <mxGeometry x="460" y="265" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Flexible Curved Flows -->
+        <mxCell id="df3_1" edge="1" parent="1" source="d3_in_query" target="p4_4_1" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#0284C7;strokeWidth=2;endArrow=classic;" value="User ID + Subject ID" />
+        <mxCell id="df3_2" edge="1" parent="1" source="p4_4_1" target="p4_4_2" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#16A34A;strokeWidth=2;endArrow=classic;" value="Verified Member" />
+        <mxCell id="df3_3" edge="1" parent="1" source="d3_ds_syll" target="p4_4_1" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#D97706;strokeWidth=2;endArrow=classic;" value="Check Enrollment" />
+        <mxCell id="df3_4" edge="1" parent="1" source="p4_4_2" target="d3_ds_thread" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#16A34A;strokeWidth=2;endArrow=classic;" value="Persist Question/Reply" />
+        <mxCell id="df3_5" edge="1" parent="1" source="d3_in_teacher" target="p4_4_3" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#0284C7;strokeWidth=2;endArrow=classic;" value="Official Solution" />
+        <mxCell id="df3_6" edge="1" parent="1" source="p4_4_3" target="p4_4_4" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#16A34A;strokeWidth=2;endArrow=classic;" value="Thread Update" />
+        <mxCell id="df3_7" edge="1" parent="1" source="p4_4_4" target="d3_ds_thread" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#16A34A;strokeWidth=2;endArrow=classic;" value="Update Status" />
+        <mxCell id="df3_8" edge="1" parent="1" source="p4_4_4" target="p4_4_5" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#16A34A;strokeWidth=2;endArrow=classic;" value="Resolution Event" />
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

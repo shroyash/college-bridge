@@ -1,0 +1,75 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="dfd_level_1" name="DFD Level 1">
+    <mxGraphModel dx="1200" dy="850" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- External Entities -->
+        <mxCell id="ee_admin" value="Admin / Teacher" style="html=1;whiteSpace=wrap;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontStyle=1;fontSize=13;rounded=1;arcSize=15;" vertex="1" parent="1">
+          <mxGeometry x="40" y="160" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ee_student" value="Student" style="html=1;whiteSpace=wrap;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontStyle=1;fontSize=13;rounded=1;arcSize=15;" vertex="1" parent="1">
+          <mxGeometry x="40" y="520" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ee_fcm" value="Firebase (FCM)" style="html=1;whiteSpace=wrap;fillColor=#FFEDD5;strokeColor=#C2410C;strokeWidth=2;fontStyle=1;fontSize=13;rounded=1;arcSize=15;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="240" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ee_ai" value="AI Engine (Calendar)" style="html=1;whiteSpace=wrap;fillColor=#F3E8FF;strokeColor=#6B21A8;strokeWidth=2;fontStyle=1;fontSize=13;rounded=1;arcSize=15;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="100" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Processes -->
+        <mxCell id="p1" value="1.0&#xa;User Auth &amp;&#xa;Role Security" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;strokeWidth=2;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="60" width="140" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p2" value="2.0&#xa;Academic &amp; Class&#xa;Management" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;strokeWidth=2;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="240" width="140" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p3" value="3.0&#xa;Notification Broadcast&#xa;&amp; Dispatch" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;strokeWidth=2;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="240" width="140" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p4" value="4.0&#xa;Peer &amp; Teacher&#xa;Doubt Discussion" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;strokeWidth=2;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="500" width="140" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Data Stores -->
+        <mxCell id="ds1" value="D1: User &amp; FCM Token DB" style="shape=partialRectangle;whiteSpace=wrap;html=1;left=0;right=0;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=2;fontStyle=1;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="80" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ds2" value="D2: Academic &amp; Class DB" style="shape=partialRectangle;whiteSpace=wrap;html=1;left=0;right=0;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=2;fontStyle=1;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="260" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ds3" value="D3: Notification Log DB" style="shape=partialRectangle;whiteSpace=wrap;html=1;left=0;right=0;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=2;fontStyle=1;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="920" y="140" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ds4" value="D4: Doubt Thread &amp; Replies DB" style="shape=partialRectangle;whiteSpace=wrap;html=1;left=0;right=0;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=2;fontStyle=1;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="520" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Flexible Curved Data Flows -->
+        <mxCell id="f1" edge="1" parent="1" source="ee_admin" target="p1" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#0284C7;strokeWidth=2;endArrow=classic;" value="Login Credentials" />
+        <mxCell id="f2" edge="1" parent="1" source="p1" target="ds1" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#16A34A;strokeWidth=2;endArrow=classic;" value="Store Credentials &amp; Token" />
+        <mxCell id="f3" edge="1" parent="1" source="ee_admin" target="p2" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#0284C7;strokeWidth=2;endArrow=classic;" value="Subject / Teacher Details" />
+        <mxCell id="f4" edge="1" parent="1" source="p2" target="ds2" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#16A34A;strokeWidth=2;endArrow=classic;" value="Save Academic Mapping" />
+        <mxCell id="f5" edge="1" parent="1" source="ee_admin" target="p3" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#0284C7;strokeWidth=2;endArrow=classic;" value="Notice Payload &amp; Target" />
+        <mxCell id="f6" edge="1" parent="1" source="p3" target="ee_fcm" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#EA580C;strokeWidth=2;endArrow=classic;" value="Push Token Payload" />
+        <mxCell id="f7" edge="1" parent="1" source="p3" target="ds3" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#16A34A;strokeWidth=2;endArrow=classic;" value="Log Dispatch Status" />
+        <mxCell id="f8" edge="1" parent="1" source="ee_student" target="p4" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#0284C7;strokeWidth=2;endArrow=classic;" value="Post / Answer Doubt" />
+        <mxCell id="f9" edge="1" parent="1" source="ee_admin" target="p4" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#0284C7;strokeWidth=2;endArrow=classic;" value="Teacher Resolves Doubt" />
+        <mxCell id="f11" edge="1" parent="1" source="p4" target="ds4" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#16A34A;strokeWidth=2;endArrow=classic;" value="Save Doubt &amp; Answers" />
+        <mxCell id="f12" edge="1" parent="1" source="ee_fcm" target="ee_student" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#EA580C;strokeWidth=2;dashed=1;endArrow=classic;" value="Deliver Device Push" />
+        <mxCell id="f13" edge="1" parent="1" source="p3" target="ee_ai" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=1;html=1;strokeColor=#7C3AED;strokeWidth=2;dashed=1;endArrow=classic;" value="Draft Holiday Notice" />
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

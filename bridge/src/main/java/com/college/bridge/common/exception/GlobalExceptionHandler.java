@@ -1,0 +1,152 @@
+package com.college.bridge.common.exception;
+
+import com.college.bridge.academic.exception.TeacherAssignmentAlreadyExistsException;
+import com.college.bridge.auth.exception.AccountSuspendedException;
+import com.college.bridge.common.response.ApiResponse;
+import com.college.bridge.common.response.FieldError;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
+
+@Slf4j
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException ex) {
+        List<FieldError> errors = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(error -> FieldError.builder()
+                        .field(error.getField())
+                        .message(error.getDefaultMessage())
+                        .build())
+                .toList();
+
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.error("Validation failed.", errors));
+    }
+
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(ConstraintViolationException ex) {
+        List<FieldError> errors = ex.getConstraintViolations()
+                .stream()
+                .map(violation -> FieldError.builder()
+                        .field(violation.getPropertyPath().toString())
+                        .message(violation.getMessage())
+                        .build())
+                .toList();
+
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.error("Validation failed.", errors));
+    }
+
+
+    @ExceptionHandler({EntityNotFoundException.class, ResourceNotFoundException.class})
+    public ResponseEntity<ApiResponse<Void>> handleEntityNotFound(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+
+    @ExceptionHandler(TenantMismatchException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTenantMismatch(TenantMismatchException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler({
+            TeacherAssignmentAlreadyExistsException.class,
+            org.springframework.dao.DataIntegrityViolationException.class,
+            org.hibernate.exception.ConstraintViolationException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleTeacherAssignmentAlreadyExists(Exception ex) {
+        String message = ex.getMessage();
+        if (ex instanceof org.springframework.dao.DataIntegrityViolationException
+                || ex instanceof org.hibernate.exception.ConstraintViolationException) {
+            message = "This subject is already assigned to another teacher.";
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message != null && !message.isBlank() ? message : "This subject is already assigned to another teacher."));
+    }
+
+
+
+    @ExceptionHandler({
+            InstitutionPendingException.class,
+            InstitutionRejectedException.class,
+            InstitutionSuspendedException.class,
+            AccountPendingVerificationException.class,
+            AccountSuspendedException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleStatusExceptions(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.error("Malformed JSON request or invalid request body format."));
+    }
+
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String message = String.format("Parameter '%s' should be of type %s",
+                ex.getName(),
+                ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown");
+        return ResponseEntity.badRequest().body(ApiResponse.error(message));
+    }
+
+
+    @ExceptionHandler({IllegalArgumentException.class, BusinessRuleException.class, DuplicateResourceException.class})
+    public ResponseEntity<ApiResponse<Void>> handleBusinessRuleExceptions(RuntimeException ex) {
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("You do not have permission to perform this action."));
+    }
+
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiResponse<Void>> handleResponseStatus(ResponseStatusException ex) {
+        return ResponseEntity.status(ex.getStatusCode())
+                .body(ApiResponse.error(ex.getReason() != null ? ex.getReason() : ex.getMessage()));
+    }
+
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnhandledException(Exception ex) {
+        log.error("Unhandled exception caught in GlobalExceptionHandler", ex);
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("An unexpected error occurred. Please try again later."));
+    }
+}
