@@ -1,0 +1,74 @@
+name: Backend CI (Spring Boot)
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'bridge/**'
+      - '.github/workflows/backend.yml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'bridge/**'
+      - '.github/workflows/backend.yml'
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip tests during execution (true/false)'
+        required: false
+        default: 'false'
+
+jobs:
+  build-and-test:
+    name: Build & Test Backend
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: CollegeBridge
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Grant Execute Permission to Maven Wrapper
+        run: chmod +x bridge/mvnw
+
+      - name: Compile Backend
+        run: |
+          cd bridge
+          ./mvnw clean compile -DskipTests
+
+      - name: Run Backend Unit & Integration Tests
+        if: ${{ github.event.inputs.skip_tests != 'true' }}
+        env:
+          DB_HOST: localhost
+          DB_PORT: 3306
+          DB_NAME: CollegeBridge
+          DB_USERNAME: root
+          DB_PASSWORD: ''
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          REDIS_PASSWORD: ''
+        run: |
+          cd bridge
+          ./mvnw test
