@@ -1,0 +1,136 @@
+# ==============================================================================
+# College Bridge - Unified Monorepo .gitignore
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Sensitive Credentials & Secrets (CRITICAL)
+# ------------------------------------------------------------------------------
+# RSA / Private Keys
+*.pem
+*.key
+*.pkcs8
+*.p12
+*.jks
+**/keys/
+
+# Cloud & Service Account Admin Credentials (GCP / Firebase Admin SDK)
+*firebase-adminsdk*.json
+*service-account*.json
+credentials.json
+client_secrets.json
+
+# Environment Files
+.env
+.env.*
+!.env.example
+
+# Local Database & User File Uploads
+uploads/
+**/uploads/
+*.db
+*.sqlite
+*.sqlite3
+
+# Local Application Logs
+*.log
+logs/
+**/logs/
+
+# ------------------------------------------------------------------------------
+# 2. Backend (Java / Spring Boot / Maven)
+# ------------------------------------------------------------------------------
+target/
+**/target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Spring Tool Suite (STS)
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# NetBeans
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# ------------------------------------------------------------------------------
+# 3. Frontend (Flutter / Dart / Android / iOS / Web / Desktop)
+# ------------------------------------------------------------------------------
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+**/build/
+coverage/
+**/coverage/
+
+# Flutter / Dart symbolication & obfuscation
+app.*.symbols
+app.*.map.json
+
+# Android Specific
+**/android/.gradle/
+**/android/local.properties
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
+**/android/gradle/wrapper/gradle-wrapper.jar
+**/android/gradlew
+**/android/gradlew.bat
+
+# iOS Specific
+**/ios/.generated/
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/ephemeral/
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/ios/Pods/
+
+# macOS / Linux / Windows Ephemeral Artifacts
+**/macos/Flutter/ephemeral/
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+
+# ------------------------------------------------------------------------------
+# 4. IDEs, Editors & OS System Files
+# ------------------------------------------------------------------------------
+.idea/
+*.iml
+*.iws
+*.ipr
+*.swp
+*~
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+bridge_orig/
+bridge_mobile_orig/
+
+# ------------------------------------------------------------------------------
+# 5. Firebase Configuration Note
+# ------------------------------------------------------------------------------
+# NOTE: Firebase client configuration files:
+#   - bridge_mobile/android/app/google-services.json
+#   - bridge_mobile/firebase.json
+#   - bridge_mobile/lib/firebase_options.dart
+# contain client-side identifiers (appId, projectId, public apiKey) necessary for
+# mobile and web app builds. They do NOT grant administrative GCP access.
+# Administrative Firebase service account credentials (*firebase-adminsdk*.json)
+# remain strictly ignored above.
