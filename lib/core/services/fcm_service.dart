@@ -1,18 +1,28 @@
 import 'dart:developer';
+import 'package:universal_html/html.dart' as html;
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../features/notifications/domain/repositories/notification_repository.dart';
 
 /// Handles Firebase Cloud Messaging: permission, token lifecycle,
 /// foreground heads-up banners with flutter_local_notifications, and tap routing.
+///
+/// On web, FCM uses VAPID (Web Push) so a [_vapidKey] must be provided.
+/// On Android/iOS the native token is used directly.
 class FcmService {
   FcmService(this._messaging, this._repository);
 
   final FirebaseMessaging _messaging;
   final NotificationRepository _repository;
+
+  // IMPORTANT: Replace this with your actual VAPID key from
+  // Firebase Console → Project Settings → Cloud Messaging → Web Push certificates
+  static const String _vapidKey =
+      'BOCADYAPjTNza5guzmGGyELNxFTx0s1yg4wJcac6XL0y3t_aaZuHUhYcnka7cU7NTW32N58W-qqMHq1dK-HMyz4'; // <-- paste your key here
 
   static void Function(String route)? onNavigate;
 
@@ -78,9 +88,12 @@ class FcmService {
       return;
     }
 
-    await setupLocalNotifications();
+    // Only setup local notifications plugin on non-web (it relies on Android/iOS native channels)
+    if (!kIsWeb) {
+      await setupLocalNotifications();
+    }
 
-    // Request permission (Android 13+, iOS always).
+    // Request permission (Web, Android 13+, iOS).
     final settings = await _messaging.requestPermission(
       alert: true,
       badge: true,
@@ -92,8 +105,10 @@ class FcmService {
       return;
     }
 
-    // Register the current token.
-    final token = await _messaging.getToken();
+    // Register current token. On web, vapidKey is required.
+    final token = await _messaging.getToken(
+      vapidKey: kIsWeb && _vapidKey != 'YOUR_VAPID_KEY_HERE' ? _vapidKey : null,
+    );
     if (token != null) {
       await _registerToken(token);
     }
@@ -118,11 +133,16 @@ class FcmService {
 
   Future<void> _registerToken(String token) async {
     try {
+      final platform = kIsWeb
+          ? 'WEB'
+          : defaultTargetPlatform == TargetPlatform.iOS
+              ? 'IOS'
+              : 'ANDROID';
       await _repository.registerDeviceToken(
         token: token,
-        platform: 'ANDROID',
+        platform: platform,
       );
-      log('[FCM] Token registered with backend.', name: 'FcmService');
+      log('[FCM] Token registered with backend ($platform).', name: 'FcmService');
     } catch (e) {
       log('[FCM] Failed to register token: $e', name: 'FcmService');
     }
@@ -147,6 +167,21 @@ class FcmService {
       payload = 'holiday_notice:$noticeIdStr';
     } else {
       payload = notifIdStr;
+    }
+
+    if (kIsWeb) {
+      try {
+        if (html.Notification.permission == 'granted') {
+          html.Notification(
+            title,
+            body: body,
+            icon: '/icons/Icon-192.png',
+          );
+        }
+      } catch (e) {
+        log('[FCM] Web notification display error: $e', name: 'FcmService');
+      }
+      return;
     }
 
     _localNotifications.show(
