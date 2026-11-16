@@ -1,0 +1,566 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../../../../core/widgets/clickable.dart';
+import '../../../admin_users/domain/entities/user_profile.dart';
+import 'package:bridge_mobile/features/dashboard/presentation/controllers/dashboard_providers.dart';
+import '../controllers/profile_notifier.dart';
+import 'package:bridge_mobile/features/dashboard/presentation/screens/help_and_support_screen.dart';
+import '../widgets/change_email_modal.dart';
+import '../widgets/change_password_modal.dart';
+
+class AdminProfileScreen extends ConsumerStatefulWidget {
+  final String userName;
+  final VoidCallback? onLogout;
+
+  const AdminProfileScreen({
+    super.key,
+    required this.userName,
+    this.onLogout,
+  });
+
+  @override
+  ConsumerState<AdminProfileScreen> createState() => _AdminProfileScreenState();
+}
+
+class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(
+        () => ref.read(profileNotifierProvider.notifier).fetchProfile());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final profileState = ref.watch(profileNotifierProvider);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF2563EB), size: 24),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          'My Profile',
+          style: TextStyle(
+            color: Color(0xFF0F172A),
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: switch (profileState) {
+          ProfileFailure(:final message) => _buildErrorWithFallback(context, message),
+          final ProfileSuccess s => _buildContent(context, s),
+          _ => _buildLoadingOrFallback(context),
+        },
+      ),
+    );
+  }
+
+  Widget _buildLoadingOrFallback(BuildContext context) {
+    final fallbackProfile = UserProfile(
+      userId: 0,
+      name: widget.userName.isNotEmpty ? widget.userName : 'Admin',
+      email: 'admin@college.edu',
+      role: 'ADMIN',
+      status: 'ACTIVE',
+    );
+    return Stack(
+      children: [
+        _buildContent(context, ProfileSuccess(fallbackProfile)),
+        const Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: LinearProgressIndicator(
+            minHeight: 2,
+            color: Color(0xFF2563EB),
+            backgroundColor: Colors.transparent,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildErrorWithFallback(BuildContext context, String msg) {
+    final fallbackProfile = UserProfile(
+      userId: 0,
+      name: widget.userName.isNotEmpty ? widget.userName : 'Admin',
+      email: 'admin@college.edu',
+      role: 'ADMIN',
+      status: 'ACTIVE',
+    );
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: const Color(0xFFFEE2E2),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, size: 16, color: Color(0xFFDC2626)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  msg.isNotEmpty ? msg : 'Unable to connect to server',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFFDC2626)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              TextButton(
+                onPressed: () =>
+                    ref.read(profileNotifierProvider.notifier).refreshProfile(),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Retry',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFDC2626))),
+              ),
+            ],
+          ),
+        ),
+        Expanded(child: _buildContent(context, ProfileSuccess(fallbackProfile))),
+      ],
+    );
+  }
+
+  Widget _buildContent(BuildContext context, ProfileSuccess state) {
+    final p = state.profile;
+    final email = p.email.isNotEmpty ? p.email : 'admin@college.edu';
+    final role = p.role.isNotEmpty ? p.role : 'INSTITUTION_ADMIN';
+    final status = p.status.isNotEmpty ? p.status : 'ACTIVE';
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      child: Column(
+        children: [
+          // ── Avatar + Name + Subtitle Card ──────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Clickable(
+                      onTap: state.isSaving ? null : () => _pickAndUploadImage(),
+                      child: CircleAvatar(
+                        radius: 44,
+                        backgroundColor: const Color(0xFFEFF6FF),
+                        backgroundImage:
+                            p.imageUrl != null ? NetworkImage(p.imageUrl!) : null,
+                        child: p.imageUrl == null
+                            ? Text(
+                                p.name.isNotEmpty
+                                    ? p.name[0].toUpperCase()
+                                    : 'A',
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF2563EB),
+                                ),
+                              )
+                            : null,
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Clickable(
+                        onTap: state.isSaving ? null : () => _pickAndUploadImage(),
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF2563EB),
+                            shape: BoxShape.circle,
+                          ),
+                          child: state.isSaving
+                              ? const Padding(
+                                  padding: EdgeInsets.all(6),
+                                  child: CircularProgressIndicator(
+                                      color: Colors.white, strokeWidth: 2))
+                              : const Icon(Icons.camera_alt,
+                                  color: Colors.white, size: 14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  p.name.isNotEmpty ? p.name : widget.userName,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  email,
+                  style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 14),
+                OutlinedButton.icon(
+                  onPressed: state.isSaving
+                      ? null
+                      : () => _showEditDialog(context, p.name),
+                  icon: const Icon(Icons.edit_outlined,
+                      size: 16, color: Color(0xFF2563EB)),
+                  label: const Text('Edit Name',
+                      style: TextStyle(
+                          color: Color(0xFF2563EB),
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF2563EB)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ── Admin Details Cards ──────────────────────────────────────────────
+          Row(
+            children: [
+              Expanded(
+                child: _infoTile(
+                  label: 'ROLE',
+                  value: role,
+                  icon: Icons.admin_panel_settings_outlined,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _infoTile(
+                  label: 'STATUS',
+                  value: status,
+                  icon: Icons.verified_user_outlined,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // ── Account Settings Section ─────────────────────────────────────────
+          _sectionHeader('Account Settings'),
+          const SizedBox(height: 12),
+          _settingsTile(
+            icon: Icons.email_outlined,
+            title: 'Change Email',
+            subtitle: email,
+            onTap: () => ChangeEmailModal.show(context, email),
+          ),
+          _settingsTile(
+            icon: Icons.lock_outline,
+            title: 'Change Password',
+            subtitle: 'Secure your account with a new password',
+            onTap: () => ChangePasswordModal.show(context),
+          ),
+          _settingsTile(
+            icon: Icons.help_outline_rounded,
+            title: 'Help & Support',
+            subtitle: 'Campus support & FAQs',
+            onTap: () => _showHelpSupportModal(context),
+          ),
+          const SizedBox(height: 20),
+
+          // ── Logout button ────────────────────────────────────────────────────
+          _logoutButton(context),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoTile(
+      {required String label, required String value, required IconData icon}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: const Color(0xFF2563EB), size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionHeader(String title) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF0F172A),
+        ),
+      ),
+    );
+  }
+
+  Widget _settingsTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEFF6FF),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: const Color(0xFF2563EB), size: 20),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              color: Color(0xFF0F172A)),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+        ),
+        trailing: const Icon(Icons.chevron_right,
+            color: Color(0xFF94A3B8), size: 22),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _logoutButton(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFEE2E2)),
+      ),
+      child: TextButton.icon(
+        onPressed: () => _confirmLogout(context),
+        icon: const Icon(Icons.logout, color: Color(0xFFDC2626), size: 20),
+        label: const Text(
+          'Logout Account',
+          style: TextStyle(
+            color: Color(0xFFDC2626),
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+      ),
+    );
+  }
+
+  // ── Modals & Actions ────────────────────────────────────────────────────────
+
+  void _showHelpSupportModal(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const HelpAndSupportScreen(),
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final picked =
+        await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked == null) return;
+
+    final ok = await ref
+        .read(profileNotifierProvider.notifier)
+        .uploadProfileImage(File(picked.path));
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(ok ? 'Profile photo updated!' : 'Failed to upload photo'),
+        backgroundColor:
+            ok ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+      ));
+    }
+  }
+
+  void _showEditDialog(BuildContext context, String currentName) {
+    final controller = TextEditingController(text: currentName);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Edit Full Name',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            labelText: 'Full Name',
+            border:
+                OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              Navigator.pop(ctx);
+              final ok = await ref
+                  .read(profileNotifierProvider.notifier)
+                  .updateName(controller.text.trim());
+              if (mounted) {
+                messenger.showSnackBar(SnackBar(
+                  content: Text(
+                      ok ? 'Profile updated!' : 'Failed to update profile'),
+                  backgroundColor:
+                      ok ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+                ));
+              }
+            },
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB)),
+            child: const Text('Save', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title:
+            const Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await ref
+                  .read(profileNotifierProvider.notifier)
+                  .logoutAndClear();
+              if (widget.onLogout != null) {
+                widget.onLogout!();
+              }
+            },
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFDC2626)),
+            child: const Text('Logout', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+}
