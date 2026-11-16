@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:784598194727:android:93c3fe5fa593123dc64c02",
+        "android_client_info": {
+          "package_name": "com.collegebridge.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAoqL6k__V7ZepFixlnYhskIK0K9EM4YUs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:784598194727:android:457cefb3c3a29d15c64c02",
         "android_client_info": {
           "package_name": "com.example.bridge_mobile"
@@ -15,7 +34,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDcYKtv3d0JXa0tlcGbTlke5AVFHZgjuWg"
+          "current_key": "AIzaSyAoqL6k__V7ZepFixlnYhskIK0K9EM4YUs"
         }
       ],
       "services": {

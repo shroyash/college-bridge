@@ -15,15 +15,21 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Safely initialise Firebase if on supported mobile platform
-  if (!kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.android ||
-          defaultTargetPlatform == TargetPlatform.iOS)) {
+  // Initialise Firebase on Android, iOS and Web (web uses VAPID for push).
+  // Desktop Linux/Windows/macOS is skipped — FCM has no desktop SDK.
+  final bool firebaseSupported = kIsWeb ||
+      defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
+
+  if (firebaseSupported) {
     try {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+      // Background handler only works on Android/iOS (web uses service worker)
+      if (!kIsWeb) {
+        FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+      }
       log('[Firebase] Initialized successfully', name: 'main');
     } catch (e, stack) {
       log('[Firebase] Failed to initialize: $e\n$stack', name: 'main');
