@@ -20,7 +20,7 @@ public class CreateSubjectRequest {
     @NotBlank(message = "Subject name is required")
     private String name;
 
-    @NotBlank(message = "Faculty is required")
+    @NotBlank(message = "Faculty is required ")
     @Size(max = 20, message = "Faculty must not exceed 20 characters")
     @Pattern(regexp = "^[A-Z0-9_]{2,20}$", message = "Faculty must be 2-20 uppercase alphanumeric characters or underscores")
     private String faculty;
