@@ -204,6 +204,18 @@ public class AuthService {
 
         User user = refreshToken.getUser();
 
+        if (user.getStatus() == UserStatus.SUSPENDED) {
+            refreshTokenRepository.revokeAllByUser(user);
+            userTokenRevocationService.revokeUserTokens(user.getUserId(), Instant.now());
+            throw new AccountSuspendedException("User account is suspended.");
+        }
+
+        if (user.getInstitution() != null && user.getInstitution().getStatus() == InstitutionStatus.SUSPENDED) {
+            refreshTokenRepository.revokeAllByUser(user);
+            userTokenRevocationService.revokeUserTokens(user.getUserId(), Instant.now());
+            throw new InstitutionSuspendedException("Institution is suspended. Please contact support.");
+        }
+
         if (refreshToken.isRevoked()) {
             refreshTokenRepository.revokeAllByUser(user);
             userTokenRevocationService.revokeUserTokens(user.getUserId(), Instant.now());

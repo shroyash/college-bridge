@@ -4,8 +4,11 @@ import com.college.bridge.auth.entity.User;
 import com.college.bridge.auth.entity.UserRole;
 import com.college.bridge.auth.entity.UserStatus;
 import com.college.bridge.auth.service.TokenRevocationService;
+import com.college.bridge.common.response.ApiResponse;
 import com.college.bridge.common.tenant.TenantContext;
 import com.college.bridge.institution.entity.InstitutionStatus;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.MediaType;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -33,6 +36,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
     private final TokenRevocationService userTokenRevocationService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public JwtAuthenticationFilter(
             JwtService jwtService,
@@ -172,9 +176,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 if (user.getRole() != UserRole.SUPER_ADMIN) {
 
+                    if (user.getStatus() == UserStatus.SUSPENDED) {
+                        log.warn("Rejected JWT request for suspended user ID: {}", user.getUserId());
+                        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        objectMapper.writeValue(response.getOutputStream(),
+                                ApiResponse.error("User account is suspended."));
+                        return;
+                    }
+
                     if (user.getInstitution() == null
-                            || user.getInstitution().getStatus()
-                            != InstitutionStatus.ACTIVE
+                            || user.getInstitution().getStatus() == InstitutionStatus.SUSPENDED) {
+                        log.warn("Rejected JWT request for suspended institution for user ID: {}", user.getUserId());
+                        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        objectMapper.writeValue(response.getOutputStream(),
+                                ApiResponse.error("Institution is suspended. Please contact support."));
+                        return;
+                    }
+
+                    if (user.getInstitution().getStatus() != InstitutionStatus.ACTIVE
                             || user.getStatus() != UserStatus.ACTIVE) {
 
                         log.warn(
@@ -187,7 +208,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 user.getStatus()
                         );
 
-                        filterChain.doFilter(request, response);
+                        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        objectMapper.writeValue(response.getOutputStream(),
+                                ApiResponse.error("User account is not active."));
                         return;
                     }
                 }
@@ -205,7 +229,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             userId
                     );
 
-                    filterChain.doFilter(request, response);
+                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    objectMapper.writeValue(response.getOutputStream(),
+                            ApiResponse.error("Session has been revoked or expired."));
                     return;
                 }
 

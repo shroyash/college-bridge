@@ -13,11 +13,14 @@ import com.college.bridge.auth.dto.UserProfileResponse;
 import com.college.bridge.auth.entity.Student;
 import com.college.bridge.auth.mapper.UserMapper;
 import com.college.bridge.auth.repository.StudentRepository;
+import com.college.bridge.auth.security.UserPrincipal;
 import com.college.bridge.common.exception.BusinessRuleException;
 import com.college.bridge.common.exception.ResourceNotFoundException;
 import com.college.bridge.common.exception.TenantMismatchException;
 import com.college.bridge.common.tenant.TenantContext;
+import com.college.bridge.notification.event.StudentAcademicChangedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +41,7 @@ public class StudentCohortService {
     private final SubjectEnrollmentRepository subjectEnrollmentRepository;
     private final UserMapper userMapper;
     private final SubjectMapper subjectMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public Page<UserProfileResponse> getStudentsFiltered(
@@ -92,6 +97,9 @@ public class StudentCohortService {
         subjectEnrollmentRepository.bulkInsertEnrollmentsForTargetLevel(
                 request.getStudentIds(), targetLevel.getLevelId());
 
+        // Publish a promotion notification to every transferred student
+        publishPromotionNotifications(principal, tenantId, request.getStudentIds(), targetLevel);
+
         return BulkTransferResponse.builder()
                 .success(true)
                 .updatedStudents(updatedCount)
@@ -104,6 +112,48 @@ public class StudentCohortService {
                         .programName(targetLevel.getProgram().getName())
                         .build())
                 .build();
+    }
+
+    /**
+     * Publishes a {@link StudentAcademicChangedEvent} for each student who was
+     * promoted so that FCM push notifications are dispatched after the transaction
+     * commits (via {@code @TransactionalEventListener} in
+     * {@code NotificationDomainEventListener}).
+     */
+    private void publishPromotionNotifications(
+            Principal principal, Long tenantId, List<Long> studentIds, AcademicLevel targetLevel) {
+
+        Long actorUserId = resolveActorUserId(principal);
+
+        // findAllById is provided by JpaRepository — no custom query needed.
+        List<Student> students = studentRepository.findAllById(studentIds);
+
+        String changeId = UUID.randomUUID().toString();
+        String summary = String.format(
+                "You have been promoted to %s — %s.",
+                targetLevel.getProgram().getName(),
+                targetLevel.getName());
+
+        for (Student student : students) {
+            if (student.getUser() == null) continue;
+
+            eventPublisher.publishEvent(new StudentAcademicChangedEvent(
+                    student.getStudentId(),
+                    student.getUser().getUserId(),
+                    tenantId,
+                    actorUserId,
+                    summary,
+                    changeId + ":" + student.getStudentId()
+            ));
+        }
+    }
+
+    /** Extracts the acting user's ID from the Spring Security {@link Principal}. */
+    private Long resolveActorUserId(Principal principal) {
+        if (principal instanceof UserPrincipal up) {
+            return up.getUserId();
+        }
+        return null;
     }
 
     @Transactional

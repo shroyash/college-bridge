@@ -118,6 +118,7 @@ public class AdminUserService {
 
         Instant suspendedAt = Instant.now();
         userTokenRevocationService.revokeUserTokens(userId, suspendedAt);
+        refreshTokenRepository.revokeAllByUser(user);
     }
 
     public void activateUser(Long userId) {
